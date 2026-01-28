@@ -1,0 +1,18 @@
+[package]
+name = "plantlink-web"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+plantlink-core = { path = "../plantlink-core" }
+plantlink-runtime = { path = "../plantlink-runtime" }
+axum = { version = "0.7", features = ["ws"] }
+tokio = { version = "1.0", features = ["full"] }
+rust-embed = "8.0"
+mime_guess = "2.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tracing = "0.1"
+anyhow = "1.0"
+tower-http = { version = "0.6.8", features = ["trace"] }
+futures = "0.3.31"

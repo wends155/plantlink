@@ -1,0 +1,8 @@
+[workspace]
+members = [
+    "plantlink-core",
+    "plantlink-runtime",
+    "plantlink-web",
+    "plantlink-cli",
+]
+resolver = "2"
