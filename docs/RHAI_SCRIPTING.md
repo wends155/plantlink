@@ -44,6 +44,51 @@ The `msg` object has these fields:
 
 ---
 
+## JSON and Object Maps
+
+Rhai has **native object maps** that work like JSON objects:
+
+```rhai
+// Create object maps (like JSON)
+let obj = #{
+    name: "sensor",
+    value: 42,
+    active: true
+};
+
+// Access and modify
+obj.name;           // "sensor"
+obj.timestamp = 123; // Add field
+```
+
+### What's Native vs Handled by Rust
+
+| Feature | In Rhai Script? | Notes |
+|---------|-----------------|-------|
+| Object maps | ✅ Yes | Use `#{ key: value }` syntax |
+| Property access | ✅ Yes | `obj.field` or `obj["field"]` |
+| Nested objects | ✅ Yes | `obj.nested.value` |
+| `JSON.parse()` | ❌ No | Rust handles before script |
+| `JSON.stringify()` | ❌ No | Rust handles after script |
+
+### How It Works in PlantLink
+
+1. **Incoming message** → Rust converts JSON to Rhai map
+2. **Your script** → Works with native object map
+3. **Output** → Rust converts Rhai map back to JSON
+
+```rhai
+// If payload arrived as {"temp": 25, "unit": "C"}
+let data = msg.payload;
+data.temp = data.temp + 10;  // Modify directly
+data.converted = true;       // Add fields
+msg.payload = data;
+return msg;
+// Output: {"temp": 35, "unit": "C", "converted": true}
+```
+
+---
+
 ## Examples
 
 ### String Manipulation
