@@ -2,6 +2,9 @@
     import CodeMirror from "svelte-codemirror-editor";
     import { rust } from "@codemirror/lang-rust";
     import { oneDark } from "@codemirror/theme-one-dark";
+    import { EditorView } from "@codemirror/view";
+    import { tags } from "@lezer/highlight";
+    import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
     import { theme } from "./stores/theme";
 
     export let selectedNode = null;
@@ -10,9 +13,33 @@
     export let onClose;
 
     let localData = {};
-    let editorTheme = [];
 
-    $: editorTheme = $theme === "dark" ? oneDark : [];
+    // Custom light theme with proper contrast
+    const lightHighlightStyle = HighlightStyle.define([
+        { tag: tags.keyword, color: "#d73a49" },           // red for keywords
+        { tag: tags.variableName, color: "#24292e" },      // dark gray for variables
+        { tag: tags.propertyName, color: "#005cc5" },      // blue for properties
+        { tag: tags.string, color: "#032f62" },            // dark blue for strings
+        { tag: tags.number, color: "#005cc5" },            // blue for numbers
+        { tag: tags.comment, color: "#6a737d", fontStyle: "italic" },
+        { tag: tags.function(tags.variableName), color: "#6f42c1" }, // purple for functions
+        { tag: tags.operator, color: "#d73a49" },          // red for operators
+        { tag: tags.punctuation, color: "#24292e" },       // dark for punctuation
+    ]);
+    
+    const lightTheme = [
+        EditorView.theme({
+            "&": { backgroundColor: "#ffffff", color: "#24292e" },
+            ".cm-content": { caretColor: "#24292e" },
+            ".cm-cursor": { borderLeftColor: "#24292e" },
+            ".cm-activeLine": { backgroundColor: "#f6f8fa" },
+            ".cm-gutters": { backgroundColor: "#f6f8fa", color: "#6a737d" },
+            ".cm-activeLineGutter": { backgroundColor: "#e8eaed" },
+        }, { dark: false }),
+        syntaxHighlighting(lightHighlightStyle)
+    ];
+
+    $: editorTheme = $theme === "dark" ? oneDark : lightTheme;
 
     // Re-sync local data when selected node changes
     // Re-sync local data when selected node changes
