@@ -208,6 +208,8 @@
 <div class="flow-editor">
     <NodePalette />
 
+    <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <div
         class="flow-canvas"
         on:dragover={onDragOver}
@@ -216,8 +218,9 @@
             onDrop(e);
         }}
         on:keydown={onKeyDown}
-        role="application"
-        tabindex="0"
+        role="region"
+        aria-label="Flow canvas"
+        tabindex="-1"
     >
         <div class="absolute top-4 right-4 z-10 flex gap-2 items-center">
             <ThemeToggle />

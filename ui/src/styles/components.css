@@ -15,9 +15,17 @@
         overflow: hidden;
     }
 
+    /**
+     * CRITICAL: SvelteFlow requires explicit width/height.
+     * Do not remove width: 100% or height: 100%.
+     * These are required for proper layout and drag/drop event handling.
+     */
     .flow-canvas {
         flex: 1;
+        width: 100%;
+        /* Required for SvelteFlow */
         height: 100%;
+        /* Required for SvelteFlow */
         position: relative;
     }
 

@@ -108,5 +108,7 @@ plantlink/
 -   **[Rhai Scripting](./docs/RHAI_SCRIPTING.md)**: Guide for writing Rhai scripts in Function nodes.
 -   **[API Reference](./docs/API.md)**: REST endpoints, WebSocket messages, and flow config format.
 -   **[Theming](./docs/THEMING.md)**: UI theming system with CSS custom properties and semantic classes.
+-   **[UI Testing](./docs/UI_TESTING.md)**: End-to-end testing guide with Playwright for preventing regressions.
+
 ## License
 MIT

@@ -263,6 +263,52 @@ The theming system integrates seamlessly with the build pipeline:
 <div style="background-color: var(--color-bg-primary); color: var(--color-text-primary);">
 ```
 
+### Migration Safety Rules
+
+> [!IMPORTANT]
+> Follow these rules when migrating Tailwind utilities to semantic classes to avoid regressions:
+
+1. **Always include explicit dimensions** for layout containers:
+   ```css
+   /* ❌ BAD */
+   .flow-canvas {
+       flex: 1;
+       height: 100%;
+   }
+   
+   /* ✅ GOOD */
+   .flow-canvas {
+       flex: 1;
+       width: 100%;   /* Explicit width required */
+       height: 100%;  /* Explicit height required */
+   }
+   ```
+
+2. **Test drag/drop functionality** after any canvas-related changes:
+   - Drag nodes from palette to canvas
+   - Verify drop zones are capturing events
+   - Check browser console for errors
+
+3. **Verify flexbox children** have proper width/height constraints:
+   - Use `width: 100%` for components that need to fill their container
+   - Test at different viewport sizes
+
+4. **Check browser DevTools** for CSS inheritance issues:
+   - Inspect element to verify semantic classes are applied
+   - Check for conflicting Tailwind utilities
+   - Verify CSS custom properties are resolving correctly
+
+5. **Document critical CSS requirements** with comments:
+   ```css
+   /**
+    * CRITICAL: SvelteFlow requires explicit width/height.
+    * Do not remove width: 100% or height: 100%.
+    */
+   .flow-canvas {
+       /* ... */
+   }
+   ```
+
 ---
 
 ## Examples
