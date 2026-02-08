@@ -7,6 +7,7 @@
         useSvelteFlow,
     } from "@xyflow/svelte";
     import "@xyflow/svelte/dist/style.css";
+    import { Play, Square, RefreshCw } from "lucide-svelte";
 
     import { getNodeTypes } from "./nodes/registry.js";
     import { getPortSchema } from "./nodeDefinitions.js";
@@ -200,14 +201,20 @@
                     class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow flex items-center gap-2"
                     on:click={deployFlow}
                 >
-                    Start Flow
+                    <Play size={16} /> Start Flow
                 </button>
             {:else}
+                <button
+                    class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow flex items-center gap-2"
+                    on:click={deployFlow}
+                >
+                    <RefreshCw size={16} /> Update Flow
+                </button>
                 <button
                     class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow flex items-center gap-2"
                     on:click={stopFlow}
                 >
-                    Stop Flow
+                    <Square size={16} /> Stop Flow
                 </button>
             {/if}
         </div>
