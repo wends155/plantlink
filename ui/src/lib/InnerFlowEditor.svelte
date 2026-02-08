@@ -205,11 +205,11 @@
     };
 </script>
 
-<div class="h-screen w-screen flex flex-row overflow-hidden">
+<div class="flow-editor">
     <NodePalette />
 
     <div
-        class="flex-1 h-full relative"
+        class="flow-canvas"
         on:dragover={onDragOver}
         on:drop={(e) => {
             console.log("Dropped item to canvas", e);
@@ -223,7 +223,7 @@
             <ThemeToggle />
             {#if !isRunning}
                 <button
-                    class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="btn btn-success"
                     disabled={nodes.length === 0}
                     on:click={deployFlow}
                 >
@@ -231,14 +231,14 @@
                 </button>
             {:else}
                 <button
-                    class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="btn btn-primary"
                     disabled={!isFlowDirty}
                     on:click={deployFlow}
                 >
                     <RefreshCw size={16} /> Update Flow
                 </button>
                 <button
-                    class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow flex items-center gap-2"
+                    class="btn btn-danger"
                     on:click={stopFlow}
                 >
                     <Square size={16} /> Stop Flow

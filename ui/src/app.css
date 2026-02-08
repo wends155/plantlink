@@ -3,6 +3,8 @@
 @tailwind utilities;
 
 @import '@xyflow/svelte/dist/style.css';
+@import './styles/themes.css';
+@import './styles/components.css';
 
 :root {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
@@ -15,6 +17,6 @@ body {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  background-color: #1a1a1a;
-  color: #e5e7eb;
+  background-color: var(--color-bg-canvas);
+  color: var(--color-text-primary);
 }

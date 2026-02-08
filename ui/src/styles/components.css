@@ -1,0 +1,134 @@
+/* ═══════════════════════════════════════════════════════════
+   Semantic Component Classes
+   ═══════════════════════════════════════════════════════════ */
+
+@layer components {
+
+    /* ─────────────────────────────────────────────────────────
+     Layout Components
+     ───────────────────────────────────────────────────────── */
+    .flow-editor {
+        height: 100vh;
+        width: 100vw;
+        display: flex;
+        flex-direction: row;
+        overflow: hidden;
+    }
+
+    .flow-canvas {
+        flex: 1;
+        height: 100%;
+        position: relative;
+    }
+
+    .node-palette {
+        width: 200px;
+        background-color: var(--color-bg-primary);
+        border-right: 1px solid var(--color-border);
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        font-size: 13px;
+    }
+
+    .property-panel {
+        width: 350px;
+        background-color: var(--color-bg-primary);
+        border-left: 1px solid var(--color-border);
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        overflow: hidden;
+    }
+
+    /* ─────────────────────────────────────────────────────────
+     Palette Components
+     ───────────────────────────────────────────────────────── */
+    .palette-category {
+        background-color: var(--color-bg-secondary);
+        padding: 0.5rem;
+        font-weight: bold;
+        border-bottom: 1px solid var(--color-border);
+        color: var(--color-text-secondary);
+    }
+
+    .palette-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.25rem;
+        background-color: var(--color-bg-tertiary);
+        border: 1px solid var(--color-node-border);
+        border-radius: 0.25rem;
+        cursor: grab;
+        color: var(--color-text-primary);
+        transition: border-color 0.15s;
+    }
+
+    .palette-item:hover {
+        border-color: var(--color-border-hover);
+    }
+
+    /* ─────────────────────────────────────────────────────────
+     Buttons
+     ───────────────────────────────────────────────────────── */
+    .btn {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        font-weight: bold;
+        border-radius: 0.25rem;
+        color: white;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        cursor: pointer;
+        transition: background-color 0.15s;
+    }
+
+    .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .btn-success {
+        background-color: var(--color-btn-success);
+    }
+
+    .btn-success:hover:not(:disabled) {
+        background-color: var(--color-btn-success-hover);
+    }
+
+    .btn-danger {
+        background-color: var(--color-btn-danger);
+    }
+
+    .btn-danger:hover:not(:disabled) {
+        background-color: var(--color-btn-danger-hover);
+    }
+
+    .btn-primary {
+        background-color: var(--color-btn-primary);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+        background-color: var(--color-btn-primary-hover);
+    }
+
+    /* ─────────────────────────────────────────────────────────
+     Form Inputs
+     ───────────────────────────────────────────────────────── */
+    .input {
+        width: 100%;
+        padding: 0.25rem 0.5rem;
+        border: 1px solid var(--color-border);
+        border-radius: 0.25rem;
+        background-color: var(--color-bg-primary);
+        color: var(--color-text-primary);
+        font-size: 0.875rem;
+    }
+
+    .input:focus {
+        outline: none;
+        box-shadow: 0 0 0 1px var(--color-btn-primary);
+    }
+}

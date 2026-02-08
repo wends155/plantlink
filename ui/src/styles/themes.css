@@ -1,0 +1,74 @@
+/* ═══════════════════════════════════════════════════════════
+   PlantLink Theme System
+   ═══════════════════════════════════════════════════════════ */
+
+/* ─────────────────────────────────────────────────────────
+   Light Theme (Default)
+   ───────────────────────────────────────────────────────── */
+:root {
+  /* Backgrounds */
+  --color-bg-primary: #fafafa;
+  --color-bg-secondary: #f3f3f3;
+  --color-bg-tertiary: #e9e9e9;
+  --color-bg-canvas: #f9f9f9;
+  
+  /* Borders */
+  --color-border: #cccccc;
+  --color-border-hover: #333333;
+  
+  /* Text */
+  --color-text-primary: #333333;
+  --color-text-secondary: #555555;
+  --color-text-muted: #999999;
+  
+  /* Buttons - Success */
+  --color-btn-success: #16a34a;
+  --color-btn-success-hover: #15803d;
+  
+  /* Buttons - Danger */
+  --color-btn-danger: #dc2626;
+  --color-btn-danger-hover: #b91c1c;
+  
+  /* Buttons - Primary */
+  --color-btn-primary: #2563eb;
+  --color-btn-primary-hover: #1d4ed8;
+  
+  /* Nodes */
+  --color-node-bg: #fbfbfb;
+  --color-node-border: #999999;
+  --color-port: #d9d9d9;
+}
+
+/* ─────────────────────────────────────────────────────────
+   Dark Theme
+   ───────────────────────────────────────────────────────── */
+.dark {
+  --color-bg-primary: #111827;
+  --color-bg-secondary: #1f2937;
+  --color-bg-tertiary: #374151;
+  --color-bg-canvas: #111827;
+  
+  --color-border: #4b5563;
+  --color-border-hover: #9ca3af;
+  
+  --color-text-primary: #f3f4f6;
+  --color-text-secondary: #9ca3af;
+  --color-text-muted: #6b7280;
+  
+  --color-node-bg: #1f2937;
+  --color-node-border: #4b5563;
+}
+
+/* ─────────────────────────────────────────────────────────
+   Future: Nord Theme (Commented Template)
+   ───────────────────────────────────────────────────────── */
+/* 
+.theme-nord {
+  --color-bg-primary: #2e3440;
+  --color-bg-secondary: #3b4252;
+  --color-bg-tertiary: #434c5e;
+  --color-text-primary: #eceff4;
+  --color-text-secondary: #d8dee9;
+  --color-text-muted: #81a1c1;
+}
+*/

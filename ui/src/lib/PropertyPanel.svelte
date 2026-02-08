@@ -70,7 +70,7 @@
 </script>
 
 <aside
-    class="w-[300px] bg-white dark:bg-gray-900 border-l border-[#ccc] dark:border-gray-700 flex flex-col h-full text-[13px]"
+    class="property-panel"
 >
     <div
         class="bg-[#f3f3f3] dark:bg-gray-800 p-2 font-bold border-b border-[#ccc] dark:border-gray-700 text-[#555] dark:text-gray-400 flex justify-between items-center"

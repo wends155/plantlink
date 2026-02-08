@@ -17,20 +17,16 @@
     const categoryOrder = ["Common", "Network", "Function"];
 </script>
 
-<aside
-    class="w-[200px] bg-[#fafafa] dark:bg-gray-900 border-r border-[#ccc] dark:border-gray-700 flex flex-col h-full text-[13px]"
->
+<aside class="node-palette">
     {#each categoryOrder as category}
         {#if categories[category]}
-            <div
-                class="bg-[#f3f3f3] dark:bg-gray-800 p-2 font-bold border-b border-[#ccc] dark:border-gray-700 text-[#555] dark:text-gray-400"
-            >
+            <div class="palette-category">
                 {category}
             </div>
             <div class="p-2 space-y-2">
                 {#each Object.entries(categories[category]) as [nodeType, def]}
                     <div
-                        class="flex items-center gap-2 p-1 bg-[#e9e9e9] dark:bg-gray-700 border border-[#999] dark:border-gray-600 rounded cursor-grab hover:border-[#333] dark:hover:border-gray-400 text-gray-800 dark:text-gray-200"
+                        class="palette-item"
                         draggable={true}
                         on:dragstart={(e) => onDragStart(e, nodeType, def.defaultData)}
                         role="button"
