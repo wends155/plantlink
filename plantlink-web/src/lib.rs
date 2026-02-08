@@ -34,7 +34,7 @@ impl WebServer {
         tx: broadcast::Sender<String>,
         runtime: Arc<RwLock<plantlink_runtime::RuntimeEngine>>
     ) -> anyhow::Result<()> {
-        let app_state = AppState { tx, runtime };
+        let app_state = AppState { tx, runtime: runtime.clone() };
 
         let app = Router::new()
             .route("/health", get(|| async { "OK" }))
@@ -48,9 +48,45 @@ impl WebServer {
         let addr = SocketAddr::from(([0, 0, 0, 0], port));
         tracing::info!("Listening on http://{}", addr);
         let listener = TcpListener::bind(addr).await?;
-        axum::serve(listener, app).await?;
+        
+        axum::serve(listener, app)
+            .with_graceful_shutdown(shutdown_signal(runtime))
+            .await?;
+            
         Ok(())
     }
+}
+
+async fn shutdown_signal(runtime: Arc<RwLock<plantlink_runtime::RuntimeEngine>>) {
+    let ctrl_c = async {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
+
+    tracing::info!("Signal received, starting graceful shutdown...");
+    
+    // Stop the runtime tasks
+    let mut rt = runtime.write().await;
+    rt.stop_flow().await;
+    
+    tracing::info!("Runtime stopped. Exiting.");
 }
 
 // ...
