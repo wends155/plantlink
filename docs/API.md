@@ -157,12 +157,52 @@ ws://localhost:3001/ws
 }
 ```
 
-### nats-sub / nats-pub
+### nats-sub
 
 ```json
 {
   "subject": "events.>"
 }
+```
+
+**Ports:**
+- Input 0 (Connection) - Receives broker connection ID
+- Output 0 (Message) - Emits received messages
+
+---
+
+### nats-pub
+
+```json
+{
+  "subject": "events.>"
+}
+```
+
+**Ports:**
+- Input 0 (Connection) - Receives broker connection ID
+- Input 1 (Data) - Receives message payload to publish
+
+**Data Flow (Port 1):**
+
+| Incoming Payload Type | Published to NATS |
+|-----------------------|-------------------|
+| String (`"Hello"`) | `"Hello"` (UTF-8 bytes) |
+| JSON (`{ "temp": 25 }`) | `{"temp":25}` (stringified) |
+| Other types | Empty bytes |
+
+**Subject Selection (Priority):**
+1. Node config `subject` (if not empty)
+2. `msg.topic` from incoming message
+3. If both empty, no publish
+
+**Example with Function Node:**
+```
+[Function] ─── msg.payload="sensor:42" ───▶ [NATS Pub Port 1]
+                                                    │
+                                                    ▼
+                                           Publishes "sensor:42"
+                                           to configured subject
 ```
 
 ### rhai-function
