@@ -92,6 +92,30 @@
         selectedNode = nodes.find((n) => n.id === id);
     };
 
+    // Helper to serialize flow state (excluding UI-only properties like selection)
+    const serializeFlow = (nodes, edges) => {
+        const cleanNodes = nodes.map(n => ({
+            id: n.id,
+            type: n.type,
+            position: { x: Math.round(n.position.x), y: Math.round(n.position.y) }, // Round to avoid float jitter
+            data: n.data
+        })).sort((a, b) => a.id.localeCompare(b.id));
+
+        const cleanEdges = edges.map(e => ({
+            id: e.id,
+            source: e.source,
+            target: e.target,
+            sourceHandle: e.sourceHandle,
+            targetHandle: e.targetHandle
+        })).sort((a, b) => a.id.localeCompare(b.id));
+
+        return JSON.stringify({ nodes: cleanNodes, edges: cleanEdges });
+    };
+
+    let lastDeployedState = "";
+    $: currentState = serializeFlow(nodes, edges);
+    $: isFlowDirty = currentState !== lastDeployedState;
+
     const deployFlow = async () => {
         const flow = { nodes, edges };
         console.log("Deploying flow:", flow);
@@ -104,6 +128,7 @@
             if (response.ok) {
                 console.log("Flow deployed successfully");
                 isRunning = true;
+                lastDeployedState = currentState; // Mark as clean
             } else {
                 console.error("Failed to deploy flow", response.statusText);
                 alert("Failed to start flow");
@@ -198,14 +223,16 @@
             <ThemeToggle />
             {#if !isRunning}
                 <button
-                    class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow flex items-center gap-2"
+                    class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={nodes.length === 0}
                     on:click={deployFlow}
                 >
                     <Play size={16} /> Start Flow
                 </button>
             {:else}
                 <button
-                    class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow flex items-center gap-2"
+                    class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={!isFlowDirty}
                     on:click={deployFlow}
                 >
                     <RefreshCw size={16} /> Update Flow

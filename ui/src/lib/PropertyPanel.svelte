@@ -41,6 +41,11 @@
 
     $: editorTheme = $theme === "dark" ? oneDark : lightTheme;
 
+    let isScriptDirty = false;
+    $: if (selectedNode && selectedNode.type === "rhai-function") {
+        isScriptDirty = (localData.code || "").trim() !== (selectedNode.data.code || "").trim();
+    }
+
     // Re-sync local data when selected node changes
     // Re-sync local data when selected node changes
     $: if (selectedNode) {
@@ -154,7 +159,8 @@
                         >
                         <div class="flex gap-2">
                             <button
-                                class="px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-gray-700 dark:text-gray-200"
+                                class="px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-gray-700 dark:text-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled={!isScriptDirty}
                                 on:click={() => {
                                     // Revert to original data
                                     localData.code =
@@ -164,7 +170,8 @@
                                 Discard
                             </button>
                             <button
-                                class="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded"
+                                class="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled={!isScriptDirty}
                                 on:click={() => applyChanges()}
                             >
                                 Save Script
