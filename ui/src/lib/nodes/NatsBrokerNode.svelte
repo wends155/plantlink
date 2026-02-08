@@ -11,10 +11,8 @@
 </script>
 
 <BaseNode
+    nodeType="nats-broker"
     label={data.label || "NATS Broker"}
-    color="#e5e7eb"
-    inputs={0}
-    outputs={1}
     {selected}
     {status}
 >

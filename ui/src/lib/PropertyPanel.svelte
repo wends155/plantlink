@@ -179,6 +179,42 @@
                     />
                 </div>
             {/if}
+
+            {#if selectedNode.type === "nats-broker"}
+                <div class="space-y-1">
+                    <label
+                        for="nats-url"
+                        class="block text-gray-700 dark:text-gray-300 font-medium"
+                        >URL</label
+                    >
+                    <input
+                        id="nats-url"
+                        type="text"
+                        bind:value={localData.url}
+                        on:input={applyChanges}
+                        class="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 font-mono text-xs text-gray-900 dark:text-gray-200 bg-white dark:bg-gray-800"
+                        placeholder="nats://localhost:4222"
+                    />
+                </div>
+            {/if}
+
+            {#if selectedNode.type === "nats-sub" || selectedNode.type === "nats-pub"}
+                <div class="space-y-1">
+                    <label
+                        for="nats-subject"
+                        class="block text-gray-700 dark:text-gray-300 font-medium"
+                        >Subject</label
+                    >
+                    <input
+                        id="nats-subject"
+                        type="text"
+                        bind:value={localData.subject}
+                        on:input={applyChanges}
+                        class="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 font-mono text-xs text-gray-900 dark:text-gray-200 bg-white dark:bg-gray-800"
+                        placeholder="events.>"
+                    />
+                </div>
+            {/if}
         </div>
 
         <div

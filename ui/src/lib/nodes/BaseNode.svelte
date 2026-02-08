@@ -1,12 +1,24 @@
 <script>
   import { Handle, Position } from "@xyflow/svelte";
+  import { getNodeDefinition } from "../nodeDefinitions.js";
 
   export let label = "Node";
-  export let color = "#a6bbcf"; // Default Node-RED color
-  export let inputs = 1;
-  export let outputs = 1;
+  export let color = "";
+  export let nodeType = "";  // If provided, auto-fetch config
+  export let inputs = 0;
+  export let outputs = 0;
+  export let inputLabels = [];
+  export let outputLabels = [];
   export let selected = false;
   export let status = null;
+
+  // Auto-fetch from nodeDefinitions if nodeType provided
+  $: def = nodeType ? getNodeDefinition(nodeType) : null;
+  $: actualInputs = def ? def.inputs.length : inputs;
+  $: actualOutputs = def ? def.outputs.length : outputs;
+  $: actualInputLabels = def ? def.inputs.map(p => p.label) : inputLabels;
+  $: actualOutputLabels = def ? def.outputs.map(p => p.label) : outputLabels;
+  $: actualColor = def ? def.color : (color || "#a6bbcf");
 </script>
 
 <div
@@ -17,18 +29,21 @@
     ? 'ring-2 ring-red-500 border-red-500'
     : ''}"
 >
-  {#if inputs > 0}
+  {#each Array(actualInputs) as _, i}
     <Handle
       type="target"
       position={Position.Left}
+      id={`input_${i}`}
+      title={actualInputLabels[i] || `Input ${i}`}
       class="!w-2.5 !h-2.5 !bg-[#999] !border-none !-left-[5px]"
+      style="top: {actualInputs === 1 ? '50%' : `${((i + 1) / (actualInputs + 1)) * 100}%`}; transform: translateY(-50%);"
     />
-  {/if}
+  {/each}
 
   <!-- Icon Area -->
   <div
     class="w-[30px] flex items-center justify-center border-r border-[#0000001a] dark:border-gray-700"
-    style="background-color: {color};"
+    style="background-color: {actualColor};"
   >
     <slot name="icon">
       <div class="w-2 h-2 rounded-full bg-white opacity-50"></div>
@@ -47,13 +62,16 @@
     running
   </div>
 
-  {#if outputs > 0}
+  {#each Array(actualOutputs) as _, i}
     <Handle
       type="source"
       position={Position.Right}
+      id={`output_${i}`}
+      title={actualOutputLabels[i] || `Output ${i}`}
       class="!w-2.5 !h-2.5 !bg-[#999] !border-none !-right-[5px]"
+      style="top: {actualOutputs === 1 ? '50%' : `${((i + 1) / (actualOutputs + 1)) * 100}%`}; transform: translateY(-50%);"
     />
-  {/if}
+  {/each}
 </div>
 
 <style>

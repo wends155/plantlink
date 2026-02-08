@@ -11,10 +11,8 @@
 </script>
 
 <BaseNode
+  nodeType="rhai-function"
   label={data.label || data.name || "function"}
-  color="#fdd0a2"
-  inputs={1}
-  outputs={1}
   {selected}
   {status}
 >

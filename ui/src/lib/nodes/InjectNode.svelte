@@ -7,10 +7,8 @@
 </script>
 
 <BaseNode
+    nodeType="inject"
     label={data.label || data.name || "inject"}
-    color="#a6bbcf"
-    inputs={0}
-    outputs={1}
     {selected}
 >
     <Play slot="icon" size={16} color="white" />

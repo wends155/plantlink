@@ -4,6 +4,23 @@
 
 ![PlantLink Screenshot](https://via.placeholder.com/800x400?text=PlantLink+Flow+Editor)
 
+## Architecture Overview
+
+```mermaid
+graph TB
+    subgraph Frontend
+        UI[Svelte Flow Editor]
+    end
+    
+    subgraph Backend
+        CLI[plantlink-cli] --> WEB[plantlink-web]
+        WEB --> RT[plantlink-runtime]
+        RT --> CORE[plantlink-core]
+    end
+    
+    UI <-->|WebSocket| WEB
+```
+
 ## Features
 
 -   **High-Performance Runtime**: Powered by Rust and Tokio for efficient, asynchronous message processing.
@@ -16,6 +33,23 @@
 -   **Developer Experience**:
     -   Hot-reload development workflow.
     -   Single-binary release capability.
+
+## Example: Rhai Function
+
+Create a simple flow that transforms an input message using the Rhai scripting engine.
+
+**Flow**: `Inject` → `Function` → `Console`
+
+1. **Inject Node**: Set payload to `Hello`
+2. **Function Node**: Add the following Rhai script:
+   ```rhai
+   // msg.payload contains the input ("Hello")
+   msg.payload = msg.payload + " World";
+   return msg;
+   ```
+3. **Console Node**: Receives and logs the transformed message
+
+**Output**: `Hello World`
 
 ## Getting Started
 
@@ -49,6 +83,30 @@ make clean
 -   **plantlink-web**: Axum-based web server and WebSocket handler.
 -   **plantlink-cli**: The command-line entry point.
 -   **ui**: SvelteKit/Vite frontend application.
+
+## Project Structure
+
+```
+plantlink/
+├── plantlink-cli/          # CLI entry point
+├── plantlink-core/         # Shared types (MessagePayload, DataValue)
+├── plantlink-runtime/      # Flow execution engine
+│   └── src/nodes/          # Node implementations (Rhai, NATS, etc.)
+├── plantlink-web/          # Web server (Axum)
+├── ui/                     # Svelte frontend
+│   └── src/lib/
+│       ├── nodeDefinitions.js   # Node registry (single source of truth)
+│       ├── nodes/               # Node components
+│       └── stores/              # Svelte stores
+└── docs/                   # Documentation
+```
+
+## Documentation
+
+-   [Architecture Overview](docs/ARCHITECTURE.md)
+-   [Adding New Nodes](docs/ADDING_NODES.md)
+-   [Rhai Scripting Guide](docs/RHAI_SCRIPTING.md)
+-   [API Reference](docs/API.md)
 
 ## License
 MIT

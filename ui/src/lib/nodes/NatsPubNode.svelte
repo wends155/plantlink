@@ -11,10 +11,8 @@
 </script>
 
 <BaseNode
+    nodeType="nats-pub"
     label={data.label || data.subject || "nats-pub"}
-    color="#2563eb"
-    inputs={2}
-    outputs={0}
     {selected}
     {status}
 >

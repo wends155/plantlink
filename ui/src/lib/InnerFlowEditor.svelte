@@ -9,6 +9,7 @@
     import "@xyflow/svelte/dist/style.css";
 
     import { getNodeTypes } from "./nodes/registry.js";
+    import { getPortSchema } from "./nodeDefinitions.js";
 
     import NodePalette from "./NodePalette.svelte";
     import PropertyPanel from "./PropertyPanel.svelte";
@@ -129,6 +130,53 @@
             alert("Error stopping flow");
         }
     };
+
+    /**
+     * Validate connections:
+     * 1. Check type compatibility (connection ↔ connection, message ↔ message)
+     * 2. Enforce max connections limit
+     */
+    const isValidConnection = (connection) => {
+        const { source, sourceHandle, target, targetHandle } = connection;
+        
+        // Get source and target node types
+        const sourceNode = nodes.find(n => n.id === source);
+        const targetNode = nodes.find(n => n.id === target);
+        if (!sourceNode || !targetNode) return false;
+        
+        const sourceSchema = getPortSchema(sourceNode.type);
+        const targetSchema = getPortSchema(targetNode.type);
+        
+        // Get port indices
+        const sourceIdx = parseInt(sourceHandle?.replace('output_', '') || '0');
+        const targetIdx = parseInt(targetHandle?.replace('input_', '') || '0');
+        
+        const sourcePort = sourceSchema.outputs[sourceIdx];
+        const targetPort = targetSchema.inputs[targetIdx];
+        
+        if (!sourcePort || !targetPort) return true; // Allow if schema missing
+        
+        // 1. Type compatibility check
+        const outputType = sourcePort.type;
+        const acceptedTypes = targetPort.acceptTypes || [];
+        if (acceptedTypes.length > 0 && !acceptedTypes.includes(outputType)) {
+            console.warn(`Connection rejected: ${outputType} not accepted by ${targetPort.label}`);
+            return false;
+        }
+        
+        // 2. Max connections check
+        const maxConnections = targetPort.maxConnections ?? Infinity;
+        const existingConnections = edges.filter(
+            e => e.target === target && e.targetHandle === targetHandle
+        ).length;
+        
+        if (existingConnections >= maxConnections) {
+            console.warn(`Connection rejected: ${targetPort.label} already has max connections`);
+            return false;
+        }
+        
+        return true;
+    };
 </script>
 
 <div class="h-screen w-screen flex flex-row overflow-hidden">
@@ -167,6 +215,7 @@
             bind:nodes
             bind:edges
             {nodeTypes}
+            {isValidConnection}
             fitView
             class="bg-gray-50 dark:bg-gray-900"
             colorMode={$theme}
