@@ -32,9 +32,7 @@
 </script>
 
 <div
-  class="node-base parent-node {stateClass} {selected
-    ? 'ring-2 ring-red-500 border-red-500'
-    : ''}"
+  class="node-base parent-node {stateClass} {selected ? 'node-base--selected' : ''}"
 >
   {#each Array(actualInputs) as _, i}
     <Handle
