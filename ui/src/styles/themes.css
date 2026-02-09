@@ -31,7 +31,16 @@
 
    /* Buttons - Primary */
    --color-btn-primary: #2563eb;
+   --color-btn-primary: #2563eb;
    --color-btn-primary-hover: #1d4ed8;
+
+   /* Buttons - Secondary (High Contrast) */
+   --color-btn-secondary-bg: #cbd5e1;
+   /* Slate 300 */
+   --color-btn-secondary-hover: #94a3b8;
+   /* Slate 400 */
+   --color-btn-secondary-text: #0f172a;
+   /* Slate 900 */
 
 
 
@@ -64,6 +73,13 @@
    --color-text-primary: #f3f4f6;
    --color-text-secondary: #9ca3af;
    --color-text-muted: #6b7280;
+
+   --color-btn-secondary-bg: #374151;
+   /* Gray 700 */
+   --color-btn-secondary-hover: #4b5563;
+   /* Gray 600 */
+   --color-btn-secondary-text: #f3f4f6;
+   /* Gray 100 */
 
    --color-node-bg: #1f2937;
    --color-node-border: #4b5563;

@@ -60,7 +60,7 @@
   <div class="px-2 py-1 bg-[var(--color-bg-secondary)] border-t border-[var(--color-border)] flex justify-between items-center text-xs">
     <span class="text-[var(--color-text-muted)] italic">msg: MessagePayload is input</span>
     <div class="flex gap-2">
-      <Button variant="secondary" size="sm" disabled={!isDirty} on:click={handleDiscard}>
+      <Button variant="danger" size="sm" disabled={!isDirty} on:click={handleDiscard}>
         Discard
       </Button>
       <Button variant="primary" size="sm" disabled={!isDirty} on:click={handleSave}>
