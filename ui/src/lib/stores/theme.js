@@ -1,33 +1,43 @@
 import { writable } from 'svelte/store';
 
-// Available: 'light', 'dark', 'system', or custom like 'theme-nord'
-export const theme = writable('system');
+function createThemeStore() {
+    // SSR safety
+    const isBrowser = typeof window !== 'undefined';
 
-// List of available themes for UI selector
-export const availableThemes = [
-    { id: 'light', name: 'Light' },
-    { id: 'dark', name: 'Dark' },
-    { id: 'system', name: 'System' },
-    // Future themes:
-    // { id: 'theme-nord', name: 'Nord' },
-];
+    // Get initial value
+    const stored = isBrowser ? localStorage.getItem('theme') : null;
+    const systemDark = isBrowser && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const initial = stored || (systemDark ? 'dark' : 'light');
 
-// Apply theme class to document
-if (typeof window !== 'undefined') {
-    theme.subscribe(value => {
-        const root = document.documentElement;
+    // Apply initial theme
+    if (isBrowser) {
+        document.documentElement.classList.toggle('dark', initial === 'dark');
+    }
 
-        // Remove existing theme classes
-        root.classList.remove('dark', 'theme-nord', 'theme-solarized');
+    const { subscribe, set, update } = writable(initial);
 
-        if (value === 'system') {
-            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            if (prefersDark) root.classList.add('dark');
-        } else if (value === 'dark') {
-            root.classList.add('dark');
-        } else if (value.startsWith('theme-')) {
-            root.classList.add(value);
+    return {
+        subscribe,
+
+        set: (value) => {
+            set(value);
+            if (isBrowser) {
+                localStorage.setItem('theme', value);
+                document.documentElement.classList.toggle('dark', value === 'dark');
+            }
+        },
+
+        toggle: () => {
+            update(current => {
+                const next = current === 'dark' ? 'light' : 'dark';
+                if (isBrowser) {
+                    localStorage.setItem('theme', next);
+                    document.documentElement.classList.toggle('dark', next === 'dark');
+                }
+                return next;
+            });
         }
-        // 'light' = no class needed (default)
-    });
+    };
 }
+
+export const theme = createThemeStore();
