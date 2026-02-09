@@ -23,13 +23,16 @@
   $: actualInputLabels = def ? def.inputs.map(p => p.label) : inputLabels;
   $: actualOutputLabels = def ? def.outputs.map(p => p.label) : outputLabels;
   $: actualColor = def ? def.color : (color || "#a6bbcf");
+  
+  // Compute state class
+  $: stateClass = status?.state === 'error' ? 'node--error' 
+                : status?.state === 'running' ? 'node--running'
+                : status?.state === 'stopped' ? 'node--stopped'
+                : '';
 </script>
 
 <div
-  class="shadow-md rounded-[5px] border border-gray-500 {status?.state ===
-  'error'
-    ? 'bg-red-100 dark:bg-red-900'
-    : 'bg-[#f3f3f3] dark:bg-gray-800 dark:border-gray-600'} min-w-[120px] flex items-stretch h-[30px] overflow-hidden transition-shadow parent-node {selected
+  class="shadow-md rounded-[5px] border border-gray-500 bg-[#f3f3f3] dark:bg-gray-800 dark:border-gray-600 min-w-[120px] flex items-stretch h-[30px] overflow-hidden transition-shadow parent-node {stateClass} {selected
     ? 'ring-2 ring-red-500 border-red-500'
     : ''}"
 >

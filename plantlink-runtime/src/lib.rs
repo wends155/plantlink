@@ -53,6 +53,23 @@ impl RuntimeEngine {
 
     pub async fn stop_flow(&mut self) {
          tracing::info!("Runtime: Stopping flow. Aborting {} tasks.", self.tasks.len());
+         
+         // Emit stopped status for all nodes
+         for node_id in self.tasks.keys() {
+             let status = nodes::NodeStatus {
+                 node_id: node_id.clone(),
+                 state: "stopped".to_string(),
+                 message: "Flow stopped".to_string(),
+             };
+             if let Ok(json) = serde_json::to_string(&serde_json::json!({
+                 "type": "status",
+                 "data": status
+             })) {
+                let _ = self.tx.send(json);
+             }
+         }
+         
+         // Then abort tasks
          for (_, handle) in self.tasks.drain() {
              handle.abort();
          }

@@ -47,6 +47,9 @@ impl SimpleNode for InjectNode {
                 }
             });
             self.timer_handle = Some(handle);
+            ctx.emit_running(&format!("Timer started ({}s interval)", self.interval_secs));
+        } else {
+            ctx.emit_running("Trigger mode ready");
         }
         Ok(())
     }

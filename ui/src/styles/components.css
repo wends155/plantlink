@@ -246,17 +246,82 @@
     }
 
     .node-card--error {
-        background-color: var(--color-error-bg);
+        background-color: var(--color-state-error-bg);
     }
 
     /* ─────────────────────────────────────────────────────────
-     Error Banner
+     Node State Modifiers
      ───────────────────────────────────────────────────────── */
-    .error-banner {
-        background-color: var(--color-error-bg);
-        border: 1px solid var(--color-btn-danger);
+    .node--running {
+        border-left: 3px solid var(--color-state-running);
+    }
+
+    .node--error {
+        background-color: var(--color-state-error-bg);
+        border-left: 3px solid var(--color-state-error);
+    }
+
+    .node--stopped {
+        opacity: 0.6;
+        border-left: 3px solid var(--color-state-stopped);
+    }
+
+    /* Status Indicator Dot */
+    .status-indicator {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-right: 0.25rem;
+    }
+
+    .status-indicator--running {
+        background-color: var(--color-state-running);
+    }
+
+    .status-indicator--error {
+        background-color: var(--color-state-error);
+        animation: pulse 1.5s infinite;
+    }
+
+    .status-indicator--stopped {
+        background-color: var(--color-state-stopped);
+    }
+
+    @keyframes pulse {
+
+        0%,
+        100% {
+            opacity: 1;
+        }
+
+        50% {
+            opacity: 0.5;
+        }
+    }
+
+    /* ─────────────────────────────────────────────────────────
+     State Banners
+     ───────────────────────────────────────────────────────── */
+    .state-banner {
         border-radius: 0.25rem;
         padding: 0.75rem;
+        border: 1px solid;
+        margin-bottom: 0.5rem;
+    }
+
+    .state-banner--error {
+        background-color: var(--color-state-error-bg);
+        border-color: var(--color-state-error);
+    }
+
+    .state-banner--running {
+        background-color: var(--color-state-running-bg);
+        border-color: var(--color-state-running);
+    }
+
+    .state-banner--stopped {
+        background-color: var(--color-state-stopped-bg);
+        border-color: var(--color-state-stopped);
     }
 
     .error-title {

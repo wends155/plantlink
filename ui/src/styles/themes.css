@@ -38,8 +38,13 @@
    --color-node-border: #999999;
    --color-port: #d9d9d9;
 
-   /* Error States */
-   --color-error-bg: #fee2e2;
+   /* Node States */
+   --color-state-running: #16a34a;
+   --color-state-running-bg: #dcfce7;
+   --color-state-error: #dc2626;
+   --color-state-error-bg: #fee2e2;
+   --color-state-stopped: #6b7280;
+   --color-state-stopped-bg: #f3f4f6;
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -61,8 +66,13 @@
    --color-node-bg: #1f2937;
    --color-node-border: #4b5563;
 
-   /* Error States */
-   --color-error-bg: #7f1d1d;
+   /* Node States */
+   --color-state-running: #16a34a;
+   --color-state-running-bg: #14532d;
+   --color-state-error: #dc2626;
+   --color-state-error-bg: #7f1d1d;
+   --color-state-stopped: #6b7280;
+   --color-state-stopped-bg: #374151;
 }
 
 /* ─────────────────────────────────────────────────────────

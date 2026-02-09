@@ -16,6 +16,7 @@
     import PropertyPanel from "./PropertyPanel.svelte";
     import ThemeToggle from "./components/ThemeToggle.svelte";
     import { theme } from "./stores/theme";
+    import { nodeStatuses, initNodeAsStopped } from "./stores/nodeStatus";
 
     const nodeTypes = getNodeTypes();
 
@@ -51,6 +52,9 @@
         };
 
         nodes = [...nodes, newNode];
+        
+        // Initialize node as stopped
+        initNodeAsStopped(newNode.id);
     };
 
     // Handle manual deletion if SvelteFlow's deleteKeyCode isn't catching it
@@ -117,6 +121,9 @@
     $: isFlowDirty = currentState !== lastDeployedState;
 
     const deployFlow = async () => {
+        // Clear old statuses before deploy
+        nodeStatuses.set({});
+        
         const flow = { nodes, edges };
         console.log("Deploying flow:", flow);
         try {

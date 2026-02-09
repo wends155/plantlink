@@ -44,6 +44,8 @@ impl NodeBehavior for RhaiNode {
             let _ = ctx.system_tx.send(json_log);
             
             ctx.emit_error(&format!("Compilation Error: {}", err));
+        } else {
+            ctx.emit_running("Script compiled successfully");
         }
         Ok(())
     }

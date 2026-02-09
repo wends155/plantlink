@@ -39,11 +39,16 @@
 
   {#if selectedNode}
     <div class="panel-content space-y-4">
-      <!-- Error Banner -->
-      {#if nodeStatus?.state === 'error'}
-        <div class="error-banner">
-          <span class="error-title">⚠️ Error</span>
-          <p class="error-message">{nodeStatus.message}</p>
+      <!-- State Banner -->
+      {#if nodeStatus?.state}
+        <div class="state-banner state-banner--{nodeStatus.state}">
+          {#if nodeStatus.state === 'error'}
+            <span>⚠️ Error</span>: {nodeStatus.message}
+          {:else if nodeStatus.state === 'running'}
+            <span>✓ Running</span>: {nodeStatus.message}
+          {:else if nodeStatus.state === 'stopped'}
+            <span>⏹ Stopped</span>
+          {/if}
         </div>
       {/if}
 
