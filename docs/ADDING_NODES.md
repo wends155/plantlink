@@ -67,29 +67,26 @@ Create `ui/src/lib/nodes/MyCustomNode.svelte`:
 <script>
     import BaseNode from "./BaseNode.svelte";
     import { Box } from "lucide-svelte";
-    import { nodeStatuses } from "../stores/nodeStatus.js";
 
     export let data;
     export let selected;
     export let id;
-
-    $: status = $nodeStatuses[id];
 </script>
 
 <BaseNode
+    {id}
     nodeType="my-custom-node"
     label={data.label || data.name || "my custom"}
     {selected}
-    {status}
 >
     <Box slot="icon" size={16} color="#fff" />
 </BaseNode>
 ```
 
 **Key points:**
+- Pass `{id}` to enable automatic error status display
 - Pass `nodeType` to auto-fetch ports/colors from definition
 - Use `data.label` or fallback for display
-- Pass `status` for error highlighting
 
 ---
 
@@ -149,6 +146,27 @@ pub fn register_defaults(registry: &mut NodeRegistry) {
     registry.register("my-custom-node", |cfg| Box::new(MyCustomNode::new(cfg)));
 }
 ```
+
+---
+
+## Error Handling
+
+Use `NodeContext` helpers to emit error status to the UI:
+
+```rust
+// In on_input or start:
+if some_condition_fails {
+    ctx.emit_error("Description of what went wrong");
+    return Err(...);
+}
+
+// On success:
+ctx.emit_running("Connected successfully");
+```
+
+The UI automatically:
+- Shows red background on nodes in error state
+- Displays error message in PropertyPanel
 
 ---
 

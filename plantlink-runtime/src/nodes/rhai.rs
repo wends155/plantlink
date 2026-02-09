@@ -43,14 +43,7 @@ impl NodeBehavior for RhaiNode {
             let json_log = serde_json::json!({ "type": "log", "message": log_msg }).to_string();
             let _ = ctx.system_tx.send(json_log);
             
-            // Emit Error Status
-             let status = super::NodeStatus {
-                 node_id: ctx.id.clone(),
-                 state: "error".to_string(),
-                 message: format!("Compilation Error: {}", err),
-             };
-             let json_status = serde_json::json!({ "type": "status", "data": status }).to_string();
-             let _ = ctx.system_tx.send(json_status);
+            ctx.emit_error(&format!("Compilation Error: {}", err));
         }
         Ok(())
     }
@@ -84,36 +77,20 @@ impl NodeBehavior for RhaiNode {
                              ctx.send_output(result_msg).await;
                          }
                          Err(e) => {
-                             // User script returned something else?
                              let log_msg = format!("RhaiNode [{}]: Return type mismatch. Script must return MessagePayload msg. Error: {}", ctx.id, e);
                              let json = serde_json::json!({ "type": "log", "message": log_msg }).to_string();
                              let _ = ctx.system_tx.send(json);
                              
-                             // Emit Error Status
-                             let status = super::NodeStatus {
-                                 node_id: ctx.id.clone(),
-                                 state: "error".to_string(),
-                                 message: format!("Return Type Mismatch: {}", e),
-                             };
-                             let json_status = serde_json::json!({ "type": "status", "data": status }).to_string();
-                             let _ = ctx.system_tx.send(json_status);
+                             ctx.emit_error(&format!("Return Type Mismatch: {}", e));
                          }
                      }
                 }
                 Err(e) => {
-                    // Runtime Error in Script
                     let log_msg = format!("RhaiNode [{}]: Runtime Error: {}", ctx.id, e);
                     let json = serde_json::json!({ "type": "log", "message": log_msg }).to_string();
                     let _ = ctx.system_tx.send(json);
                     
-                    // Emit Error Status
-                     let status = super::NodeStatus {
-                         node_id: ctx.id.clone(),
-                         state: "error".to_string(),
-                         message: format!("Runtime Error: {}", e),
-                     };
-                     let json_status = serde_json::json!({ "type": "status", "data": status }).to_string();
-                     let _ = ctx.system_tx.send(json_status);
+                    ctx.emit_error(&format!("Runtime Error: {}", e));
                 }
             }
         } else {

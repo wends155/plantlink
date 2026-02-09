@@ -71,6 +71,35 @@ impl NodeContext {
             }
         }
     }
+    
+    /// Emit a "running" status message
+    pub fn emit_running(&self, message: &str) {
+        self.emit_status("running", message);
+    }
+    
+    /// Emit an "error" status message
+    pub fn emit_error(&self, message: &str) {
+        self.emit_status("error", message);
+    }
+    
+    /// Emit a "stopped" status message
+    pub fn emit_stopped(&self, message: &str) {
+        self.emit_status("stopped", message);
+    }
+    
+    fn emit_status(&self, state: &str, message: &str) {
+        let status = NodeStatus {
+            node_id: self.id.clone(),
+            state: state.to_string(),
+            message: message.to_string(),
+        };
+        if let Ok(json) = serde_json::to_string(&serde_json::json!({
+            "type": "status",
+            "data": status
+        })) {
+            let _ = self.system_tx.send(json);
+        }
+    }
 }
 
 /// The behavior every node must implement

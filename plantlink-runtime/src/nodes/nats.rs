@@ -23,22 +23,33 @@ impl NatsBrokerNode {
 impl NodeBehavior for NatsBrokerNode {
     async fn start(&mut self, ctx: NodeContext) -> Result<()> {
         tracing::info!("NatsBroker starting, connecting to {}", self.url);
-        let driver = NatsDriver::connect(&self.url).await?;
         
-        // Register connection in shared resources
-        {
-            let mut resources = ctx.resources.write().await;
-            resources.insert(self.conn_id.clone(), Box::new(driver));
-        }
+        match NatsDriver::connect(&self.url).await {
+            Ok(driver) => {
+                // Register connection in shared resources
+                {
+                    let mut resources = ctx.resources.write().await;
+                    resources.insert(self.conn_id.clone(), Box::new(driver));
+                }
 
-        // Broadcast the Connection ID to downstream nodes
-        let msg = MessagePayload {
-            payload: DataValue::String(self.conn_id.clone()),
-            ..Default::default()
-        };
-        ctx.send_output(msg).await;
-        
-        Ok(())
+                // Emit success status
+                ctx.emit_running(&format!("Connected to {}", self.url));
+
+                // Broadcast the Connection ID to downstream nodes
+                let msg = MessagePayload {
+                    payload: DataValue::String(self.conn_id.clone()),
+                    ..Default::default()
+                };
+                ctx.send_output(msg).await;
+                
+                Ok(())
+            }
+            Err(e) => {
+                // Emit error status
+                ctx.emit_error(&format!("Connection failed: {}", e));
+                Err(e)
+            }
+        }
     }
 }
 
@@ -82,7 +93,13 @@ impl NodeBehavior for NatsSubNode {
         };
 
         // Subscribe
-        let mut subscriber = driver.subscribe(&self.subject).await?;
+        let mut subscriber = match driver.subscribe(&self.subject).await {
+            Ok(s) => s,
+            Err(e) => {
+                ctx.emit_error(&format!("Subscribe failed: {}", e));
+                return Err(e);
+            }
+        };
         // let subject = self.subject.clone(); // Not used
 
         // Spawn listener
@@ -169,7 +186,9 @@ impl NodeBehavior for NatsPubNode {
                     return Ok(());
                 };
 
-                let _ = driver.publish(target_subject, payload_bytes).await;
+                if let Err(e) = driver.publish(target_subject, payload_bytes).await {
+                    ctx.emit_error(&format!("Publish failed: {}", e));
+                }
             } else {
                 tracing::warn!("NatsPub: No active connection");
             }

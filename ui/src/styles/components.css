@@ -248,4 +248,30 @@
     .node-card--error {
         background-color: var(--color-error-bg);
     }
+
+    /* ─────────────────────────────────────────────────────────
+     Error Banner
+     ───────────────────────────────────────────────────────── */
+    .error-banner {
+        background-color: var(--color-error-bg);
+        border: 1px solid var(--color-btn-danger);
+        border-radius: 0.25rem;
+        padding: 0.75rem;
+    }
+
+    .error-title {
+        font-weight: bold;
+        color: var(--color-btn-danger);
+        display: block;
+        margin-bottom: 0.25rem;
+    }
+
+    .error-message {
+        font-size: 0.75rem;
+        color: var(--color-text-primary);
+        margin: 0;
+        font-family: 'Courier New', monospace;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
 }

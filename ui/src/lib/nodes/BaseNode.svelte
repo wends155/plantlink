@@ -1,6 +1,7 @@
 <script>
   import { Handle, Position } from "@xyflow/svelte";
   import { getNodeDefinition } from "../nodeDefinitions.js";
+  import { nodeStatuses } from "../stores/nodeStatus.js";
 
   export let label = "Node";
   export let color = "";
@@ -10,7 +11,10 @@
   export let inputLabels = [];
   export let outputLabels = [];
   export let selected = false;
-  export let status = null;
+  export let id = null;  // Node ID for status lookup
+
+  // Auto-fetch status by ID
+  $: status = id ? $nodeStatuses[id] : null;
 
   // Auto-fetch from nodeDefinitions if nodeType provided
   $: def = nodeType ? getNodeDefinition(nodeType) : null;

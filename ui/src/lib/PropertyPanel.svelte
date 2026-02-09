@@ -1,6 +1,7 @@
 <script>
   import { propertyComponents } from './components/properties';
   import { Input, Button } from './components/ui';
+  import { nodeStatuses } from './stores/nodeStatus';
   
   export let selectedNode = null;
   export let onUpdate;
@@ -8,6 +9,9 @@
   export let onClose;
   
   let localData = {};
+  
+  // Get node status
+  $: nodeStatus = selectedNode ? $nodeStatuses[selectedNode.id] : null;
   
   // Sync local data when node changes
   $: if (selectedNode && localData.id !== selectedNode.id) {
@@ -35,6 +39,14 @@
 
   {#if selectedNode}
     <div class="panel-content space-y-4">
+      <!-- Error Banner -->
+      {#if nodeStatus?.state === 'error'}
+        <div class="error-banner">
+          <span class="error-title">⚠️ Error</span>
+          <p class="error-message">{nodeStatus.message}</p>
+        </div>
+      {/if}
+
       <div class="text-xs text-[var(--color-text-muted)] font-mono">
         ID: {selectedNode.id}<br />
         Type: {selectedNode.type}
