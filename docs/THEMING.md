@@ -1,4 +1,4 @@
-# UI Theming System
+# UI Theming System & Style Guide
 
 PlantLink's UI uses a modern theming system built on **CSS custom properties** and **semantic classes** for consistent styling, easy theme switching, and extensibility.
 
@@ -20,236 +20,130 @@ themes.css (CSS vars) → components.css (semantic classes) → Svelte component
 
 ---
 
-## Available Themes
+## 1. CSS Custom Properties
 
-| Theme | Class | Description |
-|-------|-------|-------------|
-| **Light** | `:root` | Default light theme |
-| **Dark** | `.dark` | Dark mode |
-| **System** | Auto | Matches OS preference |
+All colors are defined as CSS custom properties in `ui/src/styles/themes.css`.
 
-Future themes can be added by creating new CSS classes (see [Adding Themes](#adding-new-themes)).
+### Core Variables
 
----
+| Variable | Light Default | Dark Default | Usage |
+|----------|---------------|--------------|-------|
+| `--color-bg-primary` | `#fafafa` | `#111827` | Main background (panels, cards) |
+| `--color-bg-secondary` | `#f3f3f3` | `#1f2937` | Secondary background (headers, inputs) |
+| `--color-text-primary` | `#333333` | `#f3f4f6` | Main text color |
+| `--color-border` | `#cccccc` | `#4b5563` | Standard border |
+| `--color-btn-primary` | `#2563eb` | `#2563eb` | Primary action color |
 
-## CSS Custom Properties
+### Secondary Buttons (High Contrast)
 
-### Color Variables
-
-All colors are defined as CSS custom properties:
-
-```css
-:root {
-  /* Backgrounds */
-  --color-bg-primary: #fafafa;
-  --color-bg-secondary: #f3f3f3;
-  --color-text-primary: #333333;
-  --color-btn-success: #16a34a;
-  /* ... */
-}
-
-.dark {
-  --color-bg-primary: #111827;
-  --color-bg-secondary: #1f2937;
-  --color-text-primary: #f3f4f6;
-  /* ... */
-}
-```
-
-### Available Variables
+To ensure visibility on light gray panels, secondary buttons use specific high-contrast variables:
 
 | Variable | Light | Dark | Usage |
 |----------|-------|------|-------|
-| `--color-bg-primary` | `#fafafa` | `#111827` | Main backgrounds |
-| `--color-bg-secondary` | `#f3f3f3` | `#1f2937` | Secondary panels |
-| `--color-text-primary` | `#333333` | `#f3f4f6` | Primary text |
-| `--color-border` | `#cccccc` | `#4b5563` | Borders |
-| `--color-btn-success` | `#16a34a` | (same) | Success buttons |
-| `--color-btn-danger` | `#dc2626` | (same) | Danger buttons |
+| `--color-btn-secondary-bg` | `#cbd5e1` (Slate 300) | `#374151` (Gray 700) | Button background |
+| `--color-btn-secondary-text` | `#0f172a` (Slate 900) | `#f3f4f6` (Gray 100) | Button text |
 
-Full list: [`ui/src/styles/themes.css`](file:///c:/Users/WSALIGAN/code/plantlink/ui/src/styles/themes.css)
+### Node Variables
+
+| Variable | Description |
+|----------|-------------|
+| `--color-node-bg` | Node body background |
+| `--color-node-border` | Node border color |
+| `--color-port` | Connection handle color |
+
+### State Variables
+
+| Variable | Description |
+|----------|-------------|
+| `--color-state-running` | Green (Active/Good) |
+| `--color-state-error` | Red (Failed/Bad) |
+| `--color-state-stopped` | Gray (Inactive/Paused) |
 
 ---
 
-## Semantic Classes
+## 2. Component Usage
 
-Components use semantic class names instead of Tailwind utilities:
+Components should use **semantic class names** defined in `ui/src/styles/components.css` instead of raw Tailwind utilities for coloring.
 
-### Layout Classes
+### Buttons
+
+Use the `.btn` class with a variant modifier.
+
+```html
+<button class="btn btn-primary">Save</button>
+<button class="btn btn-secondary">Discard (non-destructive)</button>
+<button class="btn btn-danger">Delete (destructive)</button>
+```
+
+- **Secondary Buttons:** Use the dedicated high-contrast style.
+- **Focus States:** All buttons include accessible `:focus-visible` styles automatically.
+
+### Nodes
+
+Nodes extend `.node-base` and apply state modifiers.
+
+```html
+<div class="node-base node--running">...</div>
+```
+
+- **Selection:** `.node-base--selected` (Overrides border color)
+- **Cascade Order:** The selection class must be applied **after** state modifiers in CSS to take precedence.
+
+---
+
+## 3. Best Practices
+
+> [!IMPORTANT]
+> Follow these rules to ensure consistency and accessibility.
+
+1. **Use Semantic Classes:** Avoid inline Tailwind for theme-dependent colors.
+   - ❌ `class="bg-gray-100"`
+   - ✅ `class="bg-[var(--color-bg-secondary)]"` OR use `.panel-header`
+
+2. **Check Contrast:** Ensure text/background contrast is > 4.5:1 (WCAG AA). 
+   - This is why secondary buttons use Slate 300 instead of lighter grays.
+
+3. **Avoid Duplicates:** Before adding a new class to `components.css`, search to see if it already exists to avoid specificity wars.
+
+4. **Responsive Layouts:**
+   - Always provide explicit `width: 100%; height: 100%;` for SvelteFlow containers.
+
+---
+
+## 4. Extensibility
+
+### Adding a New Theme
+
+1. Add a new class block in `themes.css`.
+2. Override semantic variables.
 
 ```css
-.flow-editor        /* Main editor container */
-.flow-canvas        /* Flow canvas area */
-.node-palette       /* Node palette sidebar */
-.property-panel     /* Property panel sidebar */
-```
-
-### Component Classes
-
-```css
-.palette-category   /* Palette category header */
-.palette-item       /* Draggable palette item */
-.btn                /* Base button */
-.btn-success        /* Success button (green) */
-.btn-danger         /* Danger button (red) */
-.btn-primary        /* Primary button (blue) */
-.input              /* Form input */
-```
-
-Full list: [`ui/src/styles/components.css`](file:///c:/Users/WSALIGAN/code/plantlink/ui/src/styles/components.css)
-
----
-
-## Using Themes in Components
-
-### Method 1: Semantic Classes (Recommended)
-
-```svelte
-<aside class="node-palette">
-  <div class="palette-category">Common Nodes</div>
-  <button class="btn btn-success">Start</button>
-</aside>
-```
-
-### Method 2: CSS Variables (for custom styles)
-
-```svelte
-<div style="background-color: var(--color-bg-primary);">
-  Custom component
-</div>
-```
-
-### Method 3: Hybrid (Tailwind + CSS vars)
-
-```svelte
-<div class="p-4 rounded" style="border-color: var(--color-border);">
-  Mixed approach
-</div>
-```
-
----
-
-## Theme Switching
-
-### Programmatic
-
-```javascript
-import { theme } from '$lib/stores/theme';
-
-// Set theme
-theme.set('dark');      // Dark mode
-theme.set('light');     // Light mode
-theme.set('system');    // Follow OS preference
-```
-
-### In Components
-
-```svelte
-<script>
-  import { theme } from '$lib/stores/theme';
-  
-  function toggleTheme() {
-    theme.update(t => t === 'dark' ? 'light' : 'dark');
-  }
-</script>
-
-<button on:click={toggleTheme}>Toggle Theme</button>
-```
-
-### Theme Store API
-
-```javascript
-import { theme, availableThemes } from '$lib/stores/theme';
-
-// Get current theme
-$theme // 'light' | 'dark' | 'system' | 'theme-*'
-
-// Available themes
-availableThemes = [
-  { id: 'light', name: 'Light' },
-  { id: 'dark', name: 'Dark' },
-  { id: 'system', name: 'System' }
-];
-```
-
----
-
-## Adding New Themes
-
-### Step 1: Define CSS Variables
-
-Add to `ui/src/styles/themes.css`:
-
-```css
-.theme-nord {
-  --color-bg-primary: #2e3440;
-  --color-bg-secondary: #3b4252;
-  --color-text-primary: #eceff4;
-  --color-btn-success: #a3be8c;
-  --color-btn-danger: #bf616a;
-  /* ... define all variables */
+.theme-ocean {
+    --color-bg-primary: #e0f2fe;
+    --color-btn-primary: #0284c7;
 }
 ```
 
-### Step 2: Register Theme
+3. Register in `ui/src/lib/stores/theme.js`.
 
-Add to `ui/src/lib/stores/theme.js`:
+### Adding a New Button Variant
 
-```javascript
-export const availableThemes = [
-  { id: 'light', name: 'Light' },
-  { id: 'dark', name: 'Dark' },
-  { id: 'system', name: 'System' },
-  { id: 'theme-nord', name: 'Nord' }, // Add this
-];
+1. Define variables in `themes.css`.
+2. Create class in `components.css`.
+
+```css
+/* themes.css */
+--color-btn-warning: #eab308;
+
+/* components.css */
+.btn-warning {
+    background-color: var(--color-btn-warning);
+}
 ```
-
-### Step 3: Use It
-
-```javascript
-theme.set('theme-nord');
-```
-
-**That's it!** No component changes needed.
 
 ---
 
-## Build Pipeline
-
-The theming system integrates seamlessly with the build pipeline:
-
-- **Minification**: Vite minifies CSS (themes.css + components.css → single file)
-- **Gzip**: `vite-plugin-compression` creates `.gz` files
-- **Purging**: Tailwind removes unused utilities (semantic classes are preserved)
-
-**Build Output:**
-- CSS: ~33 KB raw → ~6 KB gzipped
-- No runtime JavaScript overhead (pure CSS)
-
----
-
-## Design Principles
-
-1. **Single Source of Truth**: All colors defined once in `themes.css`
-2. **Semantic Over Utility**: Use `.node-palette` instead of `w-[200px] bg-[#fafafa] ...`
-3. **Runtime Switching**: Themes switch via class changes (no rebuild)
-4. **Zero-Config Extensibility**: Add themes without touching components
-
----
-
-## Migration Guide
-
-### From Tailwind Utilities
-
-**Before:**
-```svelte
-<div class="w-64 bg-white dark:bg-gray-900 border-l border-gray-300 dark:border-gray-700">
-```
-
-**After:**
-```svelte
-<div class="property-panel">
-```
+## 5. Migration Guide
 
 ### From Hardcoded Colors
 
@@ -261,134 +155,6 @@ The theming system integrates seamlessly with the build pipeline:
 **After:**
 ```svelte
 <div style="background-color: var(--color-bg-primary); color: var(--color-text-primary);">
-```
-
-### Migration Safety Rules
-
-> [!IMPORTANT]
-> Follow these rules when migrating Tailwind utilities to semantic classes to avoid regressions:
-
-1. **Always include explicit dimensions** for layout containers:
-   ```css
-   /* ❌ BAD */
-   .flow-canvas {
-       flex: 1;
-       height: 100%;
-   }
-   
-   /* ✅ GOOD */
-   .flow-canvas {
-       flex: 1;
-       width: 100%;   /* Explicit width required */
-       height: 100%;  /* Explicit height required */
-   }
-   ```
-
-2. **Test drag/drop functionality** after any canvas-related changes:
-   - Drag nodes from palette to canvas
-   - Verify drop zones are capturing events
-   - Check browser console for errors
-
-3. **Verify flexbox children** have proper width/height constraints:
-   - Use `width: 100%` for components that need to fill their container
-   - Test at different viewport sizes
-
-4. **Check browser DevTools** for CSS inheritance issues:
-   - Inspect element to verify semantic classes are applied
-   - Check for conflicting Tailwind utilities
-   - Verify CSS custom properties are resolving correctly
-
-5. **Document critical CSS requirements** with comments:
-   ```css
-   /**
-    * CRITICAL: SvelteFlow requires explicit width/height.
-    * Do not remove width: 100% or height: 100%.
-    */
-   .flow-canvas {
-       /* ... */
-   }
-   ```
-
----
-
-## Examples
-
-### Example 1: Custom Button
-
-```svelte
-<button class="btn" style="background-color: var(--color-btn-success);">
-  Custom Green Button
-</button>
-```
-
-### Example 2: Theme-Aware Component
-
-```svelte
-<script>
-  import { theme } from '$lib/stores/theme';
-</script>
-
-<div class="p-4" style="
-  background: var(--color-bg-secondary);
-  border: 1px solid var(--color-border);
-">
-  Current theme: {$theme}
-</div>
-```
-
-### Example 3: Conditional Styling
-
-```svelte
-<script>
-  import { theme } from '$lib/stores/theme';
-  $: isDark = $theme === 'dark';
-</script>
-
-<div class="palette-item">
-  <span class:opacity-50={isDark}>
-    Conditionally styled
-  </span>
-</div>
-```
-
----
-
-## Troubleshooting
-
-### Theme Not Applying
-
-1. Check that `themes.css` is imported in `app.css`
-2. Verify the theme class is on `<html>` (not `<body>`)
-3. Ensure CSS custom property names match
-
-### Build Issues
-
-```bash
-# Clear build cache
-cd ui
-rm -rf node_modules/.vite
-npm run build
-```
-
-### Dark Mode Not Working
-
-1. Check browser DevTools → Elements → `<html class="dark">`
-2. Verify theme store subscription in `theme.js`
-3. Check system preference: `window.matchMedia('(prefers-color-scheme: dark)')`
-
----
-
-## File Structure
-
-```
-ui/src/
-├── styles/
-│   ├── themes.css          # CSS custom properties
-│   └── components.css      # Semantic classes
-├── lib/
-│   └── stores/
-│       └── theme.js        # Theme management
-└── app.css                 # Entry point (imports themes)
 ```
 
 ---
