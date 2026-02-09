@@ -149,24 +149,33 @@ pub fn register_defaults(registry: &mut NodeRegistry) {
 
 ---
 
-## Error Handling
-
-Use `NodeContext` helpers to emit error status to the UI:
-
+## Node State & Error Handling
+ 
+Nodes have 3 possible states:
+- **stopped**: Default state (gray). Code is not running.
+- **running**: Successfully started (green). Code is active.
+- **error**: Failed to start or runtime error (red). 
+ 
+Use `NodeContext` helpers to emit status updates:
+ 
 ```rust
-// In on_input or start:
-if some_condition_fails {
-    ctx.emit_error("Description of what went wrong");
-    return Err(...);
+// 1. On successful start:
+ctx.emit_running("Connected to broker");
+
+// 2. On error (start or runtime):
+if let Err(e) = do_something() {
+    ctx.emit_error(&format!("Operation failed: {}", e));
+    return Err(e);
 }
 
-// On success:
-ctx.emit_running("Connected successfully");
+// 3. Stopped state is handled automatically by the runtime when flow stops.
 ```
-
+ 
 The UI automatically:
-- Shows red background on nodes in error state
-- Displays error message in PropertyPanel
+- Shows **Green** border for `running`
+- Shows **Red** background for `error`
+- Shows **Gray** (dimmed) for `stopped`
+- Displays status message in PropertyPanel banner
 
 ---
 

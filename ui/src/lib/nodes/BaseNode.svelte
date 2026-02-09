@@ -32,7 +32,7 @@
 </script>
 
 <div
-  class="shadow-md rounded-[5px] border border-gray-500 bg-[#f3f3f3] dark:bg-gray-800 dark:border-gray-600 min-w-[120px] flex items-stretch h-[30px] overflow-hidden transition-shadow parent-node {stateClass} {selected
+  class="node-base parent-node {stateClass} {selected
     ? 'ring-2 ring-red-500 border-red-500'
     : ''}"
 >

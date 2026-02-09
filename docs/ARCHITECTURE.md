@@ -81,6 +81,19 @@ pub trait NodeBehavior: Send + Sync {
     async fn on_input(&mut self, port: usize, msg: MessagePayload, ctx: NodeContext) -> Result<()> { Ok(()) }
     async fn stop(&mut self) -> Result<()> { Ok(()) }
 }
+
+### Node Lifecycle
+
+Nodes transition through 3 states:
+
+1. **Stopped** (Gray): Default state. Code is not running.
+2. **Running** (Green): `start()` succeeded. `ctx.emit_running()` called.
+3. **Error** (Red): Start failed or runtime error. `ctx.emit_error()` called.
+
+Transitions:
+- **Deploy**: All nodes clear status -> `start()` called -> emit `running` or `error`.
+- **Stop**: `stop_flow()` called -> emit `stopped` -> tasks aborted.
+- **Runtime Error**: `on_input()` fails -> emit `error`.
 ```
 
 ### Shared Resources
