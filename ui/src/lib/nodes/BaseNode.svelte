@@ -42,7 +42,7 @@
       position={Position.Left}
       id={`input_${i}`}
       title={actualInputLabels[i] || `Input ${i}`}
-      class="!w-2.5 !h-2.5 !bg-[#999] !border-none !-left-[5px]"
+      class="!w-2.5 !h-2.5 !bg-[var(--color-port)] !border-none !-left-[5px]"
       style="top: {actualInputs === 1 ? '50%' : `${((i + 1) / (actualInputs + 1)) * 100}%`}; transform: translateY(-50%);"
     />
   {/each}
@@ -75,7 +75,7 @@
       position={Position.Right}
       id={`output_${i}`}
       title={actualOutputLabels[i] || `Output ${i}`}
-      class="!w-2.5 !h-2.5 !bg-[#999] !border-none !-right-[5px]"
+      class="!w-2.5 !h-2.5 !bg-[var(--color-port)] !border-none !-right-[5px]"
       style="top: {actualOutputs === 1 ? '50%' : `${((i + 1) / (actualOutputs + 1)) * 100}%`}; transform: translateY(-50%);"
     />
   {/each}

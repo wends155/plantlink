@@ -122,6 +122,14 @@
         background-color: var(--color-btn-primary-hover);
     }
 
+    .btn-secondary {
+        background-color: var(--color-btn-secondary);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+        background-color: var(--color-btn-secondary-hover);
+    }
+
     /* ─────────────────────────────────────────────────────────
      Form Inputs
      ───────────────────────────────────────────────────────── */

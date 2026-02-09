@@ -33,6 +33,10 @@
    --color-btn-primary: #2563eb;
    --color-btn-primary-hover: #1d4ed8;
 
+   /* Buttons - Secondary */
+   --color-btn-secondary: #6b7280;
+   --color-btn-secondary-hover: #4b5563;
+
    /* Nodes */
    --color-node-bg: #fbfbfb;
    --color-node-border: #999999;
