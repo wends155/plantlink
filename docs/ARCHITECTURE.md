@@ -103,6 +103,14 @@ Connections (NATS, MQTT) stored in shared map:
 Arc<RwLock<HashMap<String, Box<dyn Any + Send + Sync>>>>
 ```
 
+### Unified Status Reporting
+
+The system uses a centralized reporting mechanism to ensure UI state consistency:
+
+1.  **Utility**: `plantlink_runtime::nodes::send_node_status` constructs standard JSON and broadcasts via the system channel.
+2.  **Internal Usage**: `RuntimeEngine` uses the utility during bulk operations (e.g., stopping all nodes during flow deployment).
+3.  **External Usage**: `NodeContext::emit_status` (and its helpers `emit_running`, `emit_stopped`, `emit_error`) wraps the utility for node-specific reporting.
+
 ---
 
 ## UI Architecture

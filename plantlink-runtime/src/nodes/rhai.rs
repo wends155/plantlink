@@ -1,7 +1,7 @@
 use super::{NodeBehavior, NodeContext};
-use plantlink_core::MessagePayload;
 use anyhow::Result;
-use rhai::{Engine, Scope, AST, Dynamic};
+use plantlink_core::MessagePayload;
+use rhai::{AST, Dynamic, Engine, Scope};
 
 pub struct RhaiNode {
     engine: Engine,
@@ -11,15 +11,16 @@ pub struct RhaiNode {
 
 impl RhaiNode {
     pub fn new(config: &crate::NodeConfig) -> Self {
-        let user_script = config.data.get("code").and_then(|v| v.as_str()).unwrap_or("return msg;");
-        
+        let user_script = config
+            .data
+            .get("code")
+            .and_then(|v| v.as_str())
+            .unwrap_or("return msg;");
+
         tracing::info!("RhaiNode: Compiling script: {}", user_script);
 
         // Implicitly wrap user code in a function
-        let wrapped_script = format!(
-            "fn process(msg) {{\n{}\n}}", 
-            user_script
-        );
+        let wrapped_script = format!("fn process(msg) {{\n{}\n}}", user_script);
 
         let engine = Engine::new();
         let (ast, compile_error) = match engine.compile(&wrapped_script) {
@@ -42,7 +43,7 @@ impl NodeBehavior for RhaiNode {
             let log_msg = format!("RhaiNode [{}]: Compilation Error: {}", ctx.id, err);
             let json_log = serde_json::json!({ "type": "log", "message": log_msg }).to_string();
             let _ = ctx.system_tx.send(json_log);
-            
+
             ctx.emit_error(&format!("Compilation Error: {}", err));
         } else {
             ctx.emit_running("Script compiled successfully");
@@ -50,10 +51,15 @@ impl NodeBehavior for RhaiNode {
         Ok(())
     }
 
-    async fn on_input(&mut self, _port: usize, msg: MessagePayload, ctx: NodeContext) -> Result<()> {
+    async fn on_input(
+        &mut self,
+        _port: usize,
+        msg: MessagePayload,
+        ctx: NodeContext,
+    ) -> Result<()> {
         if let Some(ast) = &self.ast {
             let mut scope = Scope::new();
-            
+
             // Convert MessagePayload to Rhai Dynamic (Map)
             let dynamic_msg = match rhai::serde::to_dynamic(&msg) {
                 Ok(d) => d,
@@ -70,39 +76,49 @@ impl NodeBehavior for RhaiNode {
             let _options = rhai::CallFnOptions::new().eval_ast(false); // Do not re-evaluate constants if possible check docs?
             // Actually call_fn on Engine:
             // engine.call_fn(&mut scope, &ast, "process", (dynamic_msg,))
-            
-            match self.engine.call_fn::<Dynamic>(&mut scope, ast, "process", (dynamic_msg,)) {
+
+            match self
+                .engine
+                .call_fn::<Dynamic>(&mut scope, ast, "process", (dynamic_msg,))
+            {
                 Ok(result_dynamic) => {
-                     // Check if result is what we expect (MessagePayload or Map)
-                     match rhai::serde::from_dynamic::<MessagePayload>(&result_dynamic) {
-                         Ok(result_msg) => {
-                             ctx.send_output(result_msg).await;
-                         }
-                         Err(e) => {
-                             let log_msg = format!("RhaiNode [{}]: Return type mismatch. Script must return MessagePayload msg. Error: {}", ctx.id, e);
-                             let json = serde_json::json!({ "type": "log", "message": log_msg }).to_string();
-                             let _ = ctx.system_tx.send(json);
-                             
-                             ctx.emit_error(&format!("Return Type Mismatch: {}", e));
-                         }
-                     }
+                    // Check if result is what we expect (MessagePayload or Map)
+                    match rhai::serde::from_dynamic::<MessagePayload>(&result_dynamic) {
+                        Ok(result_msg) => {
+                            ctx.send_output(result_msg).await;
+                        }
+                        Err(e) => {
+                            let log_msg = format!(
+                                "RhaiNode [{}]: Return type mismatch. Script must return MessagePayload msg. Error: {}",
+                                ctx.id, e
+                            );
+                            let json = serde_json::json!({ "type": "log", "message": log_msg })
+                                .to_string();
+                            let _ = ctx.system_tx.send(json);
+
+                            ctx.emit_error(&format!("Return Type Mismatch: {}", e));
+                        }
+                    }
                 }
                 Err(e) => {
                     let log_msg = format!("RhaiNode [{}]: Runtime Error: {}", ctx.id, e);
                     let json = serde_json::json!({ "type": "log", "message": log_msg }).to_string();
                     let _ = ctx.system_tx.send(json);
-                    
+
                     ctx.emit_error(&format!("Runtime Error: {}", e));
                 }
             }
         } else {
-             // Node is in error state due to compilation failure
-             // We already logged in start, but we can log again on attempts to use
-             if let Some(err) = &self.compile_error {
-                  let log_msg = format!("RhaiNode [{}]: Cannot process input. Compilation failed: {}", ctx.id, err);
-                  let json = serde_json::json!({ "type": "log", "message": log_msg }).to_string();
-                  let _ = ctx.system_tx.send(json);
-             }
+            // Node is in error state due to compilation failure
+            // We already logged in start, but we can log again on attempts to use
+            if let Some(err) = &self.compile_error {
+                let log_msg = format!(
+                    "RhaiNode [{}]: Cannot process input. Compilation failed: {}",
+                    ctx.id, err
+                );
+                let json = serde_json::json!({ "type": "log", "message": log_msg }).to_string();
+                let _ = ctx.system_tx.send(json);
+            }
         }
         Ok(())
     }

@@ -1,7 +1,7 @@
 use super::{NodeBehavior, NodeContext};
-use plantlink_core::{MessagePayload, DataValue, nats::NatsDriver};
 use anyhow::Result;
 use futures::StreamExt;
+use plantlink_core::{DataValue, MessagePayload, nats::NatsDriver};
 
 // --- NATS Broker Node ---
 pub struct NatsBrokerNode {
@@ -11,7 +11,12 @@ pub struct NatsBrokerNode {
 
 impl NatsBrokerNode {
     pub fn new(config: &crate::NodeConfig) -> Self {
-        let url = config.data.get("url").and_then(|v| v.as_str()).unwrap_or("nats://localhost:4222").to_string();
+        let url = config
+            .data
+            .get("url")
+            .and_then(|v| v.as_str())
+            .unwrap_or("nats://localhost:4222")
+            .to_string();
         Self {
             url,
             conn_id: uuid::Uuid::new_v4().to_string(),
@@ -23,7 +28,7 @@ impl NatsBrokerNode {
 impl NodeBehavior for NatsBrokerNode {
     async fn start(&mut self, ctx: NodeContext) -> Result<()> {
         tracing::info!("NatsBroker starting, connecting to {}", self.url);
-        
+
         match NatsDriver::connect(&self.url).await {
             Ok(driver) => {
                 // Register connection in shared resources
@@ -41,7 +46,7 @@ impl NodeBehavior for NatsBrokerNode {
                     ..Default::default()
                 };
                 ctx.send_output(msg).await;
-                
+
                 Ok(())
             }
             Err(e) => {
@@ -61,7 +66,12 @@ pub struct NatsSubNode {
 
 impl NatsSubNode {
     pub fn new(config: &crate::NodeConfig) -> Self {
-        let subject = config.data.get("subject").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        let subject = config
+            .data
+            .get("subject")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
         Self {
             subject,
             sub_handle: None,
@@ -71,7 +81,12 @@ impl NatsSubNode {
 
 #[async_trait::async_trait]
 impl NodeBehavior for NatsSubNode {
-    async fn on_input(&mut self, _port_idx: usize, msg: MessagePayload, ctx: NodeContext) -> Result<()> {
+    async fn on_input(
+        &mut self,
+        _port_idx: usize,
+        msg: MessagePayload,
+        ctx: NodeContext,
+    ) -> Result<()> {
         // Expect Connection ID in payload
         let conn_id = match msg.payload {
             DataValue::String(s) => s,
@@ -106,16 +121,16 @@ impl NodeBehavior for NatsSubNode {
         // Move ctx into task to send outputs
         let handle = tokio::spawn(async move {
             while let Some(nats_msg) = subscriber.next().await {
-                 let payload_str = String::from_utf8_lossy(&nats_msg.payload).to_string();
-                 let out_msg = MessagePayload {
-                     payload: DataValue::String(payload_str), // For now assume string
-                     topic: Some(nats_msg.subject.to_string()),
-                     ..Default::default()
-                 };
-                 ctx.send_output(out_msg).await;
+                let payload_str = String::from_utf8_lossy(&nats_msg.payload).to_string();
+                let out_msg = MessagePayload {
+                    payload: DataValue::String(payload_str), // For now assume string
+                    topic: Some(nats_msg.subject.to_string()),
+                    ..Default::default()
+                };
+                ctx.send_output(out_msg).await;
             }
         });
-        
+
         // Store handle to abort later if needed (though on_input might be called multiple times?)
         // If called multiple times (multiple brokers?), we spawn multiple subs?
         // Ideally we should stop previous sub if any.
@@ -142,17 +157,27 @@ pub struct NatsPubNode {
 
 impl NatsPubNode {
     pub fn new(config: &crate::NodeConfig) -> Self {
-         let subject = config.data.get("subject").and_then(|v| v.as_str()).unwrap_or("").to_string();
-         Self {
-             subject,
-             active_conn_id: None,
-         }
+        let subject = config
+            .data
+            .get("subject")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        Self {
+            subject,
+            active_conn_id: None,
+        }
     }
 }
 
 #[async_trait::async_trait]
 impl NodeBehavior for NatsPubNode {
-    async fn on_input(&mut self, port_idx: usize, msg: MessagePayload, ctx: NodeContext) -> Result<()> {
+    async fn on_input(
+        &mut self,
+        port_idx: usize,
+        msg: MessagePayload,
+        ctx: NodeContext,
+    ) -> Result<()> {
         if port_idx == 0 {
             // Unpack Connection ID (Port 0)
             if let DataValue::String(id) = msg.payload {
@@ -164,19 +189,22 @@ impl NodeBehavior for NatsPubNode {
                 // Get Driver
                 let driver = {
                     let resources = ctx.resources.read().await;
-                    match resources.get(conn_id).and_then(|a| a.downcast_ref::<NatsDriver>()) {
+                    match resources
+                        .get(conn_id)
+                        .and_then(|a| a.downcast_ref::<NatsDriver>())
+                    {
                         Some(d) => d.clone(),
                         None => return Ok(()),
                     }
                 };
-                
+
                 // Publish
                 let payload_bytes = match msg.payload {
                     DataValue::String(s) => s.into(),
                     DataValue::Json(v) => v.to_string().into(),
                     _ => bytes::Bytes::from(""),
                 };
-                
+
                 // Use config subject, or msg topic if config is empty?
                 let target_subject = if !self.subject.is_empty() {
                     &self.subject

@@ -1,19 +1,23 @@
 use super::{NodeBehavior, NodeContext};
-use plantlink_core::MessagePayload;
 use anyhow::Result;
+use plantlink_core::MessagePayload;
 
 /// A simplified trait for nodes that don't need full control over their lifecycle
 /// and just want to process messages.
 #[async_trait::async_trait]
 pub trait SimpleNode: Send + Sync {
     /// Called when the node is started. Can return initial state or error.
-    async fn on_start(&mut self, _ctx: &NodeContext) -> Result<()> { Ok(()) }
-    
-    /// Handle an incoming message. Return a Result. 
+    async fn on_start(&mut self, _ctx: &NodeContext) -> Result<()> {
+        Ok(())
+    }
+
+    /// Handle an incoming message. Return a Result.
     /// If you need to send output, use ctx.send_output().
     async fn handle(&mut self, port: usize, msg: MessagePayload, ctx: &NodeContext) -> Result<()>;
-    
-    async fn on_stop(&mut self) -> Result<()> { Ok(()) }
+
+    async fn on_stop(&mut self) -> Result<()> {
+        Ok(())
+    }
 }
 
 /// A wrapper that adapts a SimpleNode into a full NodeBehavior
@@ -43,18 +47,18 @@ impl<T: SimpleNode + 'static> NodeBehavior for BaseNodeAdapter<T> {
                 state: "error".to_string(),
                 message: e.to_string(),
             };
-             if let Ok(json) = serde_json::to_string(&serde_json::json!({
-                 "type": "status",
-                 "data": status
-             })) {
+            if let Ok(json) = serde_json::to_string(&serde_json::json!({
+                "type": "status",
+                "data": status
+            })) {
                 let _ = ctx.system_tx.send(json);
-             }
-             // Also log
-             let log_msg = format!("Node [{}]: Error: {}", ctx.id, e);
-             let json_log = serde_json::json!({ "type": "log", "message": log_msg }).to_string();
-             let _ = ctx.system_tx.send(json_log);
-             
-             return Err(e);
+            }
+            // Also log
+            let log_msg = format!("Node [{}]: Error: {}", ctx.id, e);
+            let json_log = serde_json::json!({ "type": "log", "message": log_msg }).to_string();
+            let _ = ctx.system_tx.send(json_log);
+
+            return Err(e);
         }
         Ok(())
     }

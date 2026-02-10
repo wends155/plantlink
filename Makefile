@@ -32,3 +32,19 @@ test-e2e:
 
 test-e2e-ui:
 	cd ui && npm run test:e2e:ui
+
+# Verification
+verify:
+	sh ./scripts/verify.sh
+
+fmt:
+	cargo fmt
+
+clippy:
+	cargo clippy -- -D warnings
+
+check:
+	cargo check
+
+test:
+	cargo test

@@ -1,8 +1,8 @@
 use super::NodeContext;
-use plantlink_core::MessagePayload;
 use anyhow::Result;
-use tokio::task::JoinHandle;
+use plantlink_core::MessagePayload;
 use std::time::Duration;
+use tokio::task::JoinHandle;
 
 pub struct InjectNode {
     payload: String,
@@ -12,9 +12,18 @@ pub struct InjectNode {
 
 impl InjectNode {
     pub fn new(config: &crate::NodeConfig) -> Self {
-        let payload = config.data.get("payload").and_then(|v| v.as_str()).unwrap_or("").to_string();
-        let interval_secs = config.data.get("interval").and_then(|v| v.as_u64()).unwrap_or(0);
-        
+        let payload = config
+            .data
+            .get("payload")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        let interval_secs = config
+            .data
+            .get("interval")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0);
+
         Self {
             payload,
             interval_secs,
@@ -32,14 +41,14 @@ impl SimpleNode for InjectNode {
             let interval = Duration::from_secs(self.interval_secs);
             let payload = self.payload.clone();
             let ctx_clone = ctx.clone();
-            
+
             // Spawn a background task for the timer
             let handle = tokio::spawn(async move {
                 let mut timer = tokio::time::interval(interval);
                 timer.tick().await; // First tick is immediate
                 loop {
                     timer.tick().await;
-                     let msg = MessagePayload {
+                    let msg = MessagePayload {
                         payload: plantlink_core::DataValue::String(payload.clone()),
                         ..Default::default()
                     };
@@ -54,7 +63,12 @@ impl SimpleNode for InjectNode {
         Ok(())
     }
 
-    async fn handle(&mut self, _port: usize, _msg: MessagePayload, ctx: &NodeContext) -> Result<()> {
+    async fn handle(
+        &mut self,
+        _port: usize,
+        _msg: MessagePayload,
+        ctx: &NodeContext,
+    ) -> Result<()> {
         // Trigger mode: output the configured payload immediately
         let msg = MessagePayload {
             payload: plantlink_core::DataValue::String(self.payload.clone()),

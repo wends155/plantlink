@@ -1,17 +1,16 @@
+use crate::NodeConfig;
+use crate::nodes::NodeBehavior;
+use anyhow::{Result, bail};
+use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use std::sync::RwLock;
-use once_cell::sync::Lazy;
-use crate::nodes::NodeBehavior;
-use crate::NodeConfig;
-use anyhow::{Result, bail};
 
 /// Type definition for a node factory function
 pub type NodeFactory = Box<dyn Fn(&NodeConfig) -> Box<dyn NodeBehavior> + Send + Sync>;
 
 /// Global registry mapping Node Type String -> Factory Function
-static NODE_REGISTRY: Lazy<RwLock<HashMap<String, NodeFactory>>> = Lazy::new(|| {
-    RwLock::new(HashMap::new())
-});
+static NODE_REGISTRY: Lazy<RwLock<HashMap<String, NodeFactory>>> =
+    Lazy::new(|| RwLock::new(HashMap::new()));
 
 pub fn register_node<F>(type_name: &str, factory: F)
 where

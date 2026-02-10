@@ -1,7 +1,7 @@
-use tokio_modbus::client::Context;
-use tokio_modbus::prelude::*;
 use anyhow::Result;
 use std::net::SocketAddr;
+use tokio_modbus::client::Context;
+use tokio_modbus::prelude::*;
 
 pub struct ModbusTcpClient {
     ctx: Context,
@@ -20,5 +20,4 @@ impl ModbusTcpClient {
 }
 
 // TODO: Implement Modbus Server
-pub struct ModbusTcpServer {
-}
+pub struct ModbusTcpServer {}

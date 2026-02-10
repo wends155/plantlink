@@ -19,14 +19,14 @@ async fn main() -> anyhow::Result<()> {
 
     // Create a broadcast channel for events (capacity 100)
     let (tx, _rx) = tokio::sync::broadcast::channel(100);
-    
+
     // Create the Runtime Engine
     let runtime = std::sync::Arc::new(tokio::sync::RwLock::new(
-        plantlink_runtime::RuntimeEngine::new(tx.clone())
+        plantlink_runtime::RuntimeEngine::new(tx.clone()),
     ));
 
     // Spawn Web Server
     WebServer::run(args.port, tx, runtime).await?;
-    
+
     Ok(())
 }

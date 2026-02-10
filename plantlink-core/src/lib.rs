@@ -51,6 +51,17 @@ impl Default for MessagePayload {
     }
 }
 
-pub mod nats;
-pub mod mqtt;
 pub mod modbus;
+pub mod mqtt;
+pub mod nats;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_payload_serialization() {
+        let payload = MessagePayload::default();
+        let json = serde_json::to_string(&payload).expect("Serialization failed");
+        assert!(json.contains(&payload.id));
+    }
+}
