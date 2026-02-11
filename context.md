@@ -27,9 +27,10 @@
 ## 📍 Current State (Recursive Summary)
 *This section is updated by the Architect after every successful implementation.*
 
-### 🛠️ Recent Changes (Initial Context)
-1.  **2026-02-11:** Initialized `context.md` by extracting details from `README.md` and project structure.
-2.  **N/A:** Previous local state not tracked in this context fragment.
+### 🛠️ Recent Changes (Last 3 Cycles)
+1.  **2026-02-11 (Docs Upgrade):** Expanded `context.md` with source maps and detailed tooling guides; added "Tool-Centric Architecture" to `GEMINI.md`.
+2.  **2026-02-11 (Shell Guard):** Documented PowerShell `;` syntax quirks in `context.md` and `GEMINI.md` to prevent command chaining errors.
+3.  **2026-02-11 (Init Context):** Initialized `context.md` from `README.md` and crate analysis; established it as the "Source of Truth".
 
 ### 🧩 Active Components & APIs
 * `plantlink-core`: Shared data types (MessagePayload, DataValue) and protocol markers.
