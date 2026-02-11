@@ -13,13 +13,14 @@
 
 ## 💻 Environment & Constraints
 * **Host OS:** Windows (Non-Admin)
-* **Shell Environment:** BusyBox (via Scoop) / PowerShell
+* **Shell Environment:** BusyBox (via Scoop) / PowerShell (use `;` for chaining)
 * **Toolchain:** MSVC, Rustup (latest), Node.js v20+
 * **Deployment:** Single-binary release capability with embedded assets.
 * **Strict Rules:**
     1. No `sudo`/Admin commands.
     2. Scripts must be `#!/bin/sh` (BusyBox compatible).
     3. Use `Makefile` for standard workflows (`run`, `build-release`, `clean`).
+    4. **Shell Syntax**: Use `;` for command chaining in PowerShell; use `&&` ONLY in BusyBox/sh scripts.
 
 ---
 

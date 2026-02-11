@@ -50,7 +50,8 @@
 
 ## 🛠️ Environment Context
 * **OS:** Windows (Non-Admin)
-* **Shell:** **BusyBox** (sh/bash compatible) & PowerShell
+* **Shell:** **BusyBox** (sh/bash compatible) & PowerShell (Default in terminal)
+    * *Syntax Guard*: When running chained commands in PowerShell, use `;` (e.g., `cmd1; cmd2`). Avoid `&&` as it is not supported in all PowerShell versions.
 * **Package Manager:** Scoop
 * **Language:** Rust (2024 Edition)
 * **Toolchain:** MSVC (Portable via Scoop), busybox
