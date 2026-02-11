@@ -28,9 +28,8 @@
 *This section is updated by the Architect after every successful implementation.*
 
 ### 🛠️ Recent Changes (Last 3 Cycles)
-1.  **2026-02-11 (Docs Upgrade):** Expanded `context.md` with source maps and detailed tooling guides; added "Tool-Centric Architecture" to `GEMINI.md`.
-2.  **2026-02-11 (Shell Guard):** Documented PowerShell `;` syntax quirks in `context.md` and `GEMINI.md` to prevent command chaining errors.
-3.  **2026-02-11 (Init Context):** Initialized `context.md` from `README.md` and crate analysis; established it as the "Source of Truth".
+3.  **2026-02-11 (Project Config):** Configured `code-index` project root to `c:\Users\WSALIGAN\code\plantlink` and built deep index for symbol extraction (69 files).
+4.  **2026-02-11 (Project Audit):** Conducted a deep architectural scan and generated `project_summary_report.md` covering crate roles, protocol status, and UI structure.
 
 ### 🧩 Active Components & APIs
 * `plantlink-core`: Shared data types (MessagePayload, DataValue) and protocol markers.
@@ -72,6 +71,10 @@
     * `make verify`: Executes `scripts/verify.sh` for the full quality gate.
     * `make build-release`: Creates the production binary in `target/release/`.
 * **scripts/verify.sh**: A strict quality gate running `fmt`, `clippy`, and `test`.
+* **context7 (MCP)**: Specialized documentation server for Rust crates and industrial protocols (Modbus, NATS, etc.).
+* **code-index (MCP)**: In-memory symbol indexer for fast file discovery, symbol extraction, and code pattern searching.
+* **rust-mcp (MCP)**: Specialized Rust toolchain integration for workspace management, dependency analysis, and error diagnosis.
+* **git-mcp (MCP)**: Automated version control server for atomic commits and repository history tracking.
 
 ### 🧪 Verification Commands
 ```bash

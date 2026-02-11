@@ -27,6 +27,10 @@
 **Rule:** Agents interact with the world through tools.
 1.  **Prioritize Scripts**: Instead of raw terminal commands, create or use robust, well-documented tools in the `scripts/` directory.
 2.  **Tool First**: If a task is repetitive (e.g., "Check all crate versions"), create a script first, then run it.
+3.  **Context7 for Research**: Use the `context7` MCP server to resolve library IDs and query authoritative documentation for external crates or frameworks. Prioritize documentation with high code snippet counts.
+4.  **Code-Index for Navigation**: Use the `code-index` MCP server to find files, symbols, and code patterns. Always ensure the deep index is built (`build_deep_index`) before starting complex research or navigation tasks.
+5.  **Rust-MCP for Workspace Management**: Prioritize `rust-mcp` tools (like `cargo-add`, `cargo-tree`, and `workspace-info`) for managing workspace crates and dependencies. Use `rustc-explain` to debug complex compiler errors.
+6.  **Git-MCP for Version Control**: Use the `git-mcp-server` for atomic staging and descriptive committing of technical changes.
 
 ---
 
