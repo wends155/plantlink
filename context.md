@@ -32,11 +32,18 @@
 2.  **N/A:** Previous local state not tracked in this context fragment.
 
 ### 🧩 Active Components & APIs
-* `plantlink-core`: Shared data types (MessagePayload, DataValue).
-* `plantlink-runtime`: Flow execution engine with node implementations (Rhai, NATS, etc.).
-* `plantlink-web`: Axum-based web server and WebSocket handler for UI interaction.
-* `plantlink-cli`: Main entry point and orchestration layer.
-* `ui`: SvelteKit frontend for visual flow editing.
+* `plantlink-core`: Shared data types (MessagePayload, DataValue) and protocol markers.
+    * `src/lib.rs`: Core traits and payload definitions.
+    * `src/mqtt.rs`, `src/modbus.rs`, `src/nats.rs`: Protocol-specific data structures.
+* `plantlink-runtime`: Flow execution engine.
+    * `src/lib.rs`: Engine logic and node orchestration.
+    * `src/nodes/`: Concrete node implementations (Rhai scripts, MQTT, etc.).
+* `plantlink-web`: API and UI backend.
+    * `src/lib.rs`: Axum routes, WebSocket state, and asset embedding.
+* `plantlink-cli`: Orchestration and entry point.
+    * `src/main.rs`: Bootstraps the runtime and web server.
+* `ui`: SvelteKit frontend.
+    * `src/lib/nodeDefinitions.js`: Single source of truth for node UI metadata.
 
 ---
 

@@ -21,37 +21,34 @@
 
 ---
 
+---
+
+## 🛠️ Tool-Centric Architecture
+**Rule:** Agents interact with the world through tools.
+1.  **Prioritize Scripts**: Instead of raw terminal commands, create or use robust, well-documented tools in the `scripts/` directory.
+2.  **Tool First**: If a task is repetitive (e.g., "Check all crate versions"), create a script first, then run it.
+
+---
+
 ## 🧪 Verification & Testing Protocol
 **Rule:** NEVER finish a task without verification.
-1.  **Check for Scripts:** Look for a `scripts/verify.sh` or `scripts/test.sh`.
-2.  **Create if Missing:** If no script exists, create a portable shell script (compatible with **BusyBox**) containing:
-    ```bash
-    #!/bin/sh
-    echo "Running Format Check..."
-    cargo fmt -- --check
-    echo "Running Linter..."
-    cargo clippy -- -D warnings
-    echo "Running Tests..."
-    cargo test
-    echo "Running Build Check..."
-    cargo check
-    ```
-3.  **Execute:** Run the script after every major code change.
-4.  **Report:** Only mark the task as "Complete" if `cargo check`, `clippy`, and `test` pass.
+1.  **Workflow**: Use `make verify` (which calls `c:\Users\WSALIGAN\code\plantlink\scripts\verify.sh`) to ensure code enters the "Zero-Exit" state.
+2.  **Standards**: Only mark as "Complete" if `cargo check`, `clippy`, and `test` pass.
 
 ---
 
 ## 🚦 Automation Rules
-1.  **Phase 1 (Planning):** If the request implies deep reasoning (e.g., "Investigate why WMI is slow"), automatically use **Gemini 3 Pro**.
-2.  **Phase 2 (Hand-off):** When I say **"Proceed"**, switch to **Gemini 3 Flash** to implement the plan and run the verification script.
-3.  **Quota Saver:** For simple fixes (typos, comments, one-line changes), default to **Flash**.
+1.  **Phase 1 (Planning):** If the request implies deep reasoning (e.g., "Investigate why WMI is slow"), automatically use **Gemini Pro**.
+2.  **Phase 2 (Hand-off):** When I say **"Proceed"**, switch to **Gemini Flash** to implement and run the verification tools.
+3.  **Quota Saver:** For simple fixes, default to **Flash**.
 
 ---
 
 ## 🛠️ Environment Context
 * **OS:** Windows (Non-Admin)
-* **Shell:** **BusyBox** (sh/bash compatible) & PowerShell (Default in terminal)
-    * *Syntax Guard*: When running chained commands in PowerShell, use `;` (e.g., `cmd1; cmd2`). Avoid `&&` as it is not supported in all PowerShell versions.
-* **Package Manager:** Scoop
-* **Language:** Rust (2024 Edition)
-* **Toolchain:** MSVC (Portable via Scoop), busybox
+* **Shell:** PowerShell (Default) / BusyBox
+    * *Syntax Guard*: Commands run in PowerShell MUST use `;` for chaining. `&&` is only for `sh` scripts.
+* **Core Workflow**:
+    * `make run`: Full stack dev.
+    * `make verify`: Quality gate.
+* **Toolchain:** MSVC, Scoop-managed Rust and Node.js.
