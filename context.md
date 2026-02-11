@@ -61,19 +61,26 @@
 
 ---
 
-## 🧪 Verification Commands
-*Standard commands the Executor must run to pass the Quality Gate.*
+## 🧪 Tooling & Scripts
+*Manual and automated scripts for development and verification.*
 
+### 🛠️ Primary Tools
+* **Makefile**: The central workflow orchestrator.
+    * `make run`: Builds UI and launches CLI in dev mode.
+    * `make check`: Runs `cargo check` for fast feedback.
+    * `make verify`: Executes `scripts/verify.sh` for the full quality gate.
+    * `make build-release`: Creates the production binary in `target/release/`.
+* **scripts/verify.sh**: A strict quality gate running `fmt`, `clippy`, and `test`.
+
+### 🧪 Verification Commands
 ```bash
-# Linting & Verification
-make check
+# Full Quality Gate
+make verify
 
-# Build & Run (Dev)
-make run
+# Fast Linting
+make clippy
 
-# Build Release
-make build-release
-
-# Cleanup
-make clean
+# Dev Loop
+make dev      # UI dev server
+make run      # Full stack
 ```
