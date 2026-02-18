@@ -35,6 +35,7 @@
 7.  **2026-02-18 (Logging Compliance):** Refactored error handling and logging across all crates to comply with `GEMINI.md`. Implemented exponential backoff for MQTT, and propagated Result from node outputs to prevent silent failures.
 8.  **2026-02-18 (Test Coverage):** Implemented 22 new unit tests across all 4 crates (Workspace total: 26). Covered REST API endpoints, CLI arg parsing, and core data structures. Fixed a critical deserialization bug in `plantlink-core` by correcting the `untagged` variant order for `DataValue`.
 9.  **2026-02-18 (Doc-Tests):** Added executable documentation examples (doc-tests) to all public APIs in `plantlink-core`, `plantlink-runtime`, and `plantlink-web`. Unified documentation with runnable code for `DataValue`, `MessagePayload`, and flow configurations.
+10. **2026-02-18 (Documentation Refresh):** Updated `README.md` to reflect the "Zero-Exit" quality philosophy, added a "Quality Gates" section, and corrected links to root-level architecture and spec documents.
 
 ### 🧩 Active Components & APIs
 * `plantlink-core`: Shared data types (MessagePayload, DataValue) and protocol markers.

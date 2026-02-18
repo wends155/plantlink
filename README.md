@@ -33,6 +33,9 @@ graph TB
 -   **Developer Experience**:
     -   Hot-reload development workflow.
     -   Single-binary release capability.
+-   **Zero-Exit Stability**:
+    -   Rigorous CI gates (`fmt`, `clippy`, `test`) ensure code quality.
+    -   Comprehensive unit and doc-test coverage.
 
 ## Example: Rhai Function
 
@@ -76,6 +79,19 @@ To clean up build artifacts and logs:
 ```bash
 make clean
 ```
+## Quality Gates ("Zero-Exit")
+
+We enforce a strict "Zero-Exit" policy. All code must pass the following checks before being committed:
+
+```bash
+# Run the full verification suite
+make verify
+
+# Individual checks
+cargo fmt -- --check    # Formatting
+cargo clippy -- -D warnings # Linting
+cargo test              # Unit & Doc Tests
+```
 
 ## Architecture
 -   **plantlink-core**: Shared data types and protocol definitions.
@@ -104,6 +120,8 @@ plantlink/
 ## Documentation
 
 -   **[Architecture](./architecture.md)**: System overview, data flow, and design decisions.
+-   **[Behavioral Specs](./spec.md)**: Detailed behavior contracts for all components.
+-   **[Project Context](./context.md)**: Decision logs, tech debt tracking, and historical context.
 -   **[Adding Nodes](./docs/ADDING_NODES.md)**: Step-by-step guide for developers creating new node types.
 -   **[Rhai Scripting](./docs/RHAI_SCRIPTING.md)**: Guide for writing Rhai scripts in Function nodes.
 -   **[API Reference](./docs/API.md)**: REST endpoints, WebSocket messages, and flow config format.
