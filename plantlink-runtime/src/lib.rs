@@ -5,7 +5,7 @@
 
 // use rhai::{Engine, Scope, AST, Dynamic};
 // use plantlink_core::MessagePayload;
-// use anyhow::Result;
+use anyhow::{Result, bail};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tokio::sync::broadcast;
@@ -87,34 +87,40 @@ pub struct FlowConfig {
 /// use plantlink_runtime::RuntimeEngine;
 /// use tokio::sync::broadcast;
 ///
-/// # async fn example() {
+/// # async fn example() -> anyhow::Result<()> {
 /// let (tx, _) = broadcast::channel(100);
-/// let mut engine = RuntimeEngine::new(tx);
-/// // engine.update_flow(flow).await;
+/// let mut engine = RuntimeEngine::new(tx)?;
+/// // engine.update_flow(flow).await?;
 /// // engine.stop_flow().await;
+/// # Ok(())
 /// # }
 /// ```
+/// Status returned by `stop_flow()` to report shutdown results.
+#[derive(Debug, Clone, Serialize)]
+pub struct StopStatus {
+    /// Number of tasks that were aborted.
+    pub tasks_aborted: usize,
+}
+
 pub struct RuntimeEngine {
     tx: broadcast::Sender<String>,
     tasks: HashMap<String, tokio::task::JoinHandle<()>>,
 }
 
 impl RuntimeEngine {
-    pub fn new(tx: broadcast::Sender<String>) -> Self {
+    pub fn new(tx: broadcast::Sender<String>) -> Result<Self> {
         // Ensure defaults are registered
-        nodes::register_defaults();
+        nodes::register_defaults()?;
 
-        Self {
+        Ok(Self {
             tx,
             tasks: HashMap::new(),
-        }
+        })
     }
 
-    pub async fn stop_flow(&mut self) {
-        tracing::info!(
-            "Runtime: Stopping flow. Aborting {} tasks.",
-            self.tasks.len()
-        );
+    pub async fn stop_flow(&mut self) -> StopStatus {
+        let count = self.tasks.len();
+        tracing::info!("Runtime: Stopping flow. Aborting {} tasks.", count);
 
         // Emit stopped status for all nodes
         for node_id in self.tasks.keys() {
@@ -125,9 +131,13 @@ impl RuntimeEngine {
         for (_, handle) in self.tasks.drain() {
             handle.abort();
         }
+
+        StopStatus {
+            tasks_aborted: count,
+        }
     }
 
-    pub async fn update_flow(&mut self, flow: FlowConfig) {
+    pub async fn update_flow(&mut self, flow: FlowConfig) -> Result<()> {
         tracing::info!("Runtime: Updating flow with {} nodes", flow.nodes.len());
 
         // 1. Stop all existing tasks
@@ -182,6 +192,8 @@ impl RuntimeEngine {
         }
 
         // 4. Instantiate and Start Nodes
+        let mut failed_nodes: Vec<String> = Vec::new();
+
         for config in flow.nodes {
             let node_id = config.id.clone();
             let outputs = node_senders.remove(&node_id).unwrap_or_default();
@@ -194,6 +206,7 @@ impl RuntimeEngine {
                     Ok(n) => n,
                     Err(e) => {
                         tracing::warn!("Failed to create node {}: {}", config.type_, e);
+                        failed_nodes.push(config.id.clone());
                         continue;
                     }
                 };
@@ -254,6 +267,16 @@ impl RuntimeEngine {
 
             self.tasks.insert(config.id, task);
         }
+
+        if !failed_nodes.is_empty() {
+            bail!(
+                "Failed to create {} node(s): {}",
+                failed_nodes.len(),
+                failed_nodes.join(", ")
+            );
+        }
+
+        Ok(())
     }
 }
 
@@ -298,7 +321,7 @@ mod tests {
     #[tokio::test]
     async fn test_stop_flow_emits_stopped() {
         let (tx, mut rx) = broadcast::channel(16);
-        let mut engine = RuntimeEngine::new(tx);
+        let mut engine = RuntimeEngine::new(tx).unwrap();
         // Deploy a minimal flow with a single console node
         let flow = FlowConfig {
             nodes: vec![NodeConfig {
@@ -308,7 +331,7 @@ mod tests {
             }],
             edges: vec![],
         };
-        engine.update_flow(flow).await;
+        engine.update_flow(flow).await.unwrap();
         // Drain initial status broadcasts
         while rx.try_recv().is_ok() {}
         engine.stop_flow().await;

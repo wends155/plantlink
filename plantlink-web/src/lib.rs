@@ -47,7 +47,7 @@ struct Asset;
 ///
 /// # async fn example() -> anyhow::Result<()> {
 /// let (tx, _) = broadcast::channel(100);
-/// let runtime = Arc::new(RwLock::new(RuntimeEngine::new(tx.clone())));
+/// let runtime = Arc::new(RwLock::new(RuntimeEngine::new(tx.clone())?));
 /// WebServer::run(3000, tx, runtime).await?;
 /// # Ok(())
 /// # }
@@ -128,9 +128,9 @@ async fn shutdown_signal(runtime: Arc<RwLock<plantlink_runtime::RuntimeEngine>>)
 
     // Stop the runtime tasks
     let mut rt = runtime.write().await;
-    rt.stop_flow().await;
+    let status = rt.stop_flow().await;
 
-    tracing::info!("Runtime stopped. Exiting.");
+    tracing::info!("Runtime stopped. {} tasks aborted. Exiting.", status.tasks_aborted);
 }
 
 // ...
@@ -144,9 +144,16 @@ async fn deploy_flow(
 
     // Update the Runtime Engine
     let mut runtime = state.runtime.write().await;
-    runtime.update_flow(payload).await;
-
-    (StatusCode::OK, "Flow Deployed")
+    match runtime.update_flow(payload).await {
+        Ok(()) => (StatusCode::OK, "Flow Deployed".to_string()),
+        Err(e) => {
+            tracing::error!("Flow deployment failed: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Deployment error: {}", e),
+            )
+        }
+    }
 }
 
 // Handler for Stopping Flow
@@ -155,9 +162,9 @@ async fn stop_flow_handler(State(state): State<AppState>) -> impl IntoResponse {
 
     // Update the Runtime Engine
     let mut runtime = state.runtime.write().await;
-    runtime.stop_flow().await;
+    let status = runtime.stop_flow().await;
 
-    (StatusCode::OK, "Flow Stopped")
+    (StatusCode::OK, axum::Json(status))
 }
 
 async fn ws_handler(ws: WebSocketUpgrade, State(state): State<AppState>) -> Response {
@@ -249,9 +256,9 @@ mod tests {
     #[tokio::test]
     async fn test_web_state() {
         let (tx, _) = broadcast::channel(16);
-        let runtime = Arc::new(RwLock::new(plantlink_runtime::RuntimeEngine::new(
-            tx.clone(),
-        )));
+        let runtime = Arc::new(RwLock::new(
+            plantlink_runtime::RuntimeEngine::new(tx.clone()).unwrap(),
+        ));
         let _state = AppState { tx, runtime };
     }
 
@@ -263,9 +270,9 @@ mod tests {
     #[tokio::test]
     async fn test_health_endpoint_returns_ok() {
         let (tx, _) = broadcast::channel(16);
-        let runtime = Arc::new(RwLock::new(plantlink_runtime::RuntimeEngine::new(
-            tx.clone(),
-        )));
+        let runtime = Arc::new(RwLock::new(
+            plantlink_runtime::RuntimeEngine::new(tx.clone()).unwrap(),
+        ));
         let state = AppState { tx, runtime };
 
         let app = Router::new()
@@ -285,9 +292,9 @@ mod tests {
     #[tokio::test]
     async fn test_deploy_flow_endpoint() {
         let (tx, _) = broadcast::channel(16);
-        let runtime = Arc::new(RwLock::new(plantlink_runtime::RuntimeEngine::new(
-            tx.clone(),
-        )));
+        let runtime = Arc::new(RwLock::new(
+            plantlink_runtime::RuntimeEngine::new(tx.clone()).unwrap(),
+        ));
         let state = AppState { tx, runtime };
 
         let app = Router::new()
@@ -308,9 +315,9 @@ mod tests {
     #[tokio::test]
     async fn test_stop_flow_endpoint() {
         let (tx, _) = broadcast::channel(16);
-        let runtime = Arc::new(RwLock::new(plantlink_runtime::RuntimeEngine::new(
-            tx.clone(),
-        )));
+        let runtime = Arc::new(RwLock::new(
+            plantlink_runtime::RuntimeEngine::new(tx.clone()).unwrap(),
+        ));
         let state = AppState { tx, runtime };
 
         let app = Router::new()

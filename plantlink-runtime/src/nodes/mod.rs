@@ -51,19 +51,20 @@ pub fn send_node_status(
     }
 }
 
-pub fn register_defaults() {
+pub fn register_defaults() -> anyhow::Result<()> {
     registry::register_node("inject", |cfg| {
         Box::new(base::BaseNodeAdapter::new(inject::InjectNode::new(cfg)))
-    });
-    registry::register_node("console", |cfg| Box::new(console::ConsoleNode::new(cfg)));
+    })?;
+    registry::register_node("console", |cfg| Box::new(console::ConsoleNode::new(cfg)))?;
     registry::register_node("nats-broker", |cfg| {
         Box::new(nats::NatsBrokerNode::new(cfg))
-    });
-    registry::register_node("nats-sub", |cfg| Box::new(nats::NatsSubNode::new(cfg)));
-    registry::register_node("nats-pub", |cfg| Box::new(nats::NatsPubNode::new(cfg)));
-    registry::register_node("rhai", |cfg| Box::new(rhai::RhaiNode::new(cfg)));
-    registry::register_node("function", |cfg| Box::new(rhai::RhaiNode::new(cfg)));
-    registry::register_node("rhai-function", |cfg| Box::new(rhai::RhaiNode::new(cfg)));
+    })?;
+    registry::register_node("nats-sub", |cfg| Box::new(nats::NatsSubNode::new(cfg)))?;
+    registry::register_node("nats-pub", |cfg| Box::new(nats::NatsPubNode::new(cfg)))?;
+    registry::register_node("rhai", |cfg| Box::new(rhai::RhaiNode::new(cfg)))?;
+    registry::register_node("function", |cfg| Box::new(rhai::RhaiNode::new(cfg)))?;
+    registry::register_node("rhai-function", |cfg| Box::new(rhai::RhaiNode::new(cfg)))?;
+    Ok(())
 }
 
 /// Context passed to the node during execution

@@ -85,9 +85,9 @@ The standard message envelope passed between nodes.
 
 | Method | Signature | Errors | Invariants |
 |--------|-----------|--------|------------|
-| `new` | `fn new(tx: broadcast::Sender<String>) -> Self` | Never fails. | Calls `register_defaults()` to populate the node registry. |
-| `update_flow` | `async fn update_flow(&mut self, flow: FlowConfig)` | Never returns error (logs failures per-node). | Stops existing flow first, then spawns new nodes. |
-| `stop_flow` | `async fn stop_flow(&mut self)` | Never fails. | Emits `stopped` status for all nodes, then aborts all tasks. |
+| `new` | `fn new(tx: broadcast::Sender<String>) -> Result<Self>` | Registry lock poisoning. | Calls `register_defaults()` to populate the node registry. |
+| `update_flow` | `async fn update_flow(&mut self, flow: FlowConfig) -> Result<()>` | Returns `Err` if any nodes fail to create. | Stops existing flow first, then spawns new nodes. |
+| `stop_flow` | `async fn stop_flow(&mut self) -> StopStatus` | Never fails. | Returns count of aborted tasks. |
 
 #### `NodeBehavior` (trait)
 **Purpose**: The contract every node type must implement.
@@ -124,7 +124,7 @@ fn send_node_status(tx: &broadcast::Sender<String>, node_id: String, state: &str
 
 | Function | Signature | Notes |
 |----------|-----------|-------|
-| `register_node` | `fn register_node(type_name: &str, factory: Fn)` | Registers a factory closure. |
+| `register_node` | `fn register_node(type_name: &str, factory: Fn) -> Result<()>` | Returns error on lock poisoning. |
 | `create_node` | `fn create_node(type_name: &str, config: &NodeConfig) -> Result<Box<dyn NodeBehavior>>` | Returns error if type not found. |
 
 **Registered defaults**: `inject`, `console`, `nats-broker`, `nats-sub`, `nats-pub`, `rhai`, `function`, `rhai-function`.
@@ -153,12 +153,12 @@ fn send_node_status(tx: &broadcast::Sender<String>, node_id: String, state: &str
 | `source_handle` | `Option<String>` | No | `None` |
 | `target_handle` | `Option<String>` | No | `None` |
 
-#### `NodeStatus` (struct)
 | Field | Type | Values |
 |-------|------|--------|
 | `node_id` | `String` | — |
 | `state` | `String` | `"running"`, `"error"`, `"stopped"` |
 | `message` | `String` | Human-readable description. |
+| `tasks_aborted` | `usize` | (In `StopStatus`) Number of tasks aborted. |
 
 ### State Machine — Node Lifecycle
 
@@ -186,8 +186,9 @@ stateDiagram-v2
 ### Required Test Coverage
 - [x] `send_node_status` serialization.
 - [x] `NodeContext::emit_stopped` broadcast.
-- [x] `update_flow` with valid config spawns tasks.
-- [x] `stop_flow` aborts all tasks and emits stopped status.
+- [ ] `RuntimeEngine::new` returns `Result`.
+- [ ] `update_flow` returns error on invalid node types.
+- [ ] `stop_flow` returns `StopStatus` with correct count.
 - [x] `create_node` returns error for unknown type.
 
 ---
@@ -210,8 +211,8 @@ stateDiagram-v2
 | Method | Path | Request Body | Response | Status |
 |--------|------|-------------|----------|--------|
 | `GET` | `/health` | — | `"OK"` | `200` |
-| `POST` | `/api/flow` | `FlowConfig` (JSON) | `"Flow Deployed"` | `200` |
-| `POST` | `/api/flow/stop` | — | `"Flow Stopped"` | `200` |
+| `POST` | `/api/flow` | `FlowConfig` (JSON) | `"Flow Deployed"` / Err string | `200` / `500` |
+| `POST` | `/api/flow/stop` | — | `StopStatus` (JSON) | `200` |
 | `GET` | `/*` | — | Static asset / SPA fallback | `200` / `404` |
 
 - Static assets support gzip (`Content-Encoding: gzip`) when client sends `Accept-Encoding: gzip`.
@@ -230,7 +231,8 @@ stateDiagram-v2
 - [x] `AppState` construction.
 - [x] `/health` returns 200.
 - [x] `/api/flow` accepts valid `FlowConfig` JSON.
-- [x] `/api/flow/stop` stops runtime.
+- [ ] `/api/flow` returns 500 on partial failure.
+- [x] `/api/flow/stop` stops runtime and returns JSON status.
 - [ ] WebSocket receives status broadcasts.
 - [ ] SPA fallback serves `index.html` for unknown routes.
 

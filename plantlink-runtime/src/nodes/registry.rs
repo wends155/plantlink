@@ -12,17 +12,22 @@ pub type NodeFactory = Box<dyn Fn(&NodeConfig) -> Box<dyn NodeBehavior> + Send +
 static NODE_REGISTRY: Lazy<RwLock<HashMap<String, NodeFactory>>> =
     Lazy::new(|| RwLock::new(HashMap::new()));
 
-pub fn register_node<F>(type_name: &str, factory: F)
+pub fn register_node<F>(type_name: &str, factory: F) -> Result<()>
 where
     F: Fn(&NodeConfig) -> Box<dyn NodeBehavior> + Send + Sync + 'static,
 {
-    let mut registry = NODE_REGISTRY.write().expect("Registry lock poisoned");
+    let mut registry = NODE_REGISTRY
+        .write()
+        .map_err(|e| anyhow::anyhow!("Registry write lock poisoned: {}", e))?;
     registry.insert(type_name.to_string(), Box::new(factory));
     tracing::info!("Registered node type: {}", type_name);
+    Ok(())
 }
 
 pub fn create_node(type_name: &str, config: &NodeConfig) -> Result<Box<dyn NodeBehavior>> {
-    let registry = NODE_REGISTRY.read().expect("Registry lock poisoned");
+    let registry = NODE_REGISTRY
+        .read()
+        .map_err(|e| anyhow::anyhow!("Registry read lock poisoned: {}", e))?;
     match registry.get(type_name) {
         Some(factory) => Ok(factory(config)),
         None => bail!("Unknown node type: {}", type_name),

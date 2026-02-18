@@ -21,7 +21,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Create the Runtime Engine
     let runtime = std::sync::Arc::new(tokio::sync::RwLock::new(
-        plantlink_runtime::RuntimeEngine::new(tx.clone()),
+        plantlink_runtime::RuntimeEngine::new(tx.clone())?,
     ));
 
     // Spawn Web Server
