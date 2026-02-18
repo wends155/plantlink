@@ -52,7 +52,9 @@ impl SimpleNode for InjectNode {
                         payload: plantlink_core::DataValue::String(payload.clone()),
                         ..Default::default()
                     };
-                    ctx_clone.send_output(msg).await;
+                    if let Err(e) = ctx_clone.send_output(msg).await {
+                        tracing::warn!("InjectNode timer: failed to send output: {}", e);
+                    }
                 }
             });
             self.timer_handle = Some(handle);
@@ -74,7 +76,7 @@ impl SimpleNode for InjectNode {
             payload: plantlink_core::DataValue::String(self.payload.clone()),
             ..Default::default()
         };
-        ctx.send_output(msg).await;
+        ctx.send_output(msg).await?;
         Ok(())
     }
 

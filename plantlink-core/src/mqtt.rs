@@ -13,10 +13,28 @@ impl MqttDriver {
 
         let (client, mut eventloop) = AsyncClient::new(mqttoptions, 10);
 
-        // Spawn event loop handler
+        // Spawn event loop handler with exponential backoff retry
         tokio::spawn(async move {
+            let mut backoff = Duration::from_secs(1);
+            let max_backoff = Duration::from_secs(60);
+
             loop {
-                eventloop.poll().await.unwrap();
+                match eventloop.poll().await {
+                    Ok(_event) => {
+                        // Reset backoff on successful poll/reconnection
+                        backoff = Duration::from_secs(1);
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            "MQTT event loop error: {}. Retrying in {:?}...",
+                            e,
+                            backoff
+                        );
+                        tokio::time::sleep(backoff).await;
+                        // Exponential backoff capped at max_backoff
+                        backoff = (backoff * 2).min(max_backoff);
+                    }
+                }
             }
         });
 

@@ -45,7 +45,7 @@ impl NodeBehavior for NatsBrokerNode {
                     payload: DataValue::String(self.conn_id.clone()),
                     ..Default::default()
                 };
-                ctx.send_output(msg).await;
+                ctx.send_output(msg).await?;
 
                 Ok(())
             }
@@ -127,7 +127,9 @@ impl NodeBehavior for NatsSubNode {
                     topic: Some(nats_msg.subject.to_string()),
                     ..Default::default()
                 };
-                ctx.send_output(out_msg).await;
+                if let Err(e) = ctx.send_output(out_msg).await {
+                    tracing::warn!("NatsSub: failed to forward message: {}", e);
+                }
             }
         });
 

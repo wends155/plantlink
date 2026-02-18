@@ -47,16 +47,21 @@ impl<T: SimpleNode + 'static> NodeBehavior for BaseNodeAdapter<T> {
                 state: "error".to_string(),
                 message: e.to_string(),
             };
+            #[allow(clippy::collapsible_if)]
             if let Ok(json) = serde_json::to_string(&serde_json::json!({
                 "type": "status",
                 "data": status
             })) {
-                let _ = ctx.system_tx.send(json);
+                if let Err(e) = ctx.system_tx.send(json) {
+                    tracing::warn!(node_id = %ctx.id, "Failed to broadcast node status: {}", e);
+                }
             }
             // Also log
             let log_msg = format!("Node [{}]: Error: {}", ctx.id, e);
             let json_log = serde_json::json!({ "type": "log", "message": log_msg }).to_string();
-            let _ = ctx.system_tx.send(json_log);
+            if let Err(e) = ctx.system_tx.send(json_log) {
+                tracing::warn!(node_id = %ctx.id, "Failed to broadcast log: {}", e);
+            }
 
             return Err(e);
         }

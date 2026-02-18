@@ -42,7 +42,9 @@ impl NodeBehavior for RhaiNode {
         if let Some(err) = &self.compile_error {
             let log_msg = format!("RhaiNode [{}]: Compilation Error: {}", ctx.id, err);
             let json_log = serde_json::json!({ "type": "log", "message": log_msg }).to_string();
-            let _ = ctx.system_tx.send(json_log);
+            if let Err(e) = ctx.system_tx.send(json_log) {
+                tracing::warn!(node_id = %ctx.id, "Failed to broadcast log: {}", e);
+            }
 
             ctx.emit_error(&format!("Compilation Error: {}", err));
         } else {
@@ -65,7 +67,9 @@ impl NodeBehavior for RhaiNode {
                 Ok(d) => d,
                 Err(e) => {
                     let log = format!("RhaiNode [{}]: Serialization Error: {}", ctx.id, e);
-                    let _ = ctx.system_tx.send(log);
+                    if let Err(e) = ctx.system_tx.send(log) {
+                        tracing::warn!(node_id = %ctx.id, "Failed to broadcast log: {}", e);
+                    }
                     return Ok(());
                 }
             };
@@ -85,7 +89,9 @@ impl NodeBehavior for RhaiNode {
                     // Check if result is what we expect (MessagePayload or Map)
                     match rhai::serde::from_dynamic::<MessagePayload>(&result_dynamic) {
                         Ok(result_msg) => {
-                            ctx.send_output(result_msg).await;
+                            if let Err(e) = ctx.send_output(result_msg).await {
+                                tracing::warn!(node_id = %ctx.id, "Failed to send output: {}", e);
+                            }
                         }
                         Err(e) => {
                             let log_msg = format!(
@@ -94,7 +100,9 @@ impl NodeBehavior for RhaiNode {
                             );
                             let json = serde_json::json!({ "type": "log", "message": log_msg })
                                 .to_string();
-                            let _ = ctx.system_tx.send(json);
+                            if let Err(e) = ctx.system_tx.send(json) {
+                                tracing::warn!(node_id = %ctx.id, "Failed to broadcast log: {}", e);
+                            }
 
                             ctx.emit_error(&format!("Return Type Mismatch: {}", e));
                         }
@@ -103,7 +111,9 @@ impl NodeBehavior for RhaiNode {
                 Err(e) => {
                     let log_msg = format!("RhaiNode [{}]: Runtime Error: {}", ctx.id, e);
                     let json = serde_json::json!({ "type": "log", "message": log_msg }).to_string();
-                    let _ = ctx.system_tx.send(json);
+                    if let Err(e) = ctx.system_tx.send(json) {
+                        tracing::warn!(node_id = %ctx.id, "Failed to broadcast log: {}", e);
+                    }
 
                     ctx.emit_error(&format!("Runtime Error: {}", e));
                 }
@@ -117,7 +127,9 @@ impl NodeBehavior for RhaiNode {
                     ctx.id, err
                 );
                 let json = serde_json::json!({ "type": "log", "message": log_msg }).to_string();
-                let _ = ctx.system_tx.send(json);
+                if let Err(e) = ctx.system_tx.send(json) {
+                    tracing::warn!(node_id = %ctx.id, "Failed to broadcast log: {}", e);
+                }
             }
         }
         Ok(())

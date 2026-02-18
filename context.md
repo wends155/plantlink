@@ -32,6 +32,7 @@
 4.  **2026-02-11 (Project Audit):** Conducted a deep architectural scan and generated `project_summary_report.md` covering crate roles, protocol status, and UI structure.
 5.  **2026-02-18 (Architecture Remediation):** Replaced legacy `docs/ARCHITECTURE.md` with a fully compliant root `architecture.md` and added `todo.md` to track `spec.md` creation.
 6.  **2026-02-18 (Spec Creation):** Created root `spec.md` with behavioral contracts for all 4 workspace crates (core, runtime, web, cli), covering data models, state machines, REST/WebSocket integration points, and CLI contracts.
+7.  **2026-02-18 (Logging Compliance):** Refactored error handling and logging across all crates to comply with `GEMINI.md`. Implemented exponential backoff for MQTT, and propagated Result from node outputs to prevent silent failures.
 
 ### 🧩 Active Components & APIs
 * `plantlink-core`: Shared data types (MessagePayload, DataValue) and protocol markers.
@@ -54,6 +55,8 @@
 
 * **Initial Design:** Chose **Rust** for the runtime to ensure high performance and reliability in industrial environments.
 * **Initial Design:** Chose **Rhai** for scripting due to its familiar syntax and easy integration with Rust.
+* **Error Handling:** Adopted a "No Silent Failure" policy for the runtime; `NodeContext::send_output` now returns `Result<()>` to ensure callers handle or log delivery failures.
+* **Resilience:** Implemented exponential backoff for MQTT event loops to prevent event loop crashes and ensure automatic recovery from connection errors.
 
 ---
 

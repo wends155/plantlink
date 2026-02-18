@@ -40,11 +40,14 @@ pub fn send_node_status(
         state: state.to_string(),
         message: message.to_string(),
     };
+    #[allow(clippy::collapsible_if)]
     if let Ok(json) = serde_json::to_string(&serde_json::json!({
         "type": "status",
         "data": status
     })) {
-        let _ = tx.send(json);
+        if let Err(e) = tx.send(json) {
+            tracing::warn!("Failed to broadcast node status: {}", e);
+        }
     }
 }
 
@@ -91,18 +94,37 @@ impl NodeContext {
     }
 
     /// Send a message to the default output port (0)
-    pub async fn send_output(&self, msg: MessagePayload) {
-        self.send_output_port(0, msg).await;
+    pub async fn send_output(&self, msg: MessagePayload) -> Result<()> {
+        self.send_output_port(0, msg).await
     }
 
     /// Send a message to a specific output port
-    pub async fn send_output_port(&self, port: usize, msg: MessagePayload) {
+    pub async fn send_output_port(&self, port: usize, msg: MessagePayload) -> Result<()> {
         if let Some(links) = self.outputs.get(&port) {
+            let mut failures = 0;
             for (sender, target_input_port) in links {
                 // Send (TargetPort, Payload) to the channel
-                let _ = sender.send((*target_input_port, msg.clone())).await;
+                if let Err(e) = sender.send((*target_input_port, msg.clone())).await {
+                    tracing::warn!(
+                        node_id = %self.id,
+                        port,
+                        "Failed to send to downstream node (channel closed): {}",
+                        e
+                    );
+                    failures += 1;
+                }
+            }
+            if failures > 0 {
+                anyhow::bail!(
+                    "Node {}: {}/{} downstream sends failed on port {}",
+                    self.id,
+                    failures,
+                    links.len(),
+                    port
+                );
             }
         }
+        Ok(())
     }
 
     /// Emit a "running" status message

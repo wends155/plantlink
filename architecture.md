@@ -112,3 +112,5 @@ sequenceDiagram
 - **Environment**: Must run in Windows non-admin space using BusyBox/PowerShell.
 - **Deployment**: Single-binary release capability with embedded assets requires `rust-embed` in `plantlink-web`.
 - **Status Reporting**: Centrally managed via `plantlink_runtime::nodes::send_node_status`.
+- **MQTT Reconnection**: `MqttDriver` event loop uses exponential backoff (1s–60s) on connection errors. Reconnection is handled by `rumqttc` internally; the driver logs warnings but never panics.
+- **Channel Error Propagation**: `NodeContext::send_output` and `send_output_port` return `Result<()>`. Callers must handle or propagate downstream channel failures.

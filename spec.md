@@ -16,7 +16,7 @@
 
 | Method | Signature | Errors | Invariants |
 |--------|-----------|--------|------------|
-| `connect` | `async fn connect(id: &str, host: &str, port: u16) -> Result<Self>` | Connection failure (network, auth) | Spawns a background event loop task; caller does not poll. |
+| `connect` | `async fn connect(id: &str, host: &str, port: u16) -> Result<Self>` | Connection failure (network, auth) | Spawns a background event loop task with exponential backoff retry (1s–60s). Never panics on disconnection. |
 | `publish` | `async fn publish(&self, topic: &str, payload: Vec<u8>) -> Result<()>` | Publish failure (disconnected, QoS rejection) | Uses `QoS::AtLeastOnce`. |
 
 #### `NatsDriver`
@@ -105,8 +105,8 @@ The standard message envelope passed between nodes.
 
 | Method | Signature | Notes |
 |--------|-----------|-------|
-| `send_output` | `async fn send_output(&self, msg: MessagePayload)` | Sends to port 0. |
-| `send_output_port` | `async fn send_output_port(&self, port: usize, msg: MessagePayload)` | Sends to a specific port. |
+| `send_output` | `async fn send_output(&self, msg: MessagePayload) -> Result<()>` | Sends to port 0. Returns error if any downstream channel is closed. |
+| `send_output_port` | `async fn send_output_port(&self, port: usize, msg: MessagePayload) -> Result<()>` | Sends to a specific port. Logs per-failure, returns summary error. |
 | `emit_running` | `fn emit_running(&self, message: &str)` | Broadcasts `"running"` status. |
 | `emit_error` | `fn emit_error(&self, message: &str)` | Broadcasts `"error"` status. |
 | `emit_stopped` | `fn emit_stopped(&self, message: &str)` | Broadcasts `"stopped"` status. |

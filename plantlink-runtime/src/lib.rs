@@ -154,11 +154,14 @@ impl RuntimeEngine {
                         state: "error".to_string(),
                         message: format!("Failed to start: {}", e),
                     };
+                    #[allow(clippy::collapsible_if)]
                     if let Ok(json) = serde_json::to_string(&serde_json::json!({
                         "type": "status",
                         "data": status
                     })) {
-                        let _ = ctx.system_tx.send(json);
+                        if let Err(e) = ctx.system_tx.send(json) {
+                            tracing::warn!(node_id = %node_id, "Failed to broadcast error status: {}", e);
+                        }
                     }
                 }
 
@@ -184,7 +187,9 @@ impl RuntimeEngine {
                 }
 
                 // Cleanup
-                let _ = node.stop().await;
+                if let Err(e) = node.stop().await {
+                    tracing::warn!("Node {} error on stop: {}", node_id, e);
+                }
                 ctx.emit_stopped("Node stopped");
             });
 

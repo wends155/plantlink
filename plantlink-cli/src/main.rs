@@ -14,7 +14,6 @@ async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
     let version = env!("CARGO_PKG_VERSION");
-    println!("PlantLink v{}", version);
     tracing::info!("Starting PlantLink v{} on port {}", version, args.port);
 
     // Create a broadcast channel for events (capacity 100)

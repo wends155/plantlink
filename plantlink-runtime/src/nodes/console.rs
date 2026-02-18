@@ -28,7 +28,9 @@ impl NodeBehavior for ConsoleNode {
         })
         .to_string();
 
-        let _ = ctx.system_tx.send(json);
+        if let Err(e) = ctx.system_tx.send(json) {
+            tracing::warn!(node_id = %ctx.id, "Failed to broadcast log: {}", e);
+        }
         Ok(())
     }
 }
