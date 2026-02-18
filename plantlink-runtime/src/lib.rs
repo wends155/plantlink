@@ -215,4 +215,46 @@ mod tests {
         assert!(msg.contains("test-node"));
         assert!(msg.contains("running"));
     }
+
+    #[test]
+    fn test_flow_config_deserialization() {
+        let json = r#"{
+            "nodes": [{"id": "n1", "type": "console", "data": {}}],
+            "edges": [{"id": "e1", "source": "n1", "target": "n2"}]
+        }"#;
+        let config: FlowConfig = serde_json::from_str(json).unwrap();
+        assert_eq!(config.nodes.len(), 1);
+        assert_eq!(config.nodes[0].type_, "console");
+        assert_eq!(config.edges.len(), 1);
+    }
+
+    #[test]
+    fn test_edge_config_optional_handles() {
+        let json = r#"{"id": "e1", "source": "n1", "target": "n2"}"#;
+        let edge: EdgeConfig = serde_json::from_str(json).unwrap();
+        assert!(edge.source_handle.is_none());
+        assert!(edge.target_handle.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_stop_flow_emits_stopped() {
+        let (tx, mut rx) = broadcast::channel(16);
+        let mut engine = RuntimeEngine::new(tx);
+        // Deploy a minimal flow with a single console node
+        let flow = FlowConfig {
+            nodes: vec![NodeConfig {
+                id: "n1".into(),
+                type_: "console".into(),
+                data: serde_json::json!({}),
+            }],
+            edges: vec![],
+        };
+        engine.update_flow(flow).await;
+        // Drain initial status broadcasts
+        while rx.try_recv().is_ok() {}
+        engine.stop_flow().await;
+        // Should receive at least one "stopped" status
+        let msg = rx.try_recv().expect("Expected stopped status");
+        assert!(msg.contains("stopped"));
+    }
 }

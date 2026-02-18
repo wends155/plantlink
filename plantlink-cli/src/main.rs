@@ -29,3 +29,26 @@ async fn main() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_default_port_is_3000() {
+        let args = Args::try_parse_from(["plantlink-cli"]).unwrap();
+        assert_eq!(args.port, 3000);
+    }
+
+    #[test]
+    fn test_port_flag_parsing() {
+        let args = Args::try_parse_from(["plantlink-cli", "--port", "8080"]).unwrap();
+        assert_eq!(args.port, 8080);
+    }
+
+    #[test]
+    fn test_port_short_flag_parsing() {
+        let args = Args::try_parse_from(["plantlink-cli", "-p", "9090"]).unwrap();
+        assert_eq!(args.port, 9090);
+    }
+}

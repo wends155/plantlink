@@ -28,3 +28,21 @@ pub fn create_node(type_name: &str, config: &NodeConfig) -> Result<Box<dyn NodeB
         None => bail!("Unknown node type: {}", type_name),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_create_node_unknown_type_returns_error() {
+        let config = crate::NodeConfig {
+            id: "n1".into(),
+            type_: "does-not-exist".into(),
+            data: serde_json::json!({}),
+        };
+        match create_node("does-not-exist", &config) {
+            Err(e) => assert!(e.to_string().contains("Unknown node type")),
+            Ok(_) => panic!("Expected error, got Ok"),
+        }
+    }
+}

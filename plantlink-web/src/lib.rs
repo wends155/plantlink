@@ -219,6 +219,76 @@ mod tests {
             tx.clone(),
         )));
         let _state = AppState { tx, runtime };
-        assert!(true);
+    }
+
+    use axum::body::Body;
+    use axum::http::Request;
+    use http_body_util::BodyExt; // for collect()
+    use tower::ServiceExt; // for oneshot()
+
+    #[tokio::test]
+    async fn test_health_endpoint_returns_ok() {
+        let (tx, _) = broadcast::channel(16);
+        let runtime = Arc::new(RwLock::new(plantlink_runtime::RuntimeEngine::new(
+            tx.clone(),
+        )));
+        let state = AppState { tx, runtime };
+
+        let app = Router::new()
+            .route("/health", get(|| async { "OK" }))
+            .with_state(state);
+
+        let req = Request::builder()
+            .uri("/health")
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let body = resp.into_body().collect().await.unwrap().to_bytes();
+        assert_eq!(&body[..], b"OK");
+    }
+
+    #[tokio::test]
+    async fn test_deploy_flow_endpoint() {
+        let (tx, _) = broadcast::channel(16);
+        let runtime = Arc::new(RwLock::new(plantlink_runtime::RuntimeEngine::new(
+            tx.clone(),
+        )));
+        let state = AppState { tx, runtime };
+
+        let app = Router::new()
+            .route("/api/flow", axum::routing::post(deploy_flow))
+            .with_state(state);
+
+        let flow_json = r#"{"nodes": [{"id": "n1", "type": "console", "data": {}}], "edges": []}"#;
+        let req = Request::builder()
+            .method("POST")
+            .uri("/api/flow")
+            .header("content-type", "application/json")
+            .body(Body::from(flow_json))
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn test_stop_flow_endpoint() {
+        let (tx, _) = broadcast::channel(16);
+        let runtime = Arc::new(RwLock::new(plantlink_runtime::RuntimeEngine::new(
+            tx.clone(),
+        )));
+        let state = AppState { tx, runtime };
+
+        let app = Router::new()
+            .route("/api/flow/stop", axum::routing::post(stop_flow_handler))
+            .with_state(state);
+
+        let req = Request::builder()
+            .method("POST")
+            .uri("/api/flow/stop")
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
     }
 }

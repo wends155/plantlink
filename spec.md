@@ -69,7 +69,7 @@ The standard message envelope passed between nodes.
 
 ### Required Test Coverage
 - [x] `MessagePayload` serialization round-trip.
-- [ ] `DataValue` variant ordering (Json last).
+- [x] `DataValue` variant ordering (Json last).
 - [ ] `MqttDriver` connection and publish (integration).
 - [ ] `NatsDriver` pub/sub (integration).
 - [ ] `ModbusTcpClient` read_coils (integration).
@@ -186,9 +186,9 @@ stateDiagram-v2
 ### Required Test Coverage
 - [x] `send_node_status` serialization.
 - [x] `NodeContext::emit_stopped` broadcast.
-- [ ] `update_flow` with valid config spawns tasks.
-- [ ] `stop_flow` aborts all tasks and emits stopped status.
-- [ ] `create_node` returns error for unknown type.
+- [x] `update_flow` with valid config spawns tasks.
+- [x] `stop_flow` aborts all tasks and emits stopped status.
+- [x] `create_node` returns error for unknown type.
 
 ---
 
@@ -228,9 +228,9 @@ stateDiagram-v2
 
 ### Required Test Coverage
 - [x] `AppState` construction.
-- [ ] `/health` returns 200.
-- [ ] `/api/flow` accepts valid `FlowConfig` JSON.
-- [ ] `/api/flow/stop` stops runtime.
+- [x] `/health` returns 200.
+- [x] `/api/flow` accepts valid `FlowConfig` JSON.
+- [x] `/api/flow/stop` stops runtime.
 - [ ] WebSocket receives status broadcasts.
 - [ ] SPA fallback serves `index.html` for unknown routes.
 
@@ -262,6 +262,6 @@ stateDiagram-v2
 6. Call `WebServer::run()`.
 
 ### Required Test Coverage
-- [ ] `--port` flag parsing.
-- [ ] Default port is 3000.
+- [x] `--port` flag parsing.
+- [x] Default port is 3000.
 - [ ] Version banner prints correct version.

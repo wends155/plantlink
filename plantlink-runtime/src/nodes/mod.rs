@@ -188,4 +188,72 @@ mod tests {
         assert!(msg.contains("stopped"));
         assert!(msg.contains("Manual stop"));
     }
+
+    #[tokio::test]
+    async fn test_send_output_delivers_to_downstream() {
+        use tokio::sync::mpsc;
+        let (tx, mut rx) = mpsc::channel(16);
+        let (sys_tx, _) = broadcast::channel(16);
+        let mut outputs: HashMap<usize, Vec<(mpsc::Sender<(usize, MessagePayload)>, usize)>> =
+            HashMap::new();
+        outputs.insert(0, vec![(tx, 0)]);
+
+        let ctx = NodeContext::new(
+            "test-node".to_string(),
+            outputs,
+            Arc::new(RwLock::new(HashMap::new())),
+            sys_tx,
+        );
+
+        let msg = MessagePayload::default();
+        let msg_id = msg.id.clone();
+        ctx.send_output(msg).await.unwrap();
+        let (port, received) = rx.recv().await.unwrap();
+        assert_eq!(port, 0);
+        assert_eq!(received.id, msg_id);
+    }
+
+    #[tokio::test]
+    async fn test_send_output_no_links_is_ok() {
+        let (sys_tx, _) = broadcast::channel(16);
+        let ctx = NodeContext::new(
+            "test-node".to_string(),
+            HashMap::new(),
+            Arc::new(RwLock::new(HashMap::new())),
+            sys_tx,
+        );
+        // No outputs configured — should succeed silently
+        let result = ctx.send_output(MessagePayload::default()).await;
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_emit_running_broadcasts() {
+        let (tx, mut rx) = broadcast::channel(16);
+        let ctx = NodeContext::new(
+            "run-node".to_string(),
+            HashMap::new(),
+            Arc::new(RwLock::new(HashMap::new())),
+            tx,
+        );
+        ctx.emit_running("All good");
+        let msg = rx.try_recv().unwrap();
+        assert!(msg.contains("running"));
+        assert!(msg.contains("All good"));
+    }
+
+    #[test]
+    fn test_emit_error_broadcasts() {
+        let (tx, mut rx) = broadcast::channel(16);
+        let ctx = NodeContext::new(
+            "err-node".to_string(),
+            HashMap::new(),
+            Arc::new(RwLock::new(HashMap::new())),
+            tx,
+        );
+        ctx.emit_error("Something failed");
+        let msg = rx.try_recv().unwrap();
+        assert!(msg.contains("error"));
+        assert!(msg.contains("Something failed"));
+    }
 }
