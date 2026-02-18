@@ -103,7 +103,7 @@ plantlink/
 
 ## Documentation
 
--   **[Architecture](./docs/ARCHITECTURE.md)**: System overview, data flow, and design decisions.
+-   **[Architecture](./architecture.md)**: System overview, data flow, and design decisions.
 -   **[Adding Nodes](./docs/ADDING_NODES.md)**: Step-by-step guide for developers creating new node types.
 -   **[Rhai Scripting](./docs/RHAI_SCRIPTING.md)**: Guide for writing Rhai scripts in Function nodes.
 -   **[API Reference](./docs/API.md)**: REST endpoints, WebSocket messages, and flow config format.

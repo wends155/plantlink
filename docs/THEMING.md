@@ -161,6 +161,6 @@ Nodes extend `.node-base` and apply state modifiers.
 
 ## See Also
 
-- [Architecture](./ARCHITECTURE.md) - Overall system architecture
+- [Architecture](../architecture.md) - Overall system architecture
 - [Adding Nodes](./ADDING_NODES.md) - Creating new node types
 - [UI README](../ui/README.md) - Frontend development guide

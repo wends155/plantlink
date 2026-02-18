@@ -84,6 +84,6 @@ Build output is split into chunks for better caching:
 
 ## See Also
 
-- [Architecture](../docs/ARCHITECTURE.md)
+- [Architecture](../architecture.md)
 - [Theming](../docs/THEMING.md)
 - [Testing](../docs/UI_TESTING.md)

@@ -23,3 +23,6 @@ ui/.env
 # OS
 .DS_Store
 Thumbs.db
+
+# Documentation Rules
+GEMINI.md

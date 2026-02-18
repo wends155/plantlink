@@ -30,6 +30,8 @@
 ### 🛠️ Recent Changes (Last 3 Cycles)
 3.  **2026-02-11 (Project Config):** Configured `code-index` project root to `c:\Users\WSALIGAN\code\plantlink` and built deep index for symbol extraction (69 files).
 4.  **2026-02-11 (Project Audit):** Conducted a deep architectural scan and generated `project_summary_report.md` covering crate roles, protocol status, and UI structure.
+5.  **2026-02-18 (Architecture Remediation):** Replaced legacy `docs/ARCHITECTURE.md` with a fully compliant root `architecture.md` and added `todo.md` to track `spec.md` creation.
+6.  **2026-02-18 (Spec Creation):** Created root `spec.md` with behavioral contracts for all 4 workspace crates (core, runtime, web, cli), covering data models, state machines, REST/WebSocket integration points, and CLI contracts.
 
 ### 🧩 Active Components & APIs
 * `plantlink-core`: Shared data types (MessagePayload, DataValue) and protocol markers.
