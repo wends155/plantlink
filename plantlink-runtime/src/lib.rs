@@ -9,10 +9,11 @@ use anyhow::{Result, bail};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tokio::sync::broadcast;
+use tokio::sync::mpsc;
+use tokio_util::sync::CancellationToken;
 
 mod nodes;
 use nodes::{NodeBehavior, NodeContext, NodeReceiver, OutputMap};
-use tokio::sync::mpsc;
 use tokio_stream::StreamExt;
 
 /// Configuration for a single node in a flow.
@@ -105,6 +106,8 @@ pub struct StopStatus {
 pub struct RuntimeEngine {
     tx: broadcast::Sender<String>,
     tasks: HashMap<String, tokio::task::JoinHandle<()>>,
+    /// Cancellation token for the current flow
+    cancel: CancellationToken,
 }
 
 impl RuntimeEngine {
@@ -115,25 +118,32 @@ impl RuntimeEngine {
         Ok(Self {
             tx,
             tasks: HashMap::new(),
+            cancel: CancellationToken::new(),
         })
     }
 
     pub async fn stop_flow(&mut self) -> StopStatus {
-        let count = self.tasks.len();
-        tracing::info!("Runtime: Stopping flow. Aborting {} tasks.", count);
+        tracing::info!("Runtime: Stopping active flow");
 
-        // Emit stopped status for all nodes
+        // 1. Signal cancellation to all nodes
+        self.cancel.cancel();
+
+        // Emit stopped status for all nodes immediately for better UI feedback
         for node_id in self.tasks.keys() {
             nodes::send_node_status(&self.tx, node_id.clone(), "stopped", "Flow stopped");
         }
 
-        // Then abort tasks
+        // 2. Abort all tasks
+        let tasks_to_abort = self.tasks.len();
         for (_, handle) in self.tasks.drain() {
             handle.abort();
         }
 
+        // 3. Create a fresh token for the next flow
+        self.cancel = CancellationToken::new();
+
         StopStatus {
-            tasks_aborted: count,
+            tasks_aborted: tasks_to_abort,
         }
     }
 
@@ -197,8 +207,13 @@ impl RuntimeEngine {
         for config in flow.nodes {
             let node_id = config.id.clone();
             let outputs = node_senders.remove(&node_id).unwrap_or_default();
-            let ctx =
-                NodeContext::new(node_id.clone(), outputs, resources.clone(), self.tx.clone());
+            let ctx = NodeContext::new(
+                node_id.clone(),
+                outputs,
+                resources.clone(),
+                self.tx.clone(),
+                self.cancel.child_token(),
+            );
 
             // Create specific node instance dynamically from registry
             let mut node: Box<dyn NodeBehavior> =

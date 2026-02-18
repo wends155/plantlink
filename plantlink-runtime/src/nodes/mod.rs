@@ -16,6 +16,7 @@ use std::any::Any;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tokio::sync::broadcast;
+use tokio_util::sync::CancellationToken;
 
 pub type NodeSender = mpsc::Sender<(usize, MessagePayload)>;
 pub type NodeReceiver = mpsc::Receiver<(usize, MessagePayload)>;
@@ -77,6 +78,8 @@ pub struct NodeContext {
     pub resources: Arc<RwLock<HashMap<String, Box<dyn Any + Send + Sync>>>>,
     /// System Broadcast Channel (For Logs and Status)
     pub system_tx: broadcast::Sender<String>,
+    /// Cancellation Token for cooperative shutdown
+    pub cancel: CancellationToken,
 }
 
 impl NodeContext {
@@ -85,12 +88,14 @@ impl NodeContext {
         outputs: OutputMap,
         resources: Arc<RwLock<HashMap<String, Box<dyn Any + Send + Sync>>>>,
         system_tx: broadcast::Sender<String>,
+        cancel: CancellationToken,
     ) -> Self {
         Self {
             id,
             outputs,
             resources,
             system_tx,
+            cancel,
         }
     }
 
@@ -182,6 +187,7 @@ mod tests {
             HashMap::new(),
             Arc::new(RwLock::new(HashMap::new())),
             tx,
+            CancellationToken::new(),
         );
         ctx.emit_stopped("Manual stop");
         let msg = rx.try_recv().expect("Message not received");
@@ -204,6 +210,7 @@ mod tests {
             outputs,
             Arc::new(RwLock::new(HashMap::new())),
             sys_tx,
+            CancellationToken::new(),
         );
 
         let msg = MessagePayload::default();
@@ -222,6 +229,7 @@ mod tests {
             HashMap::new(),
             Arc::new(RwLock::new(HashMap::new())),
             sys_tx,
+            CancellationToken::new(),
         );
         // No outputs configured — should succeed silently
         let result = ctx.send_output(MessagePayload::default()).await;
@@ -236,6 +244,7 @@ mod tests {
             HashMap::new(),
             Arc::new(RwLock::new(HashMap::new())),
             tx,
+            CancellationToken::new(),
         );
         ctx.emit_running("All good");
         let msg = rx.try_recv().unwrap();
@@ -251,6 +260,7 @@ mod tests {
             HashMap::new(),
             Arc::new(RwLock::new(HashMap::new())),
             tx,
+            CancellationToken::new(),
         );
         ctx.emit_error("Something failed");
         let msg = rx.try_recv().unwrap();

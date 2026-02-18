@@ -189,6 +189,8 @@ stateDiagram-v2
 - [x] `RuntimeEngine::new` returns `Result`.
 - [x] `update_flow` returns error on invalid node types.
 - [x] `stop_flow` returns `StopStatus` with correct count.
+- [x] `InjectNode` timer stops on `CancellationToken` cancellation.
+- [x] `InjectNode` timer stops on downstream channel closure.
 - [x] `create_node` returns error for unknown type.
 
 ---

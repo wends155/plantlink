@@ -42,18 +42,29 @@ impl SimpleNode for InjectNode {
             let payload = self.payload.clone();
             let ctx_clone = ctx.clone();
 
+            let cancel = ctx.cancel.clone();
+
             // Spawn a background task for the timer
             let handle = tokio::spawn(async move {
                 let mut timer = tokio::time::interval(interval);
                 timer.tick().await; // First tick is immediate
                 loop {
-                    timer.tick().await;
-                    let msg = MessagePayload {
-                        payload: plantlink_core::DataValue::String(payload.clone()),
-                        ..Default::default()
-                    };
-                    if let Err(e) = ctx_clone.send_output(msg).await {
-                        tracing::warn!("InjectNode timer: failed to send output: {}", e);
+                    tokio::select! {
+                        _ = cancel.cancelled() => {
+                            tracing::info!("InjectNode timer: cancelled");
+                            break;
+                        }
+                        _ = timer.tick() => {
+                            let msg = MessagePayload {
+                                payload: plantlink_core::DataValue::String(payload.clone()),
+                                ..Default::default()
+                            };
+                            if let Err(e) = ctx_clone.send_output(msg).await {
+                                tracing::warn!("InjectNode timer: channel closed, stopping: {}", e);
+                                ctx_clone.emit_stopped("Channel closed");
+                                break;
+                            }
+                        }
                     }
                 }
             });
@@ -85,5 +96,79 @@ impl SimpleNode for InjectNode {
             handle.abort();
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::NodeConfig;
+    use crate::nodes::OutputMap;
+    use tokio::sync::{broadcast, mpsc};
+    use tokio_util::sync::CancellationToken;
+    use std::collections::HashMap;
+    use std::sync::Arc;
+    use tokio::sync::RwLock;
+
+    #[tokio::test]
+    async fn test_inject_timer_stops_on_cancellation() {
+        let (sys_tx, _) = broadcast::channel(16);
+        let cancel = CancellationToken::new();
+        let ctx = NodeContext::new(
+            "inject-test".into(),
+            HashMap::new(),
+            Arc::new(RwLock::new(HashMap::new())),
+            sys_tx,
+            cancel.clone(),
+        );
+        let mut node = InjectNode::new(&NodeConfig {
+            id: "inject-test".into(),
+            type_: "inject".into(),
+            data: serde_json::json!({"interval": 1, "payload": "test"}),
+        });
+        node.on_start(&ctx).await.unwrap();
+
+        // Cancel and wait for timer to exit
+        cancel.cancel();
+        tokio::time::sleep(Duration::from_millis(100)).await;
+
+        assert!(
+            node.timer_handle.as_ref().unwrap().is_finished(),
+            "Timer should have exited after cancellation"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_inject_timer_stops_on_closed_channel() {
+        let (tx, rx) = mpsc::channel(16);
+        let (sys_tx, _) = broadcast::channel(16);
+        let cancel = CancellationToken::new();
+        let mut outputs: OutputMap = HashMap::new();
+        outputs.insert(0, vec![(tx, 0)]);
+
+        let ctx = NodeContext::new(
+            "inject-test".into(),
+            outputs,
+            Arc::new(RwLock::new(HashMap::new())),
+            sys_tx,
+            cancel,
+        );
+        let mut node = InjectNode::new(&NodeConfig {
+            id: "inject-test".into(),
+            type_: "inject".into(),
+            data: serde_json::json!({"interval": 1, "payload": "test"}),
+        });
+        node.on_start(&ctx).await.unwrap();
+
+        // Drop receiver to close channel
+        drop(rx);
+
+        // Wait for next tick (interval 1s)
+        tokio::time::sleep(Duration::from_millis(1100)).await;
+
+        assert!(
+            node.timer_handle.as_ref().unwrap().is_finished(),
+            "Timer should have exited after channel closed"
+        );
     }
 }
