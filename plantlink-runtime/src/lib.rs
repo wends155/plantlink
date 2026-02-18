@@ -339,4 +339,62 @@ mod tests {
         let msg = rx.try_recv().expect("Expected stopped status");
         assert!(msg.contains("stopped"));
     }
+
+    #[test]
+    fn test_new_returns_ok() {
+        let (tx, _rx) = broadcast::channel(16);
+        let engine = RuntimeEngine::new(tx);
+        assert!(engine.is_ok(), "RuntimeEngine::new should succeed");
+    }
+
+    #[tokio::test]
+    async fn test_update_flow_error_on_invalid_node_type() {
+        let (tx, _rx) = broadcast::channel(16);
+        let mut engine = RuntimeEngine::new(tx).unwrap();
+        let flow = FlowConfig {
+            nodes: vec![NodeConfig {
+                id: "bad-node".into(),
+                type_: "nonexistent-node-type".into(),
+                data: serde_json::json!({}),
+            }],
+            edges: vec![],
+        };
+        let result = engine.update_flow(flow).await;
+        assert!(
+            result.is_err(),
+            "update_flow should fail for unknown node types"
+        );
+        let err_msg = result.unwrap_err().to_string();
+        assert!(
+            err_msg.contains("bad-node"),
+            "Error should name the failing node, got: {}",
+            err_msg
+        );
+    }
+
+    #[tokio::test]
+    async fn test_stop_flow_returns_correct_count() {
+        let (tx, _rx) = broadcast::channel(16);
+        let mut engine = RuntimeEngine::new(tx).unwrap();
+
+        // Deploy a flow with 2 valid nodes
+        let flow = FlowConfig {
+            nodes: vec![
+                NodeConfig {
+                    id: "n1".into(),
+                    type_: "console".into(),
+                    data: serde_json::json!({}),
+                },
+                NodeConfig {
+                    id: "n2".into(),
+                    type_: "console".into(),
+                    data: serde_json::json!({}),
+                },
+            ],
+            edges: vec![],
+        };
+        engine.update_flow(flow).await.unwrap();
+        let status = engine.stop_flow().await;
+        assert_eq!(status.tasks_aborted, 2, "Should report 2 aborted tasks");
+    }
 }

@@ -186,9 +186,9 @@ stateDiagram-v2
 ### Required Test Coverage
 - [x] `send_node_status` serialization.
 - [x] `NodeContext::emit_stopped` broadcast.
-- [ ] `RuntimeEngine::new` returns `Result`.
-- [ ] `update_flow` returns error on invalid node types.
-- [ ] `stop_flow` returns `StopStatus` with correct count.
+- [x] `RuntimeEngine::new` returns `Result`.
+- [x] `update_flow` returns error on invalid node types.
+- [x] `stop_flow` returns `StopStatus` with correct count.
 - [x] `create_node` returns error for unknown type.
 
 ---
