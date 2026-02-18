@@ -2,6 +2,21 @@ use anyhow::Result;
 use rumqttc::{AsyncClient, MqttOptions, QoS};
 use std::time::Duration;
 
+/// Manages a persistent MQTT client connection with automatic reconnection.
+///
+/// Uses exponential backoff (1s–60s) for the event loop retry strategy.
+///
+/// # Examples
+///
+/// ```no_run
+/// use plantlink_core::mqtt::MqttDriver;
+///
+/// # async fn example() -> anyhow::Result<()> {
+/// let driver = MqttDriver::connect("plant-01", "localhost", 1883).await?;
+/// driver.publish("sensors/temp", vec![0x42]).await?;
+/// # Ok(())
+/// # }
+/// ```
 pub struct MqttDriver {
     client: AsyncClient,
 }

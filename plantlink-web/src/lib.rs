@@ -1,3 +1,9 @@
+//! # PlantLink Web
+//!
+//! HTTP server and WebSocket handler for the PlantLink editor UI.
+//! Serves the embedded SvelteKit frontend and provides REST endpoints
+//! for flow deployment and runtime control.
+
 use axum::{
     Router,
     extract::{
@@ -18,6 +24,34 @@ use tokio::sync::broadcast;
 #[folder = "../ui/dist"]
 struct Asset;
 
+/// HTTP server for the PlantLink editor.
+///
+/// Serves the embedded UI, REST API endpoints, and WebSocket connections.
+///
+/// # Endpoints
+///
+/// | Method | Path | Description |
+/// |--------|------|-------------|
+/// | `GET`    | `/health`          | Health check |
+/// | `POST`   | `/api/flow`       | Deploy a flow |
+/// | `POST`   | `/api/flow/stop`  | Stop the running flow |
+/// | `GET`    | `/ws`             | WebSocket for live updates |
+///
+/// # Examples
+///
+/// ```no_run
+/// use plantlink_web::WebServer;
+/// use plantlink_runtime::RuntimeEngine;
+/// use std::sync::Arc;
+/// use tokio::sync::{broadcast, RwLock};
+///
+/// # async fn example() -> anyhow::Result<()> {
+/// let (tx, _) = broadcast::channel(100);
+/// let runtime = Arc::new(RwLock::new(RuntimeEngine::new(tx.clone())));
+/// WebServer::run(3000, tx, runtime).await?;
+/// # Ok(())
+/// # }
+/// ```
 pub struct WebServer;
 
 use std::sync::Arc;

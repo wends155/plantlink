@@ -1,8 +1,40 @@
+//! # PlantLink Core
+//!
+//! Shared data types and protocol drivers for the PlantLink
+//! flow-based IoT runtime.
+//!
+//! This crate provides:
+//! - [`DataValue`] — A universal value type for node payloads.
+//! - [`MessagePayload`] — The standard message envelope passed between nodes.
+//! - Protocol drivers: [`mqtt::MqttDriver`], [`nats::NatsDriver`], [`modbus::ModbusTcpClient`].
+
 use serde::{Deserialize, Serialize};
 
 // ... (existing imports)
 use std::fmt;
 
+/// Universal value type for all node payloads.
+///
+/// Uses `#[serde(untagged)]` deserialization, so variant order matters.
+/// `Null` must precede `Json` to prevent `null` from being captured as `Json(Value::Null)`.
+///
+/// # Examples
+///
+/// ```
+/// use plantlink_core::DataValue;
+///
+/// // Primitive types deserialize to their specific variants
+/// let val: DataValue = serde_json::from_str("42").unwrap();
+/// assert!(matches!(val, DataValue::Integer(42)));
+///
+/// // JSON objects are captured by the Json variant
+/// let val: DataValue = serde_json::from_str(r#"{"key": "value"}"#).unwrap();
+/// assert!(matches!(val, DataValue::Json(_)));
+///
+/// // Display implementation
+/// assert_eq!(DataValue::Boolean(true).to_string(), "true");
+/// assert_eq!(DataValue::Null.to_string(), "null");
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum DataValue {
@@ -30,6 +62,25 @@ impl fmt::Display for DataValue {
     }
 }
 
+/// The standard message envelope passed between nodes.
+///
+/// Each message has a unique `id`, a `timestamp` in milliseconds since epoch,
+/// and an arbitrary `meta` field for additional context.
+///
+/// # Examples
+///
+/// ```
+/// use plantlink_core::{MessagePayload, DataValue};
+///
+/// let msg = MessagePayload::default();
+/// assert!(matches!(msg.payload, DataValue::Null));
+/// assert!(!msg.id.is_empty());
+///
+/// // Round-trip serialization
+/// let json = serde_json::to_string(&msg).unwrap();
+/// let deserialized: MessagePayload = serde_json::from_str(&json).unwrap();
+/// assert_eq!(msg.id, deserialized.id);
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MessagePayload {
     pub id: String,

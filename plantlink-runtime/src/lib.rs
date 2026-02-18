@@ -1,3 +1,8 @@
+//! # PlantLink Runtime
+//!
+//! The flow execution engine for PlantLink. Manages the lifecycle of all nodes
+//! defined in a [`FlowConfig`] and routes messages between them.
+
 // use rhai::{Engine, Scope, AST, Dynamic};
 // use plantlink_core::MessagePayload;
 // use anyhow::Result;
@@ -10,6 +15,18 @@ use nodes::{NodeBehavior, NodeContext, NodeReceiver, OutputMap};
 use tokio::sync::mpsc;
 use tokio_stream::StreamExt;
 
+/// Configuration for a single node in a flow.
+///
+/// # Examples
+///
+/// ```
+/// use plantlink_runtime::NodeConfig;
+///
+/// let json = r#"{"id": "n1", "type": "console", "data": {"label": "My Node"}}"#;
+/// let config: NodeConfig = serde_json::from_str(json).unwrap();
+/// assert_eq!(config.id, "n1");
+/// assert_eq!(config.type_, "console");
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NodeConfig {
     pub id: String,
@@ -18,6 +35,18 @@ pub struct NodeConfig {
     pub data: serde_json::Value,
 }
 
+/// Defines a connection between two nodes in a flow.
+///
+/// # Examples
+///
+/// ```
+/// use plantlink_runtime::EdgeConfig;
+///
+/// let json = r#"{"id": "e1", "source": "n1", "target": "n2"}"#;
+/// let edge: EdgeConfig = serde_json::from_str(json).unwrap();
+/// assert_eq!(edge.source, "n1");
+/// assert!(edge.source_handle.is_none());
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EdgeConfig {
     pub id: String,
@@ -29,12 +58,42 @@ pub struct EdgeConfig {
     pub target_handle: Option<String>,
 }
 
+/// A complete flow definition containing nodes and edges.
+///
+/// # Examples
+///
+/// ```
+/// use plantlink_runtime::{FlowConfig, NodeConfig, EdgeConfig};
+///
+/// let json = r#"{
+///     "nodes": [{"id": "n1", "type": "console", "data": {}}],
+///     "edges": [{"id": "e1", "source": "n1", "target": "n2"}]
+/// }"#;
+/// let flow: FlowConfig = serde_json::from_str(json).unwrap();
+/// assert_eq!(flow.nodes.len(), 1);
+/// assert_eq!(flow.edges.len(), 1);
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FlowConfig {
     pub nodes: Vec<NodeConfig>,
     pub edges: Vec<EdgeConfig>,
 }
 
+/// Manages the lifecycle of all nodes in a flow.
+///
+/// # Examples
+///
+/// ```no_run
+/// use plantlink_runtime::RuntimeEngine;
+/// use tokio::sync::broadcast;
+///
+/// # async fn example() {
+/// let (tx, _) = broadcast::channel(100);
+/// let mut engine = RuntimeEngine::new(tx);
+/// // engine.update_flow(flow).await;
+/// // engine.stop_flow().await;
+/// # }
+/// ```
 pub struct RuntimeEngine {
     tx: broadcast::Sender<String>,
     tasks: HashMap<String, tokio::task::JoinHandle<()>>,
