@@ -1,7 +1,7 @@
-//! # PlantLink Core
+//! # `PlantLink` Core
 //!
-//! Shared data types and protocol drivers for the PlantLink
-//! flow-based IoT runtime.
+//! Shared data types and protocol drivers for the `PlantLink`
+//! flow-based `IoT` runtime.
 //!
 //! This crate provides:
 //! - [`DataValue`] — A universal value type for node payloads.
@@ -51,12 +51,12 @@ pub enum DataValue {
 impl fmt::Display for DataValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            DataValue::Boolean(v) => write!(f, "{}", v),
-            DataValue::Integer(v) => write!(f, "{}", v),
-            DataValue::Float(v) => write!(f, "{}", v),
-            DataValue::String(v) => write!(f, "{}", v),
-            DataValue::Bytes(v) => write!(f, "{:?}", v),
-            DataValue::Json(v) => write!(f, "{}", v),
+            DataValue::Boolean(v) => write!(f, "{v}"),
+            DataValue::Integer(v) => write!(f, "{v}"),
+            DataValue::Float(v) => write!(f, "{v}"),
+            DataValue::String(v) => write!(f, "{v}"),
+            DataValue::Bytes(v) => write!(f, "{v:?}"),
+            DataValue::Json(v) => write!(f, "{v}"),
             DataValue::Null => write!(f, "null"),
         }
     }
@@ -96,7 +96,7 @@ impl Default for MessagePayload {
             id: uuid::Uuid::new_v4().to_string(),
             topic: None,
             payload: DataValue::Null,
-            timestamp: chrono::Utc::now().timestamp_millis() as u64,
+            timestamp: chrono::Utc::now().timestamp_millis().cast_unsigned(),
             meta: serde_json::json!({}),
         }
     }

@@ -24,11 +24,17 @@ pub struct ModbusTcpClient {
 }
 
 impl ModbusTcpClient {
+    ///
+    /// # Errors
+    /// Returns an error if the connection to the Modbus server fails.
     pub async fn connect(addr: SocketAddr) -> Result<Self> {
         let ctx = tcp::connect(addr).await?;
         Ok(Self { ctx })
     }
 
+    ///
+    /// # Errors
+    /// Returns an error if reading from the Modbus server fails.
     pub async fn read_coils(&mut self, addr: u16, cnt: u16) -> Result<Vec<bool>> {
         let data = self.ctx.read_coils(addr, cnt).await?;
         Ok(data)

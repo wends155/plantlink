@@ -1,7 +1,7 @@
-//! # PlantLink Web
+//! # `PlantLink` Web
 //!
-//! HTTP server and WebSocket handler for the PlantLink editor UI.
-//! Serves the embedded SvelteKit frontend and provides REST endpoints
+//! HTTP server and WebSocket handler for the `PlantLink` editor UI.
+//! Serves the embedded `SvelteKit` frontend and provides REST endpoints
 //! for flow deployment and runtime control.
 
 use axum::{
@@ -24,7 +24,7 @@ use tokio::sync::broadcast;
 #[folder = "../ui/dist"]
 struct Asset;
 
-/// HTTP server for the PlantLink editor.
+/// HTTP server for the `PlantLink` editor.
 ///
 /// Serves the embedded UI, REST API endpoints, and WebSocket connections.
 ///
@@ -66,6 +66,9 @@ struct AppState {
 }
 
 impl WebServer {
+    ///
+    /// # Errors
+    /// Returns an error if the server fails to bind to the port or start up.
     pub async fn run(
         port: u16,
         tx: broadcast::Sender<String>,
@@ -120,8 +123,8 @@ async fn shutdown_signal(runtime: Arc<RwLock<plantlink_runtime::RuntimeEngine>>)
     let terminate = std::future::pending::<()>();
 
     tokio::select! {
-        _ = ctrl_c => {},
-        _ = terminate => {},
+        () = ctrl_c => {},
+        () = terminate => {},
     }
 
     tracing::info!("Signal received, starting graceful shutdown...");
@@ -153,7 +156,7 @@ async fn deploy_flow(
             tracing::error!("Flow deployment failed: {}", e);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Deployment error: {}", e),
+                format!("Deployment error: {e}"),
             )
         }
     }
@@ -174,6 +177,7 @@ async fn ws_handler(ws: WebSocketUpgrade, State(state): State<AppState>) -> Resp
     ws.on_upgrade(|socket| handle_socket(socket, state))
 }
 
+#[allow(clippy::unused_async)]
 async fn handle_socket(socket: WebSocket, state: AppState) {
     let (mut sender, _) = socket.split();
     let mut rx = state.tx.subscribe();
@@ -227,7 +231,7 @@ async fn static_handler(headers: header::HeaderMap, uri: Uri) -> Response {
         .unwrap_or("");
 
     if accept_encoding.contains("gzip") {
-        let gz_path = format!("{}.gz", path);
+        let gz_path = format!("{path}.gz");
         if let Some(resp) = serve_asset(&gz_path, true) {
             return resp;
         }

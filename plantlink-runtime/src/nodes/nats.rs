@@ -51,8 +51,8 @@ impl NodeBehavior for NatsBrokerNode {
             }
             Err(e) => {
                 // Emit error status
-                ctx.emit_error(&format!("Connection failed: {}", e));
-                Err(e)
+                ctx.emit_error(&format!("Connection failed: {e}"));
+                return Ok(());
             }
         }
     }
@@ -88,9 +88,8 @@ impl NodeBehavior for NatsSubNode {
         ctx: NodeContext,
     ) -> Result<()> {
         // Expect Connection ID in payload
-        let conn_id = match msg.payload {
-            DataValue::String(s) => s,
-            _ => return Ok(()), // Ignore invalid payloads
+        let DataValue::String(conn_id) = msg.payload else {
+            return Ok(()); // Ignore invalid payloads
         };
 
         // Retrieve Driver
@@ -111,8 +110,8 @@ impl NodeBehavior for NatsSubNode {
         let mut subscriber = match driver.subscribe(&self.subject).await {
             Ok(s) => s,
             Err(e) => {
-                ctx.emit_error(&format!("Subscribe failed: {}", e));
-                return Err(e);
+                ctx.emit_error(&format!("Subscribe failed: {e}"));
+                return Ok(());
             }
         };
         // let subject = self.subject.clone(); // Not used
@@ -217,7 +216,7 @@ impl NodeBehavior for NatsPubNode {
                 };
 
                 if let Err(e) = driver.publish(target_subject, payload_bytes).await {
-                    ctx.emit_error(&format!("Publish failed: {}", e));
+                    ctx.emit_error(&format!("Publish failed: {e}"));
                 }
             } else {
                 tracing::warn!("NatsPub: No active connection");

@@ -22,6 +22,10 @@ pub struct MqttDriver {
 }
 
 impl MqttDriver {
+    ///
+    /// # Errors
+    /// Returns an error if the MQTT options are invalid.
+    #[allow(clippy::unused_async)]
     pub async fn connect(id: &str, host: &str, port: u16) -> Result<Self> {
         let mut mqttoptions = MqttOptions::new(id, host, port);
         mqttoptions.set_keep_alive(Duration::from_secs(5));
@@ -56,6 +60,9 @@ impl MqttDriver {
         Ok(Self { client })
     }
 
+    ///
+    /// # Errors
+    /// Returns an error if publishing to the broker fails.
     pub async fn publish(&self, topic: &str, payload: Vec<u8>) -> Result<()> {
         self.client
             .publish(topic, QoS::AtLeastOnce, false, payload)

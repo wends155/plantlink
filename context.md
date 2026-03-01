@@ -39,6 +39,7 @@
 11. **2026-02-18 (Runtime Stability):** Implemented robust error handling in `RuntimeEngine`. Replaced `expect()` on locks with `Result` propagation, added `StopStatus` reporting, and updated web/cli layers to handle failures. Added comprehensive unit tests for new API contracts and verified workspace (total 35 tests passed).
 12. **2026-02-18 (InjectNode Stability):** Resolved zombie task leak in `InjectNode` by implementing cooperative cancellation via `tokio-util::CancellationToken`. Ensured timer loops shut down immediately on flow stop or channel closure, preventing infinite log spam.
 13. **2026-03-01 (Audit Remediation):** Resolved 3 audit findings (clippy, rustfmt) across `plantlink-core` and `plantlink-runtime`. Fixed formatting issues, type complexity in tests, and addressed the `approx_constant` lint using `#[allow]` for the 3.14 parsing test. Verified zero-exit status for the full quality gate (fmt, clippy, test).
+14. **2026-03-01 (Workspace Linting):** Addressed 38+ deny-level clippy violations following the implementation of strict workspace linting rules (`[workspace.lints]`). Iteratively fixed `uninlined_format_args`, `doc_markdown`, `missing_errors_doc`, and `ignored_unit_patterns` across `plantlink-core`, `plantlink-runtime`, `plantlink-web`, and `plantlink-cli`. Verified clean builds (`fmt`, `clippy`, `test`) with strict zero-exit gates across all crates.
 
 ### 🧩 Active Components & APIs
 * `plantlink-core`: Shared data types (MessagePayload, DataValue) and protocol markers.

@@ -1,16 +1,16 @@
 use crate::NodeConfig;
 use crate::nodes::NodeBehavior;
 use anyhow::{Result, bail};
-use once_cell::sync::Lazy;
 use std::collections::HashMap;
+use std::sync::LazyLock;
 use std::sync::RwLock;
 
 /// Type definition for a node factory function
 pub type NodeFactory = Box<dyn Fn(&NodeConfig) -> Box<dyn NodeBehavior> + Send + Sync>;
 
 /// Global registry mapping Node Type String -> Factory Function
-static NODE_REGISTRY: Lazy<RwLock<HashMap<String, NodeFactory>>> =
-    Lazy::new(|| RwLock::new(HashMap::new()));
+static NODE_REGISTRY: LazyLock<RwLock<HashMap<String, NodeFactory>>> =
+    LazyLock::new(|| RwLock::new(HashMap::new()));
 
 pub fn register_node<F>(type_name: &str, factory: F) -> Result<()>
 where
@@ -18,7 +18,7 @@ where
 {
     let mut registry = NODE_REGISTRY
         .write()
-        .map_err(|e| anyhow::anyhow!("Registry write lock poisoned: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Registry write lock poisoned: {e}"))?;
     registry.insert(type_name.to_string(), Box::new(factory));
     tracing::info!("Registered node type: {}", type_name);
     Ok(())
@@ -27,10 +27,11 @@ where
 pub fn create_node(type_name: &str, config: &NodeConfig) -> Result<Box<dyn NodeBehavior>> {
     let registry = NODE_REGISTRY
         .read()
-        .map_err(|e| anyhow::anyhow!("Registry read lock poisoned: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Registry read lock poisoned: {e}"))?;
+
     match registry.get(type_name) {
         Some(factory) => Ok(factory(config)),
-        None => bail!("Unknown node type: {}", type_name),
+        None => bail!("Unknown node type: {type_name}"),
     }
 }
 

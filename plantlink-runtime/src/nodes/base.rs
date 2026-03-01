@@ -12,7 +12,7 @@ pub trait SimpleNode: Send + Sync {
     }
 
     /// Handle an incoming message. Return a Result.
-    /// If you need to send output, use ctx.send_output().
+    /// If you need to send output, use `ctx.send_output()`.
     async fn handle(&mut self, port: usize, msg: MessagePayload, ctx: &NodeContext) -> Result<()>;
 
     async fn on_stop(&mut self) -> Result<()> {
@@ -20,7 +20,8 @@ pub trait SimpleNode: Send + Sync {
     }
 }
 
-/// A wrapper that adapts a SimpleNode into a full NodeBehavior
+/// A wrapper that adapts a `SimpleNode` into a full `NodeBehavior`
+#[derive(Clone)]
 pub struct BaseNodeAdapter<T: SimpleNode> {
     inner: T,
 }

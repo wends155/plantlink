@@ -21,6 +21,9 @@ pub struct NatsDriver {
 }
 
 impl NatsDriver {
+    ///
+    /// # Errors
+    /// Returns an error if connecting to the NATS server fails.
     pub async fn connect(url: &str) -> Result<Self> {
         let client = async_nats::connect(url)
             .await
@@ -28,6 +31,9 @@ impl NatsDriver {
         Ok(Self { client })
     }
 
+    ///
+    /// # Errors
+    /// Returns an error if publishing to the given subject fails.
     pub async fn publish(&self, subject: &str, payload: bytes::Bytes) -> Result<()> {
         self.client
             .publish(subject.to_string(), payload)
@@ -36,6 +42,9 @@ impl NatsDriver {
         Ok(())
     }
 
+    ///
+    /// # Errors
+    /// Returns an error if subscribing to the given subject fails.
     pub async fn subscribe(&self, subject: &str) -> Result<async_nats::Subscriber> {
         self.client
             .subscribe(subject.to_string())

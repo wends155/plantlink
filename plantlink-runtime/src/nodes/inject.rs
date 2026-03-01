@@ -21,7 +21,7 @@ impl InjectNode {
         let interval_secs = config
             .data
             .get("interval")
-            .and_then(|v| v.as_u64())
+            .and_then(serde_json::Value::as_u64)
             .unwrap_or(0);
 
         Self {
@@ -50,7 +50,7 @@ impl SimpleNode for InjectNode {
                 timer.tick().await; // First tick is immediate
                 loop {
                     tokio::select! {
-                        _ = cancel.cancelled() => {
+                        () = cancel.cancelled() => {
                             tracing::info!("InjectNode timer: cancelled");
                             break;
                         }

@@ -1,6 +1,6 @@
-//! # PlantLink Runtime
+//! # `PlantLink` Runtime
 //!
-//! The flow execution engine for PlantLink. Manages the lifecycle of all nodes
+//! The flow execution engine for `PlantLink`. Manages the lifecycle of all nodes
 //! defined in a [`FlowConfig`] and routes messages between them.
 
 // use rhai::{Engine, Scope, AST, Dynamic};
@@ -111,6 +111,9 @@ pub struct RuntimeEngine {
 }
 
 impl RuntimeEngine {
+    ///
+    /// # Errors
+    /// Returns an error if the engine cannot be initialized.
     pub fn new(tx: broadcast::Sender<String>) -> Result<Self> {
         // Ensure defaults are registered
         nodes::register_defaults()?;
@@ -122,6 +125,7 @@ impl RuntimeEngine {
         })
     }
 
+    #[allow(clippy::unused_async)]
     pub async fn stop_flow(&mut self) -> StopStatus {
         tracing::info!("Runtime: Stopping active flow");
 
@@ -147,6 +151,10 @@ impl RuntimeEngine {
         }
     }
 
+    ///
+    /// # Errors
+    /// Returns an error if the new flow cannot be deployed.
+    #[allow(clippy::too_many_lines, clippy::if_not_else)]
     pub async fn update_flow(&mut self, flow: FlowConfig) -> Result<()> {
         tracing::info!("Runtime: Updating flow with {} nodes", flow.nodes.len());
 
@@ -239,7 +247,7 @@ impl RuntimeEngine {
                     let status = nodes::NodeStatus {
                         node_id: node_id.clone(),
                         state: "error".to_string(),
-                        message: format!("Failed to start: {}", e),
+                        message: format!("Failed to start: {e}"),
                     };
                     #[allow(clippy::collapsible_if)]
                     if let Ok(json) = serde_json::to_string(&serde_json::json!({
@@ -382,8 +390,7 @@ mod tests {
         let err_msg = result.unwrap_err().to_string();
         assert!(
             err_msg.contains("bad-node"),
-            "Error should name the failing node, got: {}",
-            err_msg
+            "Error should name the failing node, got: {err_msg}"
         );
     }
 

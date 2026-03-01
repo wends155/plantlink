@@ -19,8 +19,7 @@ impl RhaiNode {
 
         tracing::info!("RhaiNode: Compiling script: {}", user_script);
 
-        // Implicitly wrap user code in a function
-        let wrapped_script = format!("fn process(msg) {{\n{}\n}}", user_script);
+        let wrapped_script = format!("fn process(msg) {{\n{user_script}\n}}");
 
         let engine = Engine::new();
         let (ast, compile_error) = match engine.compile(&wrapped_script) {
@@ -45,12 +44,12 @@ impl NodeBehavior for RhaiNode {
             if let Err(e) = ctx.system_tx.send(json_log) {
                 tracing::warn!(node_id = %ctx.id, "Failed to broadcast log: {}", e);
             }
-
-            ctx.emit_error(&format!("Compilation Error: {}", err));
+            ctx.emit_error(&format!("Compilation Error: {err}"));
+            Err(anyhow::anyhow!("Compilation Error: {err}"))
         } else {
             ctx.emit_running("Script compiled successfully");
+            Ok(())
         }
-        Ok(())
     }
 
     async fn on_input(
@@ -103,8 +102,8 @@ impl NodeBehavior for RhaiNode {
                             if let Err(e) = ctx.system_tx.send(json) {
                                 tracing::warn!(node_id = %ctx.id, "Failed to broadcast log: {}", e);
                             }
-
-                            ctx.emit_error(&format!("Return Type Mismatch: {}", e));
+                            ctx.emit_error(&format!("Return Type Mismatch: {e}"));
+                            return Err(anyhow::anyhow!("Type error: {e}"));
                         }
                     }
                 }
@@ -114,8 +113,8 @@ impl NodeBehavior for RhaiNode {
                     if let Err(e) = ctx.system_tx.send(json) {
                         tracing::warn!(node_id = %ctx.id, "Failed to broadcast log: {}", e);
                     }
-
-                    ctx.emit_error(&format!("Runtime Error: {}", e));
+                    ctx.emit_error(&format!("Runtime Error: {e}"));
+                    return Err(anyhow::anyhow!("Rhai error: {e}"));
                 }
             }
         } else {
