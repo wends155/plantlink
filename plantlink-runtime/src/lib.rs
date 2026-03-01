@@ -9,7 +9,6 @@ use anyhow::{Result, bail};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tokio::sync::broadcast;
-use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
 mod nodes;
@@ -154,7 +153,7 @@ impl RuntimeEngine {
     ///
     /// # Errors
     /// Returns an error if the new flow cannot be deployed.
-    #[allow(clippy::too_many_lines, clippy::if_not_else)]
+    #[allow(clippy::if_not_else)]
     pub async fn update_flow(&mut self, flow: FlowConfig) -> Result<()> {
         tracing::info!("Runtime: Updating flow with {} nodes", flow.nodes.len());
 
@@ -162,52 +161,14 @@ impl RuntimeEngine {
         self.stop_flow().await;
 
         // 2. Map Edges to Outputs and Inputs
-        // NodeID -> OutputPortIndex -> Vec<(TargetNodeID, TargetInputPortIndex)>
-        let mut wiring: HashMap<String, HashMap<usize, Vec<(String, usize)>>> = HashMap::new();
-
-        for edge in &flow.edges {
-            // Parse Handle IDs to Port Indexes (For now default to 0 if not parsable or missing)
-            // Convention: "port_0", "output_1", etc. or just index.
-            let src_port = parse_port(edge.source_handle.as_deref());
-            let tgt_port = parse_port(edge.target_handle.as_deref());
-
-            wiring
-                .entry(edge.source.clone())
-                .or_default()
-                .entry(src_port)
-                .or_default()
-                .push((edge.target.clone(), tgt_port));
-        }
+        let wiring = build_wiring(&flow.edges);
 
         // 3. Create Channels and Contexts
-        let mut node_senders: HashMap<String, OutputMap> = HashMap::new();
-        let mut node_receivers: HashMap<String, Vec<(usize, NodeReceiver)>> = HashMap::new();
+        let (mut node_senders, mut node_receivers) = create_channels(wiring);
 
         // Use a Shared Resource Registry for this flow execution
         let resources =
             std::sync::Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new()));
-
-        for (source_id, ports) in wiring {
-            for (src_port, targets) in ports {
-                for (target_id, tgt_port) in targets {
-                    let (tx, rx) = mpsc::channel(100);
-
-                    // Store Sender for Source Node
-                    node_senders
-                        .entry(source_id.clone())
-                        .or_default()
-                        .entry(src_port)
-                        .or_default()
-                        .push((tx, tgt_port));
-
-                    // Store Receiver for Target Node
-                    node_receivers
-                        .entry(target_id.clone())
-                        .or_default()
-                        .push((tgt_port, rx));
-                }
-            }
-        }
 
         // 4. Instantiate and Start Nodes
         let mut failed_nodes: Vec<String> = Vec::new();
@@ -301,6 +262,58 @@ impl RuntimeEngine {
 
         Ok(())
     }
+}
+
+#[allow(clippy::type_complexity)]
+fn build_wiring(edges: &[EdgeConfig]) -> HashMap<String, HashMap<usize, Vec<(String, usize)>>> {
+    let mut wiring: HashMap<String, HashMap<usize, Vec<(String, usize)>>> = HashMap::new();
+
+    for edge in edges {
+        let src_port = parse_port(edge.source_handle.as_deref());
+        let tgt_port = parse_port(edge.target_handle.as_deref());
+
+        wiring
+            .entry(edge.source.clone())
+            .or_default()
+            .entry(src_port)
+            .or_default()
+            .push((edge.target.clone(), tgt_port));
+    }
+
+    wiring
+}
+
+#[allow(clippy::type_complexity)]
+fn create_channels(
+    wiring: HashMap<String, HashMap<usize, Vec<(String, usize)>>>,
+) -> (
+    HashMap<String, OutputMap>,
+    HashMap<String, Vec<(usize, NodeReceiver)>>,
+) {
+    let mut node_senders: HashMap<String, OutputMap> = HashMap::new();
+    let mut node_receivers: HashMap<String, Vec<(usize, NodeReceiver)>> = HashMap::new();
+
+    for (source_id, ports) in wiring {
+        for (src_port, targets) in ports {
+            for (target_id, tgt_port) in targets {
+                let (tx, rx) = tokio::sync::mpsc::channel(100);
+
+                node_senders
+                    .entry(source_id.clone())
+                    .or_default()
+                    .entry(src_port)
+                    .or_default()
+                    .push((tx, tgt_port));
+
+                node_receivers
+                    .entry(target_id.clone())
+                    .or_default()
+                    .push((tgt_port, rx));
+            }
+        }
+    }
+
+    (node_senders, node_receivers)
 }
 
 fn parse_port(_handle: Option<&str>) -> usize {
