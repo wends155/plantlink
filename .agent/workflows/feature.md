@@ -19,7 +19,12 @@ User invokes: `/feature <description>`
 
 ## Prerequisites
 
+> [!TIP]
+> Run `pwsh -NonInteractive -Command "& '.agent/scripts/Load-Context.ps1' -Mode issue"` to load context automatically.
+
+- Read `.agent/rules/feature-rules.md` for classification criteria, report format, and architectural fit assessment.
 - Read `architecture.md` (if present) for project structure, patterns, and constraints.
+- Read `.agent/rules/coding-standard.md` (if present) for language-specific coding standards.
 - Read `context.md` (if present) for historical decisions and prior feature work.
 - Confirm you are operating as the **Architect** role.
 
@@ -27,7 +32,7 @@ User invokes: `/feature <description>`
 
 ### 1. Parse & Understand
 
-Extract the following from the user's description:
+Extract the following from the user's description using the classification rubric in `feature-rules.md` §1:
 
 | Field            | Action                                                              |
 |------------------|---------------------------------------------------------------------|
@@ -42,7 +47,7 @@ If the description is too vague to understand the user's intent,
 
 ### 2. Load Context
 
-Gather background information:
+Gather background information (or use the output from `Load-Context.ps1` above):
 
 - **`architecture.md`**: Identify relevant modules, patterns, frameworks, and constraints.
 - **`context.md`**: Check for related prior discussions, rejected ideas, or relevant decisions.
@@ -73,57 +78,31 @@ Investigate how the feature could be built:
 > The goal is to give the user enough information to make an informed decision —
 > not to design the full solution (that's for `/plan-making`).
 
+#### MCP-Enhanced Research *(when available)*
+
+If **Narsil MCP** is available, use it to improve research accuracy:
+
+| Tool | Purpose |
+|------|--------|
+| `search_code` / `semantic_search` | Find existing partial implementations or related code |
+| `find_symbols` | Discover public API surface relevant to the feature |
+| `get_import_graph` | Understand where the feature would integrate |
+| `get_project_structure` | Understand module boundaries and layout |
+| `find_similar_code` | Find patterns similar to what the feature needs |
+| `get_dependencies` | Check existing dependency chain for integration points |
+
+For **medium/large** features, the Architect **SHOULD** use `sequentialthinking` to:
+- Structure the feasibility assessment systematically.
+- Compare alternatives with consistent criteria.
+- Evaluate architectural fit against `architecture.md` patterns.
+- Identify non-obvious risks or constraints.
+
+For **small** features, skip sequential thinking — the overhead isn't worth it.
+
 ### 4. Produce Feature Research Report
 
-Create a structured report with the following format:
-
-```markdown
-## ✨ Feature Research Report
-
-| Field          | Value                                       |
-|----------------|---------------------------------------------|
-| **Feature**    | [name]                                      |
-| **Category**   | enhancement / new-capability / integration  |
-| **Component**  | [affected area]                             |
-| **Priority**   | must-have / should-have / nice-to-have      |
-| **Complexity** | small / medium / large                      |
-| **Filed**      | [date]                                      |
-
-### Description
-[Clear restatement of the desired feature in the user's own words]
-
-### Current State
-- **Existing code:** [relevant modules/files, if any]
-- **Related history:** [prior decisions from context.md, if any]
-- **Gaps:** [what's missing to support this feature]
-
-### Ecosystem Research
-- **Libraries evaluated:** [list with brief notes]
-- **Recommended dependency:** [name + reasoning], or "None — custom implementation preferred"
-
-### Approaches
-
-#### Option A: [Name]
-- **Description:** [how it works]
-- **Pros:** [advantages]
-- **Cons:** [disadvantages]
-- **Complexity:** [small / medium / large]
-
-#### Option B: [Name]
-- **Description:** [how it works]
-- **Pros:** [advantages]
-- **Cons:** [disadvantages]
-- **Complexity:** [small / medium / large]
-
-### Recommendation
-[Which option and why. Include any caveats or conditions.]
-
-### Risks & Constraints
-- [List risks, trade-offs, and hard constraints]
-
-### Open Questions
-- [Ambiguities or decisions that need user input]
-```
+Create a structured report following the format in `feature-rules.md` §2.
+Include the architectural fit assessment per `feature-rules.md` §3 (if `architecture.md` exists).
 
 ### 5. Pause for Refinement
 

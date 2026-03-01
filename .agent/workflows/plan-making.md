@@ -9,9 +9,14 @@ It enforces the Planning Gate and Think Phase of the TARS protocol.
 
 ## Prerequisites
 
-- Read `GEMINI.md` for rules and guidelines that all plans must comply with.
+> [!TIP]
+> Run `pwsh -NonInteractive -Command "& '.agent/scripts/Load-Context.ps1' -Mode plan"` to gather all prerequisite context in one step.
+
 - Read `architecture.md` (if present) for project-specific design, toolchain, and patterns.
+- Read `.agent/rules/coding-standard.md` (if present) for language-specific coding standards.
+- Read `.agent/rules/ipr.md` (if present) for implementation plan format and handoff rules.
 - Read `context.md` (if present) for historical decisions and prior context.
+- If a Report was produced by `/issue`, `/audit`, or `/feature`, use it as the **primary input** for Step 1. Do not re-investigate areas already covered.
 - Confirm you are operating in **Planning mode** (no code edits allowed).
 
 ## Steps
@@ -25,79 +30,102 @@ Investigate the request before writing anything:
 - **Flag risks**: Security concerns, breaking changes, performance impacts.
 - **Check for existing tests**: Search for test files related to the affected code.
 
+#### MCP-Enhanced Analysis *(when available)*
+
+If **Narsil MCP** is available, use it throughout planning:
+
+**Investigation** (Step 1):
+
+| Tool | Purpose |
+|------|---------|
+| `get_import_graph`, `get_dependencies` | Visualize what's affected by proposed changes |
+| `find_circular_imports`, `check_cwe_top25`, `check_owasp_top10` | Catch structural or security risks early |
+| `find_symbols`, `find_references`, `get_symbol_definition` | Understand interfaces before proposing changes |
+| `find_unused_exports`, `find_dead_code` | Identify cleanup opportunities to include in the plan |
+
+**Validation** (Step 2 — use results to support proposed changes):
+
+| Tool | Purpose |
+|------|---------|
+| `get_symbol_definition` | Verify interfaces/types being modified exist as expected |
+| `find_references` | Check blast radius of proposed signature changes |
+| `check_dependencies` | Check for vulnerable deps before adding new ones |
+| `find_similar_code` | Find existing patterns the plan should follow |
+
+For **M/L tier plans**, the Architect **SHOULD** use `sequentialthinking` to break down complex changes, reason about ordering, and validate root cause coverage before drafting. For **S-tier plans**, skip it — the overhead isn't worth it.
+
 ### 2. Draft the Plan
 
-Create an implementation plan artifact with these **required sections**:
+Follow the plan format, revision protocol, and handoff rules defined in `.agent/rules/ipr.md`.
 
-#### Header
-| Field | Value |
-|-------|-------|
-| **Role** | Architect / Builder |
-| **Date** | Current date |
-| **Scope** | One-line summary of what changes |
+### 3. Sync task.md
 
-#### Problem Statement
-- What is the problem or feature request?
-- Why does it need to be solved now?
-- Any relevant context from `context.md` or prior conversations.
-- **Constraints**: Technical limitations, environment restrictions (e.g., no admin rights), performance budgets, compatibility requirements, or scope boundaries.
-- **Dependencies**: What existing libraries, crates, or packages can be leveraged to avoid reinventing the wheel? Check the ecosystem before proposing custom solutions.
+After drafting the plan, synchronize `task.md` with the proposed changes:
 
-#### Proposed Changes
-Group by component. For each file:
-- Use `[NEW]`, `[MODIFY]`, or `[DELETE]` tags.
-- Link to the file with absolute path.
-- Describe *what* changes and *why*.
-- Include **logic descriptions**: Explain the reasoning and flow of the change in plain language, not just the code.
-- Include **code snippets** for critical logic changes.
-- **Atomic steps**: Break each change into steps small enough to be verified independently.
+```powershell
+pwsh -NonInteractive -Command "& '.agent/scripts/Sync-TaskList.ps1' -Mode generate -PlanFile '<plan-path>'"
+```
 
-> [!IMPORTANT]
-> All proposed changes **must** comply with the guidelines and rules in `GEMINI.md`.
-> Cross-reference before finalizing.
+The script writes `task.md` to the same directory as the plan file.
+If `task.md` already exists it will be overwritten. Run `-Mode validate`
+afterwards to confirm alignment.
 
-#### Architecture Diagram *(if applicable)*
-- Include a Mermaid diagram for any structural or data-flow changes.
+> [!WARNING]
+> Do NOT skip this step. `task.md` must be aligned with the plan before
+> requesting approval. Run `-Mode validate` to confirm exit code 0.
 
-#### Edge Cases & Risks
-- List edge cases the implementation must handle.
-- Document any known risks or trade-offs.
+### 4. Self-Review Checklist
 
-#### Verification Plan
-Every plan **must** include concrete verification steps:
+Before requesting approval, verify each item. Items marked 🤖 can be verified
+with Narsil MCP or scripts; items marked 🧠 require LLM judgment.
 
-| Type | Required? | Details |
-|------|-----------|---------|
-| **Automated tests** | ✅ Yes | Exact command to run (e.g., `cargo test`, `npm test`) |
-| **Lint / Format** | ✅ Yes | Exact command (e.g., `cargo fmt --check`, `eslint .`) |
-| **Manual testing** | If applicable | Step-by-step instructions a human can follow |
-| **Browser testing** | If applicable | Specific pages/flows to validate |
+**Scope & Coverage:**
+- [ ] 🤖 All affected files are listed (verify with Narsil `find_references`)
+- [ ] 🤖 Each change is broken into numbered, independently verifiable steps
+- [ ] 🧠 Module boundaries defined (Owns / Does NOT own)
+- [ ] 🧠 Interface contracts specified (signatures, invariants, error conditions)
+- [ ] 🧠 Cross-module handshakes documented (caller/callee, data format, error propagation)
+- [ ] 🧠 Code snippets included for non-trivial changes
 
-> [!IMPORTANT]
-> Do NOT invent test commands. Refer to `architecture.md` § Toolchain for the
-> project's standard formatter, linter, and test runner commands.
-> If `architecture.md` is not available, read build/config files to verify.
+**Compliance** (cross-reference each proposed change against these rules):
 
-### 3. Self-Review Checklist
+| Rule Source | Check |
+|-------------|-------|
+| GEMINI.md § Error Handling | New functions handle errors with what/where/why; no silent failures |
+| GEMINI.md § Observability | Plan includes structured logging for significant operations |
+| GEMINI.md § Testing | Test Plan covers all new/changed logic |
+| GEMINI.md § Documentation | New public APIs will have doc comments |
+| coding-standard.md *(if present)* | Error handling (§4.1), async (§4.2), patterns (§4.6), module org (§4.7), observability (§4.8), defensive programming (§4.9), prohibited patterns (§10) |
+| architecture.md *(if present)* | Layout conventions, toolchain commands |
 
-Before requesting approval, verify:
+> [!CAUTION]
+> If any proposed change cannot satisfy a rule, document the exception with
+> justification in the Edge Cases & Risks section. Do not silently skip compliance.
 
-- [ ] All affected files are listed
-- [ ] Code snippets included for non-trivial changes
-- [ ] Logic descriptions explain the *reasoning*, not just the *what*
-- [ ] Each change is broken into atomic, independently verifiable steps
-- [ ] All changes comply with `GEMINI.md` rules and guidelines
-- [ ] No code was edited (Planning Gate enforced)
-- [ ] Verification commands sourced from `architecture.md` § Toolchain
-- [ ] `context.md` consulted for historical decisions (if present)
-- [ ] Constraints clearly documented in Problem Statement
-- [ ] Plan aligns with `architecture.md` (if present)
-- [ ] If plan requires changes to `architecture.md`, explicitly state *what*, *why*, and *where* with reasoning
-- [ ] Dependencies researched — existing libraries leveraged where possible
-- [ ] Risks and edge cases documented
-- [ ] Mermaid diagram included for structural changes
+**Process:**
+- [ ] 🤖 No code was edited (Planning Gate enforced)
+- [ ] 🧠 `context.md` consulted for historical decisions (if present)
+- [ ] 🧠 Constraints clearly documented in Problem Statement
+- [ ] 🤖 Dependencies researched — check with Narsil `check_dependencies`
+- [ ] 🧠 Risks and edge cases documented
+- [ ] 🧠 Mermaid diagram included for structural changes
 
-### 4. Request Approval
+**Integration:**
+- [ ] 🤖 Report findings incorporated (if `/issue`, `/audit`, or `/feature` was run)
+- [ ] 🤖 MCP tools used for investigation/analysis where available
+- [ ] 🤖 task.md synced — `pwsh -NonInteractive -Command "& '.agent/scripts/Sync-TaskList.ps1' -Mode validate"` returns exit 0
+
+### 5. Request Approval
+
+Before requesting approval, run the pre-flight gate:
+
+```powershell
+pwsh -NonInteractive -Command "& '.agent/scripts/Sync-TaskList.ps1' -Mode preflight -PlanFile <plan-path>"
+```
+
+> [!CAUTION]
+> The pre-flight gate MUST return exit 0 before requesting approval.
+> If it fails, fix the issues and re-run. Do NOT skip this step.
 
 End the plan with:
 
@@ -105,10 +133,7 @@ End the plan with:
 
 Do NOT proceed to implementation until the user explicitly approves.
 
-### 5. Post-Approval Handoff
+### 6. Post-Approval Handoff
 
-Once approved:
-- The **Builder** (fast model) picks up the plan.
-- Builder must follow the plan exactly — no deviations.
-- If the plan contradicts `architecture.md`, STOP and re-audit.
-- If the plan requires updates to `architecture.md`, the **Architect** must make those changes first and get user approval before the Builder begins implementation.
+Once approved, follow **GEMINI.md §6 Handoff Protocol** for the full Act cycle.
+After `/audit` passes, run `/update-doc` scoped to affected files, then summarize in `context.md` per GEMINI.md §8.

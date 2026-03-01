@@ -36,7 +36,8 @@
 8.  **2026-02-18 (Test Coverage):** Implemented 22 new unit tests across all 4 crates (Workspace total: 26). Covered REST API endpoints, CLI arg parsing, and core data structures. Fixed a critical deserialization bug in `plantlink-core` by correcting the `untagged` variant order for `DataValue`.
 9.  **2026-02-18 (Doc-Tests):** Added executable documentation examples (doc-tests) to all public APIs in `plantlink-core`, `plantlink-runtime`, and `plantlink-web`. Unified documentation with runnable code for `DataValue`, `MessagePayload`, and flow configurations.
 10. **2026-02-18 (Documentation Refresh):** Updated `README.md` to reflect the "Zero-Exit" quality philosophy, added a "Quality Gates" section, and corrected links to root-level architecture and spec documents.
-11. **2026-02-18 (Runtime Stability):** Implemented robust error handling in `RuntimeEngine`. Replaced `expect()` on locks with `Result` propagation, added `StopStatus` reporting, and updated web/cli layers to handle failures.
+11. **2026-02-18 (Runtime Stability):** Implemented robust error handling in `RuntimeEngine`. Replaced `expect()` on locks with `Result` propagation, added `StopStatus` reporting, and updated web/cli layers to handle failures. Added comprehensive unit tests for new API contracts and verified workspace (total 35 tests passed).
+12. **2026-02-18 (InjectNode Stability):** Resolved zombie task leak in `InjectNode` by implementing cooperative cancellation via `tokio-util::CancellationToken`. Ensured timer loops shut down immediately on flow stop or channel closure, preventing infinite log spam.
 
 ### 🧩 Active Components & APIs
 * `plantlink-core`: Shared data types (MessagePayload, DataValue) and protocol markers.

@@ -130,7 +130,10 @@ async fn shutdown_signal(runtime: Arc<RwLock<plantlink_runtime::RuntimeEngine>>)
     let mut rt = runtime.write().await;
     let status = rt.stop_flow().await;
 
-    tracing::info!("Runtime stopped. {} tasks aborted. Exiting.", status.tasks_aborted);
+    tracing::info!(
+        "Runtime stopped. {} tasks aborted. Exiting.",
+        status.tasks_aborted
+    );
 }
 
 // ...

@@ -12,12 +12,17 @@ It is the entry point of the TARS cycle — the step that comes before `/plan-ma
 > This workflow is **read-only** — no code edits, no plans, no implementation.
 > The only output is a structured **Issue Report** artifact.
 
+> [!NOTE]
+> The Issue Report produced here is the **input artifact** for `/plan-making`.
+> Focus on diagnosis, not solutions — proposed fixes belong in the planning phase.
+
 ## Trigger
 
 User invokes: `/issue <description>`
 
 ## Prerequisites
 
+- Read `.agent/rules/issue-rules.md` for classification criteria, report format, and investigation depth.
 - Read `architecture.md` (if present) for project structure, components, and toolchain.
 - Read `context.md` (if present) for historical decisions and known issues.
 - Confirm you are operating as the **Architect** role.
@@ -26,7 +31,7 @@ User invokes: `/issue <description>`
 
 ### 1. Parse & Classify
 
-Extract the following from the user's description:
+Extract the following from the user's description using the classification rubric in `issue-rules.md` §1:
 
 | Field         | Action                                                       |
 |---------------|--------------------------------------------------------------|
@@ -41,6 +46,9 @@ before proceeding to Step 2.
 ### 2. Load Context
 
 Gather background information:
+
+> [!TIP]
+> Run `pwsh -NonInteractive -Command "& '.agent/scripts/Load-Context.ps1' -Mode issue"` to gather all context below in one step.
 
 - **`architecture.md`**: Identify relevant modules, patterns, and frameworks.
 - **`context.md`**: Check for prior decisions, known bugs, or related history.
@@ -57,40 +65,34 @@ Search the codebase to understand the problem area:
 - **Look for obvious causes**: Missing error handling, logic errors, race conditions, etc.
 - **Check tests**: Are there existing tests covering this area? Are they passing?
 
+#### MCP-Enhanced Investigation *(when available)*
+
+If **Narsil MCP** is available, use it to improve investigation accuracy:
+- **Code search & navigation**: `search_code`, `semantic_search`, `search_chunks` — find relevant code faster than manual grep.
+- **Dependency analysis**: `get_dependencies`, `find_references`, `find_symbol_usages` — map what calls into or depends on the affected area.
+- **Structure understanding**: `get_project_structure`, `find_symbols` — orient yourself in unfamiliar codebases.
+- **Security scanning**: `scan_security`, `check_owasp_top10`, `check_cwe_top25` — if the issue has security implications.
+
+For **critical/high** severity issues, the Architect **SHOULD** use `sequentialthinking` to:
+- Structure complex, multi-factor investigations step by step.
+- Avoid jumping to conclusions by reasoning through causes systematically.
+- Evaluate and discard competing hypotheses before settling on a root cause.
+
+For **medium/low** severity, skip sequential thinking — the overhead isn't worth it.
+
+Scale investigation depth per `issue-rules.md` §3.
+
 > [!TIP]
 > Keep investigation focused. The goal is to understand the problem well enough to
 > write a clear report — not to find the exact fix (that's for `/plan-making`).
 
 ### 4. Produce Issue Report
 
-Create a structured report with the following format:
+Create a structured report following the format in `issue-rules.md` §2.
 
-```markdown
-## 🐛 Issue Report
-
-| Field          | Value                        |
-|----------------|------------------------------|
-| **Type**       | bug / feature / chore / docs |
-| **Component**  | [affected area]              |
-| **Severity**   | critical / high / med / low  |
-| **Filed**      | [date]                       |
-
-### Description
-[Clear restatement of the issue in the user's own words]
-
-### Investigation Findings
-- **Suspect files:** [list of files with links]
-- **Root cause hypothesis:** [best guess based on investigation]
-- **Related history:** [anything from context.md or git log]
-- **Recent changes:** [relevant commits, if any]
-- **Test coverage:** [existing tests in this area, pass/fail status]
-
-### Open Questions
-- [Any ambiguities or unknowns that need user clarification]
-
-### Recommended Severity
-[Confirm or adjust the initial severity estimate with reasoning]
-```
+> [!CAUTION]
+> Do **not** include proposed solutions, fixes, or implementation suggestions.
+> See `issue-rules.md` §4 for full diagnostic constraints.
 
 ### 5. Pause for Refinement
 
@@ -113,3 +115,4 @@ End the report with:
 3. **Always pause** — the user must explicitly say "Plan" to move forward.
 4. **Ask early** — if the issue is ambiguous, ask questions in Step 1, not Step 4.
 5. **Stay focused** — investigate just enough to produce a clear report; avoid rabbit holes.
+6. **Use MCP tools** — when Narsil or Sequential Thinking are available, prefer them over manual grep/search for higher accuracy.
