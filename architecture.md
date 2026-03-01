@@ -61,7 +61,7 @@ All crates inherit shared lint rules from the root `Cargo.toml` via `[workspace.
   - **Trait Interfaces**: None (concrete structs only).
   - **Mock Availability**: None — protocols are concrete.
 - **plantlink-runtime**: Owns flow execution (`RuntimeEngine`), node lifecycle, node registry. Does NOT own HTTP endpoints or CLI parsing.
-  - **Trait Interfaces**: `NodeBehavior`, `SimpleNode`.
+  - **Trait Interfaces**: `NodeBehavior`, `SimpleNode`, `BaseNodeAdapter` (adapter).
   - **Mock Availability**: Testable via concrete node instances.
   - **Key patterns**: Global `NodeRegistry` (factory map), `BaseNodeAdapter` (adapter), `CancellationToken` (cooperative shutdown).
 - **plantlink-web**: Owns REST API, WebSocket handler, embedded UI assets. Does NOT own flow logic or protocol drivers.
@@ -80,7 +80,9 @@ All crates inherit shared lint rules from the root `Cargo.toml` via `[workspace.
 | `plantlink-core` | (external crates only) | `cli`, `web`, `runtime` |
 
 ## 8. Error Handling Strategy
-- **Library/Domain Errors**: `plantlink-core` uses `thiserror` to define explicit, structured error types for protocol drivers and core logic.
+- **Library/Domain Errors**: `plantlink-core` declares `thiserror` as a dependency
+  but does not currently define structured error types. All error handling uses
+  `anyhow::Result`. Structured errors are a future improvement.
 - **Application Errors**: `anyhow` is used in the binary crates (`cli`, `web`, `runtime`) for flexible error propagation and context wrapping.
 - **Pattern**: Functions return `Result<T, anyhow::Error>` for broad compatibility across the workspace.
 
@@ -89,24 +91,35 @@ All crates inherit shared lint rules from the root `Cargo.toml` via `[workspace.
 - **Subscribers**: `tracing-subscriber` in `plantlink-cli` configures output formatting and log levels.
 - **Levels**: standard `ERROR`, `WARN`, `INFO`, `DEBUG`, and `TRACE` used per `GEMINI.md` guidelines.
 
-## 10. Testing Strategy
+## 10. Concurrency Model
+- **Actor-per-node**: Each node is spawned as an independent `tokio::spawn` task.
+- **Inter-node channels**: Bounded `mpsc` channels (capacity: 100) carry `(port_idx, MessagePayload)` tuples.
+- **Source nodes**: Nodes with no input receivers are kept alive via `futures::future::pending()`.
+- **Stream multiplexing**: Nodes with multiple inputs use `tokio_stream::StreamMap` to merge all receivers.
+- **Cooperative shutdown**: `CancellationToken` (from `tokio-util`) is propagated from `RuntimeEngine` to all child tasks.
+
+## 11. State Management
+- **Shared resource registry**: `Arc<RwLock<HashMap<String, Box<dyn Any + Send + Sync>>>>` scoped per flow execution. Allows nodes to share typed state (e.g., protocol connections).
+- **System event bus**: `broadcast::Sender<String>` carries JSON-serialized status and log events from nodes to the WebSocket layer.
+
+## 12. Testing Strategy
 - **Unit Testing**: Rust unit tests are co-located in `src/` modules.
 - **E2E Testing**: Playwright is used in the `ui/` directory to validate full-stack flows via Chromium.
 - **Continuous Verification**: `scripts/verify.sh` ensures all code passes formatting, linting, and testing before commit.
 
-## 11. Documentation Conventions
+## 13. Documentation Conventions
 - **Rustdoc**: Triple-slash (`///`) comments for public types, traits, and functions.
 - **Module Documentation**: Inline (`//!`) comments at the top of crate roots.
 - **Frontend**: JSDoc-style comments for complex Svelte components and utility functions.
 
-## 12. Dependencies & External Systems
+## 14. Dependencies & External Systems
 Primary external integrations:
 - **MQTT**: `rumqttc` for asynchronous broker communication.
 - **NATS**: `async-nats` for high-performance messaging.
 - **Modbus**: `tokio-modbus` (TCP) for industrial device interoperability.
 - **Protocols**: All drivers reside in `plantlink-core` or are orchestrated by `plantlink-runtime`.
 
-## 13. Architecture Diagrams
+## 15. Architecture Diagrams
 
 ### System Overview
 ```mermaid
@@ -153,7 +166,7 @@ sequenceDiagram
     WEB-->>UI: WebSocket update
 ```
 
-## 14. Known Constraints & Bugs
+## 16. Known Constraints & Bugs
 - **Environment**: Must run in Windows non-admin space using BusyBox/PowerShell.
 - **Deployment**: Single-binary release capability with embedded assets requires `rust-embed` in `plantlink-web`.
 - **Status Reporting**: Centrally managed via `plantlink_runtime::nodes::send_node_status`.

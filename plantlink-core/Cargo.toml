@@ -16,7 +16,6 @@ base64ct = "=1.6.0"
 rand = "=0.8.5"
 rand_core = "=0.6.4"
 anyhow = "1.0"
-thiserror = "1.0"
 time = "=0.3.36"
 chrono = { version = "0.4.43", features = ["serde"] }
 uuid = { version = "1.20.0", features = ["v4", "serde"] }
