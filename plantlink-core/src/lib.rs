@@ -131,12 +131,12 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::approx_constant)]
     fn test_data_value_float_not_captured_as_json() {
         let json_str = "3.14";
         let val: DataValue = serde_json::from_str(json_str).unwrap();
         assert!(matches!(val, DataValue::Float(f) if (f - 3.14).abs() < f64::EPSILON));
     }
-
     #[test]
     fn test_data_value_string_not_captured_as_json() {
         let json_str = "\"hello\"";

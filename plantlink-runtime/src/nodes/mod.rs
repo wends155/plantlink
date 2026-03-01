@@ -201,8 +201,7 @@ mod tests {
         use tokio::sync::mpsc;
         let (tx, mut rx) = mpsc::channel(16);
         let (sys_tx, _) = broadcast::channel(16);
-        let mut outputs: HashMap<usize, Vec<(mpsc::Sender<(usize, MessagePayload)>, usize)>> =
-            HashMap::new();
+        let mut outputs: OutputMap = HashMap::new();
         outputs.insert(0, vec![(tx, 0)]);
 
         let ctx = NodeContext::new(

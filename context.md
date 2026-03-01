@@ -38,6 +38,7 @@
 10. **2026-02-18 (Documentation Refresh):** Updated `README.md` to reflect the "Zero-Exit" quality philosophy, added a "Quality Gates" section, and corrected links to root-level architecture and spec documents.
 11. **2026-02-18 (Runtime Stability):** Implemented robust error handling in `RuntimeEngine`. Replaced `expect()` on locks with `Result` propagation, added `StopStatus` reporting, and updated web/cli layers to handle failures. Added comprehensive unit tests for new API contracts and verified workspace (total 35 tests passed).
 12. **2026-02-18 (InjectNode Stability):** Resolved zombie task leak in `InjectNode` by implementing cooperative cancellation via `tokio-util::CancellationToken`. Ensured timer loops shut down immediately on flow stop or channel closure, preventing infinite log spam.
+13. **2026-03-01 (Audit Remediation):** Resolved 3 audit findings (clippy, rustfmt) across `plantlink-core` and `plantlink-runtime`. Fixed formatting issues, type complexity in tests, and addressed the `approx_constant` lint using `#[allow]` for the 3.14 parsing test. Verified zero-exit status for the full quality gate (fmt, clippy, test).
 
 ### 🧩 Active Components & APIs
 * `plantlink-core`: Shared data types (MessagePayload, DataValue) and protocol markers.

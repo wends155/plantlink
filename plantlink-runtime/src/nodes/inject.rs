@@ -104,11 +104,11 @@ mod tests {
     use super::*;
     use crate::NodeConfig;
     use crate::nodes::OutputMap;
-    use tokio::sync::{broadcast, mpsc};
-    use tokio_util::sync::CancellationToken;
     use std::collections::HashMap;
     use std::sync::Arc;
     use tokio::sync::RwLock;
+    use tokio::sync::{broadcast, mpsc};
+    use tokio_util::sync::CancellationToken;
 
     #[tokio::test]
     async fn test_inject_timer_stops_on_cancellation() {
