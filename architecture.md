@@ -40,6 +40,22 @@ All workflows are orchestrated via the root `Makefile`:
 - **UI E2E Tests**: `cd ui && npm run test:e2e` (Playwright)
 - **Full Quality Gate**: `make verify` (Runs `./scripts/verify.sh`)
 
+### Workspace Linting
+All crates inherit shared lint rules from the root `Cargo.toml` via `[workspace.lints]` + per-crate `[lints] workspace = true`. Key rules:
+
+| Rule / Group | Level | Rationale |
+|:---|:---|:---|
+| `clippy::all` | **deny** | Baseline correctness gate |
+| `clippy::pedantic` | **warn** | Encourage idiomatic Rust |
+| `clippy::missing_errors_doc` | **deny** | All `Result`-returning fns must document `# Errors` |
+| `clippy::missing_panics_doc` | **deny** | All panicking paths must be documented |
+| `clippy::undocumented_unsafe_blocks` | **deny** | No silent `unsafe` |
+| `clippy::cast_possible_truncation` | **deny** | Prevent silent data loss in casts |
+| `clippy::large_futures` | **deny** | Guard against oversized future allocations |
+| `clippy::module_name_repetitions` | **allow** | Permits `NodeConfig` inside `nodes::` module |
+| `clippy::must_use_candidate` | **allow** | Reduces noise on builder-pattern APIs |
+| `rust::unsafe_code` | **warn** | Discourage but don't block `unsafe` |
+
 ## 6. Module Boundaries
 - **plantlink-core**: Owns shared types (`DataValue`, `MessagePayload`), protocol driver structs. Does NOT own node logic or HTTP.
   - **Trait Interfaces**: None (concrete structs only).
