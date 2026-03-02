@@ -260,7 +260,6 @@
             bind:edges
             {nodeTypes}
             {isValidConnection}
-            fitView
             class="bg-gray-50 dark:bg-gray-900"
             colorMode={$theme}
             deleteKeyCode={null}
