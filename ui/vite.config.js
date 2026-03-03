@@ -11,6 +11,12 @@ export default defineConfig(({ command, mode }) => {
       isProduction && viteCompression({ algorithm: 'gzip', ext: '.gz' }),
     ].filter(Boolean),
 
+    esbuild: {
+      pure: isProduction
+        ? ['console.log', 'console.info', 'console.debug']
+        : [],
+    },
+
     build: {
       minify: isProduction,
       sourcemap: !isProduction,

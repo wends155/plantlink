@@ -119,4 +119,46 @@ test.describe('Flow Editor', () => {
         const zoomAfter = await getZoomLevel();
         expect(zoomAfter).toBeCloseTo(zoomBefore, 1);
     });
+
+    test('should not have unexpected console errors on page load', async ({ page }) => {
+        const errors = [];
+        page.on('console', (msg) => {
+            if (msg.type() === 'error') {
+                const text = msg.text();
+                // Exclude known expected errors (e.g., WebSocket — no backend running in E2E)
+                if (!text.includes('WebSocket')) {
+                    errors.push(text);
+                }
+            }
+        });
+
+        await page.goto('/');
+        await page.waitForTimeout(1000); // Let page stabilize
+
+        expect(errors).toEqual([]);
+    });
+
+    test('should log to console when node is dropped on canvas', async ({ page }) => {
+        const logs = [];
+        page.on('console', (msg) => {
+            if (msg.type() === 'log') {
+                logs.push(msg.text());
+            }
+        });
+
+        await page.goto('/');
+
+        const injectNode = page.locator('.palette-item', { hasText: /inject/i });
+        const canvas = page.locator('.flow-canvas');
+        const canvasBox = await canvas.boundingBox();
+
+        await injectNode.dragTo(canvas, {
+            targetPosition: { x: canvasBox.width / 2, y: canvasBox.height / 2 },
+        });
+
+        await page.waitForTimeout(500);
+
+        const dropLog = logs.find((l) => l.includes('Dropped item to canvas'));
+        expect(dropLog).toBeDefined();
+    });
 });
