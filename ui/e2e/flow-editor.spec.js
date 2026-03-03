@@ -51,22 +51,102 @@ test.describe('Flow Editor', () => {
         await expect(svgNodes).toHaveCount(1);
     });
 
-    test('should toggle theme', async ({ page }) => {
-        // Get initial theme class
+    // --- Theme Tests ---
+
+    async function getThemeVars(page) {
+        return page.evaluate(() => {
+            const style = getComputedStyle(document.documentElement);
+            return {
+                bgPrimary: style.getPropertyValue('--color-bg-primary').trim(),
+                textPrimary: style.getPropertyValue('--color-text-primary').trim(),
+            };
+        });
+    }
+
+    test('should toggle theme and update CSS variables', async ({ page }) => {
         const htmlElement = page.locator('html');
-        const initialClass = await htmlElement.getAttribute('class');
-
-        // Find and click theme toggle button
-        // Adjust selector based on actual ThemeToggle component
         const themeToggle = page.locator('button[aria-label="Toggle Dark Mode"]');
-        await themeToggle.click();
 
-        // Wait for theme to change
+        // Initial state (Light mode default)
+        await expect(htmlElement).not.toHaveClass(/dark/);
+        const lightVars = await getThemeVars(page);
+        expect(lightVars.bgPrimary).toBe('#fafafa');
+
+        // Sun icon should be visible in light mode
+        await expect(themeToggle.locator('.lucide-sun')).toBeVisible();
+
+        // Toggle to Dark mode
+        await themeToggle.click();
         await page.waitForTimeout(200);
 
-        // Verify theme class changed
-        const newClass = await htmlElement.getAttribute('class');
-        expect(initialClass).not.toBe(newClass);
+        await expect(htmlElement).toHaveClass(/dark/);
+        const darkVars = await getThemeVars(page);
+        expect(darkVars.bgPrimary).toBe('#111827');
+
+        // Moon icon should be visible in dark mode
+        await expect(themeToggle.locator('.lucide-moon')).toBeVisible();
+    });
+
+    test('should persist theme across page reload', async ({ page }) => {
+        const htmlElement = page.locator('html');
+        const themeToggle = page.locator('button[aria-label="Toggle Dark Mode"]');
+
+        // Toggle to Dark mode
+        await themeToggle.click();
+        await page.waitForTimeout(200);
+        await expect(htmlElement).toHaveClass(/dark/);
+
+        // Verify localStorage
+        const storedTheme = await page.evaluate(() => localStorage.getItem('theme'));
+        expect(storedTheme).toBe('dark');
+
+        // Reload page
+        await page.reload();
+        await page.waitForTimeout(500);
+
+        // Should still be dark
+        await expect(htmlElement).toHaveClass(/dark/);
+        const darkVars = await getThemeVars(page);
+        expect(darkVars.bgPrimary).toBe('#111827');
+    });
+
+    test('should round-trip toggle back to original theme', async ({ page }) => {
+        const themeToggle = page.locator('button[aria-label="Toggle Dark Mode"]');
+        const defaultVars = await getThemeVars(page);
+
+        // Light -> Dark
+        await themeToggle.click();
+        await page.waitForTimeout(200);
+
+        // Dark -> Light
+        await themeToggle.click();
+        await page.waitForTimeout(200);
+
+        // Should return to exact same CSS variables
+        const finalVars = await getThemeVars(page);
+        expect(finalVars).toEqual(defaultVars);
+    });
+
+    test('should respect system prefers-color-scheme on first visit', async ({ page }) => {
+        // Clear any stored theme
+        await page.evaluate(() => localStorage.removeItem('theme'));
+
+        // Emulate dark OS preference
+        await page.emulateMedia({ colorScheme: 'dark' });
+        await page.reload();
+        await page.waitForTimeout(500);
+
+        // Should auto-detect dark mode
+        await expect(page.locator('html')).toHaveClass(/dark/);
+
+        // Emulate light OS preference + clear storage
+        await page.evaluate(() => localStorage.removeItem('theme'));
+        await page.emulateMedia({ colorScheme: 'light' });
+        await page.reload();
+        await page.waitForTimeout(500);
+
+        // Should auto-detect light mode
+        await expect(page.locator('html')).not.toHaveClass(/dark/);
     });
 
     test('should show Start Flow button when not running', async ({ page }) => {
