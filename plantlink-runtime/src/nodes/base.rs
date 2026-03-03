@@ -73,3 +73,89 @@ impl<T: SimpleNode + 'static> NodeBehavior for BaseNodeAdapter<T> {
         self.inner.on_stop().await
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::nodes::NodeContext;
+    use plantlink_core::MessagePayload;
+    use std::sync::{Arc, Mutex};
+
+    #[derive(Clone)]
+    struct DummySimpleNode {
+        started: Arc<Mutex<bool>>,
+        stopped: Arc<Mutex<bool>>,
+        fail_on_handle: bool,
+    }
+
+    impl DummySimpleNode {
+        fn new(fail_on_handle: bool) -> Self {
+            Self {
+                started: Arc::new(Mutex::new(false)),
+                stopped: Arc::new(Mutex::new(false)),
+                fail_on_handle,
+            }
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl SimpleNode for DummySimpleNode {
+        async fn on_start(&mut self, _ctx: &NodeContext) -> Result<()> {
+            *self.started.lock().unwrap() = true;
+            Ok(())
+        }
+
+        async fn handle(
+            &mut self,
+            _port: usize,
+            _msg: MessagePayload,
+            _ctx: &NodeContext,
+        ) -> Result<()> {
+            if self.fail_on_handle {
+                anyhow::bail!("handle error");
+            }
+            Ok(())
+        }
+
+        async fn on_stop(&mut self) -> Result<()> {
+            *self.stopped.lock().unwrap() = true;
+            Ok(())
+        }
+    }
+
+    #[tokio::test]
+    async fn test_adapter_delegates_start() {
+        let node = DummySimpleNode::new(false);
+        let started = Arc::clone(&node.started);
+        let mut adapter = BaseNodeAdapter::new(node);
+        let (ctx, _) = NodeContext::for_test("base-test");
+        adapter.start(ctx).await.unwrap();
+        assert!(*started.lock().unwrap(), "Expected on_start to be called");
+    }
+
+    #[tokio::test]
+    async fn test_adapter_on_input_error_broadcasts_status() {
+        let node = DummySimpleNode::new(true);
+        let mut adapter = BaseNodeAdapter::new(node);
+        let (ctx, mut sys_rx) = NodeContext::for_test("base-err");
+        let result = adapter.on_input(0, MessagePayload::default(), ctx).await;
+        assert!(result.is_err(), "Expected error from failing handle");
+        // Drain and look for "error" status in broadcast
+        let mut found = false;
+        while let Ok(msg) = sys_rx.try_recv() {
+            if msg.contains("error") {
+                found = true;
+            }
+        }
+        assert!(found, "Expected 'error' status broadcast from adapter");
+    }
+
+    #[tokio::test]
+    async fn test_adapter_delegates_stop() {
+        let node = DummySimpleNode::new(false);
+        let stopped = Arc::clone(&node.stopped);
+        let mut adapter = BaseNodeAdapter::new(node);
+        adapter.stop().await.unwrap();
+        assert!(*stopped.lock().unwrap(), "Expected on_stop to be called");
+    }
+}

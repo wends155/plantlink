@@ -134,3 +134,105 @@ impl NodeBehavior for RhaiNode {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::NodeConfig;
+    use crate::nodes::{NodeContext, OutputMap};
+    use plantlink_core::MessagePayload;
+    use std::collections::HashMap;
+    use std::sync::Arc;
+    use tokio::sync::{RwLock, broadcast, mpsc};
+    use tokio_util::sync::CancellationToken;
+
+    fn make_node(script: Option<&str>) -> RhaiNode {
+        let data = if let Some(s) = script {
+            serde_json::json!({ "code": s })
+        } else {
+            serde_json::json!({})
+        };
+        RhaiNode::new(&NodeConfig {
+            id: "r1".into(),
+            type_: "rhai".into(),
+            data,
+        })
+    }
+
+    fn make_ctx_with_output(
+        id: &str,
+    ) -> (
+        NodeContext,
+        mpsc::Receiver<(usize, MessagePayload)>,
+        broadcast::Receiver<String>,
+    ) {
+        let (tx, rx) = mpsc::channel(16);
+        let (sys_tx, sys_rx) = broadcast::channel(32);
+        let mut outputs: OutputMap = HashMap::new();
+        outputs.insert(0, vec![(tx, 0)]);
+        let ctx = NodeContext::new(
+            id.to_string(),
+            outputs,
+            Arc::new(RwLock::new(HashMap::new())),
+            sys_tx,
+            CancellationToken::new(),
+        );
+        (ctx, rx, sys_rx)
+    }
+
+    #[tokio::test]
+    async fn test_rhai_passthrough_script() {
+        let mut node = make_node(Some("return msg;"));
+        let (ctx, mut rx, _sys_rx) = make_ctx_with_output("r1");
+        let msg = MessagePayload::default();
+        let expected_id = msg.id.clone();
+        node.on_input(0, msg, ctx).await.unwrap();
+        let (port, received) = rx.recv().await.expect("Expected output");
+        assert_eq!(port, 0);
+        assert_eq!(received.id, expected_id);
+    }
+
+    #[tokio::test]
+    async fn test_rhai_compile_error_on_start() {
+        let mut node = make_node(Some("{{{{ invalid syntax"));
+        let (ctx, _sys_rx) = NodeContext::for_test("r1");
+        let result = node.start(ctx).await;
+        assert!(result.is_err(), "Expected Err on compile error");
+        let err_msg = result.unwrap_err().to_string();
+        assert!(
+            err_msg.contains("Compilation Error"),
+            "Expected compile error message, got: {err_msg}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_rhai_runtime_error_on_input() {
+        let mut node = make_node(Some("throw \"boom\";"));
+        let (ctx, mut _rx, mut sys_rx) = make_ctx_with_output("r1");
+        let result = node.on_input(0, MessagePayload::default(), ctx).await;
+        assert!(result.is_err(), "Expected Err on runtime error");
+        // Drain broadcasts and check for runtime error log
+        let mut found_error = false;
+        while let Ok(msg) = sys_rx.try_recv() {
+            if msg.contains("Runtime Error") {
+                found_error = true;
+            }
+        }
+        assert!(found_error, "Expected 'Runtime Error' in broadcast log");
+    }
+
+    #[tokio::test]
+    async fn test_rhai_default_script_is_passthrough() {
+        // No "code" key → defaults to "return msg;"
+        let mut node = make_node(None);
+        let (ctx, mut rx, _sys_rx) = make_ctx_with_output("r1");
+        let msg = MessagePayload::default();
+        let expected_id = msg.id.clone();
+        node.on_input(0, msg, ctx).await.unwrap();
+        let (_, received) = rx
+            .recv()
+            .await
+            .expect("Expected output from default passthrough");
+        assert_eq!(received.id, expected_id);
+    }
+}

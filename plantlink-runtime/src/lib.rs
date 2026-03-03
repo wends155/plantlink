@@ -197,15 +197,15 @@ impl FlowRuntime for RuntimeEngine {
             );
 
             // Create specific node instance dynamically from registry
-            let mut node: Box<dyn NodeBehavior> =
-                match self.registry.create(&config.type_, &config) {
-                    Ok(n) => n,
-                    Err(e) => {
-                        tracing::warn!("Failed to create node {}: {}", config.type_, e);
-                        failed_nodes.push(config.id.clone());
-                        continue;
-                    }
-                };
+            let mut node: Box<dyn NodeBehavior> = match self.registry.create(&config.type_, &config)
+            {
+                Ok(n) => n,
+                Err(e) => {
+                    tracing::warn!("Failed to create node {}: {}", config.type_, e);
+                    failed_nodes.push(config.id.clone());
+                    continue;
+                }
+            };
 
             // Get receivers for this node
             let inputs = node_receivers.remove(&node_id).unwrap_or_default();
@@ -476,5 +476,134 @@ mod tests {
         engine.update_flow(flow).await.unwrap();
         let status = engine.stop_flow().await;
         assert_eq!(status.tasks_aborted, 2, "Should report 2 aborted tasks");
+    }
+
+    // ─── Steps 12-17: Wiring & engine lifecycle tests ───────────────────────────
+
+    #[test]
+    fn test_build_wiring_single_edge() {
+        let edges = vec![EdgeConfig {
+            id: "e1".into(),
+            source: "n1".into(),
+            target: "n2".into(),
+            source_handle: None,
+            target_handle: None,
+        }];
+        let wiring = build_wiring(&edges);
+        assert!(wiring.contains_key("n1"), "Expected n1 in wiring");
+        let n1_ports = &wiring["n1"];
+        let targets = n1_ports.get(&0).expect("Expected port 0");
+        assert_eq!(targets.len(), 1);
+        assert_eq!(targets[0].0, "n2");
+    }
+
+    #[test]
+    fn test_build_wiring_multi_edge() {
+        let edges = vec![
+            EdgeConfig {
+                id: "e1".into(),
+                source: "n1".into(),
+                target: "n2".into(),
+                source_handle: None,
+                target_handle: None,
+            },
+            EdgeConfig {
+                id: "e2".into(),
+                source: "n1".into(),
+                target: "n3".into(),
+                source_handle: None,
+                target_handle: None,
+            },
+        ];
+        let wiring = build_wiring(&edges);
+        let targets = &wiring["n1"][&0];
+        let target_ids: Vec<_> = targets.iter().map(|(id, _)| id.as_str()).collect();
+        assert!(target_ids.contains(&"n2"), "Expected n2 in targets");
+        assert!(target_ids.contains(&"n3"), "Expected n3 in targets");
+    }
+
+    #[test]
+    fn test_build_wiring_empty() {
+        let wiring = build_wiring(&[]);
+        assert!(wiring.is_empty(), "Expected empty wiring from empty edges");
+    }
+
+    #[test]
+    fn test_create_channels_produces_paired_senders_receivers() {
+        let edges = vec![EdgeConfig {
+            id: "e1".into(),
+            source: "n1".into(),
+            target: "n2".into(),
+            source_handle: None,
+            target_handle: None,
+        }];
+        let wiring = build_wiring(&edges);
+        let (senders, receivers) = create_channels(wiring);
+        assert!(senders.contains_key("n1"), "Expected sender for n1");
+        assert!(receivers.contains_key("n2"), "Expected receiver for n2");
+        assert_eq!(receivers["n2"].len(), 1, "Expected 1 receiver entry");
+    }
+
+    #[tokio::test]
+    async fn test_update_flow_replaces_previous() {
+        let (tx, _rx) = broadcast::channel(32);
+        let mut engine = RuntimeEngine::new(tx).unwrap();
+
+        // Deploy flow A: 2 nodes
+        let flow_a = FlowConfig {
+            nodes: vec![
+                NodeConfig {
+                    id: "a1".into(),
+                    type_: "console".into(),
+                    data: serde_json::json!({}),
+                },
+                NodeConfig {
+                    id: "a2".into(),
+                    type_: "console".into(),
+                    data: serde_json::json!({}),
+                },
+            ],
+            edges: vec![],
+        };
+        engine.update_flow(flow_a).await.unwrap();
+
+        // Replace with flow B: 1 node
+        let flow_b = FlowConfig {
+            nodes: vec![NodeConfig {
+                id: "b1".into(),
+                type_: "console".into(),
+                data: serde_json::json!({}),
+            }],
+            edges: vec![],
+        };
+        engine.update_flow(flow_b).await.unwrap();
+
+        // Only flow B's task should be alive
+        let status = engine.stop_flow().await;
+        assert_eq!(
+            status.tasks_aborted, 1,
+            "Expected only 1 task from flow B, not flow A"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_mock_runtime_state_tracking() {
+        let mut rt = MockRuntime {
+            deployed: false,
+            stopped: false,
+        };
+        assert!(!rt.deployed, "Should start undeployed");
+        assert!(!rt.stopped, "Should start unstopped");
+
+        rt.update_flow(FlowConfig {
+            nodes: vec![],
+            edges: vec![],
+        })
+        .await
+        .unwrap();
+        assert!(rt.deployed, "Should be deployed after update_flow");
+
+        rt.stop_flow().await;
+        assert!(rt.stopped, "Should be stopped after stop_flow");
     }
 }

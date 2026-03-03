@@ -339,4 +339,130 @@ mod tests {
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
     }
+
+    // ─── Steps 18-21: MockRuntime-based handler tests ────────────────────────────
+
+    struct MockRuntime {
+        deployed: std::sync::Arc<std::sync::Mutex<bool>>,
+        stopped: std::sync::Arc<std::sync::Mutex<bool>>,
+    }
+
+    #[async_trait::async_trait]
+    impl plantlink_runtime::FlowRuntime for MockRuntime {
+        async fn update_flow(
+            &mut self,
+            _flow: plantlink_runtime::FlowConfig,
+        ) -> anyhow::Result<()> {
+            *self.deployed.lock().unwrap() = true;
+            Ok(())
+        }
+        async fn stop_flow(&mut self) -> plantlink_runtime::StopStatus {
+            *self.stopped.lock().unwrap() = true;
+            plantlink_runtime::StopStatus { tasks_aborted: 0 }
+        }
+    }
+
+    fn make_mock_state(
+        tx: broadcast::Sender<String>,
+    ) -> (
+        AppState,
+        std::sync::Arc<std::sync::Mutex<bool>>,
+        std::sync::Arc<std::sync::Mutex<bool>>,
+    ) {
+        let deployed = std::sync::Arc::new(std::sync::Mutex::new(false));
+        let stopped = std::sync::Arc::new(std::sync::Mutex::new(false));
+        let mock = MockRuntime {
+            deployed: std::sync::Arc::clone(&deployed),
+            stopped: std::sync::Arc::clone(&stopped),
+        };
+        let runtime: Arc<RwLock<dyn plantlink_runtime::FlowRuntime>> = Arc::new(RwLock::new(mock));
+        (AppState { tx, runtime }, deployed, stopped)
+    }
+
+    #[tokio::test]
+    async fn test_deploy_flow_with_mock_runtime() {
+        let (tx, _) = broadcast::channel(16);
+        let (state, deployed, _stopped) = make_mock_state(tx);
+
+        let app = Router::new()
+            .route("/api/flow", axum::routing::post(deploy_flow))
+            .with_state(state);
+
+        let flow_json = r#"{"nodes": [{"id": "n1", "type": "console", "data": {}}], "edges": []}"#;
+        let req = Request::builder()
+            .method("POST")
+            .uri("/api/flow")
+            .header("content-type", "application/json")
+            .body(Body::from(flow_json))
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        assert!(
+            *deployed.lock().unwrap(),
+            "Expected MockRuntime.deployed to be true"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_stop_flow_with_mock_runtime() {
+        let (tx, _) = broadcast::channel(16);
+        let (state, _deployed, stopped) = make_mock_state(tx);
+
+        let app = Router::new()
+            .route("/api/flow/stop", axum::routing::post(stop_flow_handler))
+            .with_state(state);
+
+        let req = Request::builder()
+            .method("POST")
+            .uri("/api/flow/stop")
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        assert!(
+            *stopped.lock().unwrap(),
+            "Expected MockRuntime.stopped to be true"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_deploy_flow_invalid_json_returns_error() {
+        let (tx, _) = broadcast::channel(16);
+        let (state, _, _) = make_mock_state(tx);
+
+        let app = Router::new()
+            .route("/api/flow", axum::routing::post(deploy_flow))
+            .with_state(state);
+
+        let req = Request::builder()
+            .method("POST")
+            .uri("/api/flow")
+            .header("content-type", "application/json")
+            .body(Body::from("not valid json"))
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_ne!(
+            resp.status(),
+            StatusCode::OK,
+            "Expected non-200 for invalid JSON"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_static_handler_serves_index() {
+        let app = Router::new().route(
+            "/",
+            get(|| async {
+                static_handler(
+                    axum::http::HeaderMap::new(),
+                    axum::http::Uri::from_static("/"),
+                )
+                .await
+            }),
+        );
+
+        let req = Request::builder().uri("/").body(Body::empty()).unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+    }
 }
