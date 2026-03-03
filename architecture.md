@@ -61,12 +61,12 @@ All crates inherit shared lint rules from the root `Cargo.toml` via `[workspace.
   - **Trait Interfaces**: None (concrete structs only).
   - **Mock Availability**: None — protocols are concrete.
 - **plantlink-runtime**: Owns flow execution (`RuntimeEngine`), node lifecycle, node registry. Does NOT own HTTP endpoints or CLI parsing.
-  - **Trait Interfaces**: `NodeBehavior`, `SimpleNode`, `BaseNodeAdapter` (adapter).
-  - **Mock Availability**: Testable via concrete node instances.
-  - **Key patterns**: Global `NodeRegistry` (factory map), `BaseNodeAdapter` (adapter), `CancellationToken` (cooperative shutdown).
+  - **Trait Interfaces**: `FlowRuntime`, `NodeBehavior`, `SimpleNode`, `BaseNodeAdapter` (adapter).
+  - **Mock Availability**: `dyn FlowRuntime` allows mocking the entire engine. Testable via concrete node instances.
+  - **Key patterns**: Instance-scoped `NodeRegistry` (not global), `BaseNodeAdapter` (adapter), `CancellationToken` (cooperative shutdown).
 - **plantlink-web**: Owns REST API, WebSocket handler, embedded UI assets. Does NOT own flow logic or protocol drivers.
   - **Trait Interfaces**: None — thin HTTP layer.
-  - **Mock Availability**: N/A.
+  - **Mock Availability**: Consumes `dyn FlowRuntime` for isolated endpoint testing.
 - **plantlink-cli**: Owns bootstrapping (tracing, tokio runtime, CLI args). Does NOT own any business logic.
   - **Trait Interfaces**: None.
   - **Mock Availability**: N/A.

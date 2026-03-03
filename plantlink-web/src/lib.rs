@@ -62,7 +62,7 @@ use tokio::sync::RwLock;
 #[derive(Clone)]
 struct AppState {
     tx: broadcast::Sender<String>,
-    runtime: Arc<RwLock<plantlink_runtime::RuntimeEngine>>,
+    runtime: Arc<RwLock<dyn plantlink_runtime::FlowRuntime>>,
 }
 
 impl WebServer {
@@ -72,7 +72,7 @@ impl WebServer {
     pub async fn run(
         port: u16,
         tx: broadcast::Sender<String>,
-        runtime: Arc<RwLock<plantlink_runtime::RuntimeEngine>>,
+        runtime: Arc<RwLock<dyn plantlink_runtime::FlowRuntime>>,
     ) -> anyhow::Result<()> {
         let app_state = AppState {
             tx,
@@ -100,7 +100,7 @@ impl WebServer {
     }
 }
 
-async fn shutdown_signal(runtime: Arc<RwLock<plantlink_runtime::RuntimeEngine>>) {
+async fn shutdown_signal(runtime: Arc<RwLock<dyn plantlink_runtime::FlowRuntime>>) {
     let ctrl_c = async {
         if let Err(e) = tokio::signal::ctrl_c().await {
             tracing::error!("Failed to install Ctrl+C handler: {}", e);
@@ -263,7 +263,7 @@ mod tests {
     #[tokio::test]
     async fn test_web_state() {
         let (tx, _) = broadcast::channel(16);
-        let runtime = Arc::new(RwLock::new(
+        let runtime: Arc<RwLock<dyn plantlink_runtime::FlowRuntime>> = Arc::new(RwLock::new(
             plantlink_runtime::RuntimeEngine::new(tx.clone()).unwrap(),
         ));
         let _state = AppState { tx, runtime };
@@ -277,7 +277,7 @@ mod tests {
     #[tokio::test]
     async fn test_health_endpoint_returns_ok() {
         let (tx, _) = broadcast::channel(16);
-        let runtime = Arc::new(RwLock::new(
+        let runtime: Arc<RwLock<dyn plantlink_runtime::FlowRuntime>> = Arc::new(RwLock::new(
             plantlink_runtime::RuntimeEngine::new(tx.clone()).unwrap(),
         ));
         let state = AppState { tx, runtime };
@@ -299,7 +299,7 @@ mod tests {
     #[tokio::test]
     async fn test_deploy_flow_endpoint() {
         let (tx, _) = broadcast::channel(16);
-        let runtime = Arc::new(RwLock::new(
+        let runtime: Arc<RwLock<dyn plantlink_runtime::FlowRuntime>> = Arc::new(RwLock::new(
             plantlink_runtime::RuntimeEngine::new(tx.clone()).unwrap(),
         ));
         let state = AppState { tx, runtime };
@@ -322,7 +322,7 @@ mod tests {
     #[tokio::test]
     async fn test_stop_flow_endpoint() {
         let (tx, _) = broadcast::channel(16);
-        let runtime = Arc::new(RwLock::new(
+        let runtime: Arc<RwLock<dyn plantlink_runtime::FlowRuntime>> = Arc::new(RwLock::new(
             plantlink_runtime::RuntimeEngine::new(tx.clone()).unwrap(),
         ));
         let state = AppState { tx, runtime };

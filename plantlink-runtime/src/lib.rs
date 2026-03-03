@@ -11,6 +11,12 @@ use std::collections::HashMap;
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 
+#[async_trait::async_trait]
+pub trait FlowRuntime: Send + Sync {
+    async fn update_flow(&mut self, flow: FlowConfig) -> Result<()>;
+    async fn stop_flow(&mut self) -> StopStatus;
+}
+
 mod nodes;
 use nodes::{NodeBehavior, NodeContext, NodeReceiver, OutputMap};
 use tokio_stream::StreamExt;
@@ -107,6 +113,7 @@ pub struct RuntimeEngine {
     tasks: HashMap<String, tokio::task::JoinHandle<()>>,
     /// Cancellation token for the current flow
     cancel: CancellationToken,
+    registry: nodes::registry::NodeRegistry,
 }
 
 impl RuntimeEngine {
@@ -114,18 +121,23 @@ impl RuntimeEngine {
     /// # Errors
     /// Returns an error if the engine cannot be initialized.
     pub fn new(tx: broadcast::Sender<String>) -> Result<Self> {
+        let mut registry = nodes::registry::NodeRegistry::new();
         // Ensure defaults are registered
-        nodes::register_defaults()?;
+        nodes::register_defaults(&mut registry)?;
 
         Ok(Self {
             tx,
             tasks: HashMap::new(),
             cancel: CancellationToken::new(),
+            registry,
         })
     }
+}
 
+#[async_trait::async_trait]
+impl FlowRuntime for RuntimeEngine {
     #[allow(clippy::unused_async)]
-    pub async fn stop_flow(&mut self) -> StopStatus {
+    async fn stop_flow(&mut self) -> StopStatus {
         tracing::info!("Runtime: Stopping active flow");
 
         // 1. Signal cancellation to all nodes
@@ -154,7 +166,7 @@ impl RuntimeEngine {
     /// # Errors
     /// Returns an error if the new flow cannot be deployed.
     #[allow(clippy::if_not_else)]
-    pub async fn update_flow(&mut self, flow: FlowConfig) -> Result<()> {
+    async fn update_flow(&mut self, flow: FlowConfig) -> Result<()> {
         tracing::info!("Runtime: Updating flow with {} nodes", flow.nodes.len());
 
         // 1. Stop all existing tasks
@@ -186,7 +198,7 @@ impl RuntimeEngine {
 
             // Create specific node instance dynamically from registry
             let mut node: Box<dyn NodeBehavior> =
-                match nodes::registry::create_node(&config.type_, &config) {
+                match self.registry.create(&config.type_, &config) {
                     Ok(n) => n,
                     Err(e) => {
                         tracing::warn!("Failed to create node {}: {}", config.type_, e);
@@ -325,6 +337,39 @@ fn parse_port(_handle: Option<&str>) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    pub(crate) struct MockRuntime {
+        pub deployed: bool,
+        pub stopped: bool,
+    }
+
+    #[async_trait::async_trait]
+    impl FlowRuntime for MockRuntime {
+        async fn update_flow(&mut self, _flow: FlowConfig) -> Result<()> {
+            self.deployed = true;
+            Ok(())
+        }
+        async fn stop_flow(&mut self) -> StopStatus {
+            self.stopped = true;
+            StopStatus { tasks_aborted: 0 }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_mock_runtime_implements_flow_runtime() {
+        let mut rt: Box<dyn FlowRuntime> = Box::new(MockRuntime {
+            deployed: false,
+            stopped: false,
+        });
+        let flow = FlowConfig {
+            nodes: vec![],
+            edges: vec![],
+        };
+        rt.update_flow(flow).await.unwrap();
+        rt.stop_flow().await;
+        // The mock records state successfully.
+    }
+
     #[test]
     fn test_status_serialization() {
         let (tx, mut rx) = broadcast::channel(16);

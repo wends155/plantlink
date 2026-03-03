@@ -52,19 +52,19 @@ pub fn send_node_status(
     }
 }
 
-pub fn register_defaults() -> anyhow::Result<()> {
-    registry::register_node("inject", |cfg| {
+pub fn register_defaults(registry: &mut registry::NodeRegistry) -> anyhow::Result<()> {
+    registry.register("inject", |cfg| {
         Box::new(base::BaseNodeAdapter::new(inject::InjectNode::new(cfg)))
     })?;
-    registry::register_node("console", |cfg| Box::new(console::ConsoleNode::new(cfg)))?;
-    registry::register_node("nats-broker", |cfg| {
+    registry.register("console", |cfg| Box::new(console::ConsoleNode::new(cfg)))?;
+    registry.register("nats-broker", |cfg| {
         Box::new(nats::NatsBrokerNode::new(cfg))
     })?;
-    registry::register_node("nats-sub", |cfg| Box::new(nats::NatsSubNode::new(cfg)))?;
-    registry::register_node("nats-pub", |cfg| Box::new(nats::NatsPubNode::new(cfg)))?;
-    registry::register_node("rhai", |cfg| Box::new(rhai::RhaiNode::new(cfg)))?;
-    registry::register_node("function", |cfg| Box::new(rhai::RhaiNode::new(cfg)))?;
-    registry::register_node("rhai-function", |cfg| Box::new(rhai::RhaiNode::new(cfg)))?;
+    registry.register("nats-sub", |cfg| Box::new(nats::NatsSubNode::new(cfg)))?;
+    registry.register("nats-pub", |cfg| Box::new(nats::NatsPubNode::new(cfg)))?;
+    registry.register("rhai", |cfg| Box::new(rhai::RhaiNode::new(cfg)))?;
+    registry.register("function", |cfg| Box::new(rhai::RhaiNode::new(cfg)))?;
+    registry.register("rhai-function", |cfg| Box::new(rhai::RhaiNode::new(cfg)))?;
     Ok(())
 }
 
@@ -151,6 +151,20 @@ impl NodeContext {
     fn emit_status(&self, state: &str, message: &str) {
         send_node_status(&self.system_tx, self.id.clone(), state, message);
     }
+
+    /// Convenience constructor for unit tests with minimal boilerplate.
+    #[cfg(test)]
+    pub fn for_test(id: &str) -> (Self, broadcast::Receiver<String>) {
+        let (tx, rx) = broadcast::channel(16);
+        let ctx = Self::new(
+            id.to_string(),
+            HashMap::new(),
+            Arc::new(RwLock::new(HashMap::new())),
+            tx,
+            CancellationToken::new(),
+        );
+        (ctx, rx)
+    }
 }
 
 /// The behavior every node must implement
@@ -181,14 +195,7 @@ mod tests {
 
     #[test]
     fn test_node_context_emit_stopped() {
-        let (tx, mut rx) = broadcast::channel(16);
-        let ctx = NodeContext::new(
-            "test-node".to_string(),
-            HashMap::new(),
-            Arc::new(RwLock::new(HashMap::new())),
-            tx,
-            CancellationToken::new(),
-        );
+        let (ctx, mut rx) = NodeContext::for_test("test-node");
         ctx.emit_stopped("Manual stop");
         let msg = rx.try_recv().expect("Message not received");
         assert!(msg.contains("test-node"));
@@ -222,14 +229,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_send_output_no_links_is_ok() {
-        let (sys_tx, _) = broadcast::channel(16);
-        let ctx = NodeContext::new(
-            "test-node".to_string(),
-            HashMap::new(),
-            Arc::new(RwLock::new(HashMap::new())),
-            sys_tx,
-            CancellationToken::new(),
-        );
+        let (ctx, _) = NodeContext::for_test("test-node");
         // No outputs configured — should succeed silently
         let result = ctx.send_output(MessagePayload::default()).await;
         assert!(result.is_ok());
@@ -237,14 +237,7 @@ mod tests {
 
     #[test]
     fn test_emit_running_broadcasts() {
-        let (tx, mut rx) = broadcast::channel(16);
-        let ctx = NodeContext::new(
-            "run-node".to_string(),
-            HashMap::new(),
-            Arc::new(RwLock::new(HashMap::new())),
-            tx,
-            CancellationToken::new(),
-        );
+        let (ctx, mut rx) = NodeContext::for_test("run-node");
         ctx.emit_running("All good");
         let msg = rx.try_recv().unwrap();
         assert!(msg.contains("running"));
@@ -253,14 +246,7 @@ mod tests {
 
     #[test]
     fn test_emit_error_broadcasts() {
-        let (tx, mut rx) = broadcast::channel(16);
-        let ctx = NodeContext::new(
-            "err-node".to_string(),
-            HashMap::new(),
-            Arc::new(RwLock::new(HashMap::new())),
-            tx,
-            CancellationToken::new(),
-        );
+        let (ctx, mut rx) = NodeContext::for_test("err-node");
         ctx.emit_error("Something failed");
         let msg = rx.try_recv().unwrap();
         assert!(msg.contains("error"));
