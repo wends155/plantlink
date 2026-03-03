@@ -26,3 +26,5 @@ Thumbs.db
 
 # Documentation Rules
 GEMINI.md
+ui/playwright-report/
+ui/test-results/

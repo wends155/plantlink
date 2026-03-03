@@ -27,6 +27,15 @@ clean:
 	rm -f *.log *.txt
 
 # Testing
+test-unit:
+	cd ui && npm run test:unit
+
+test-integration:
+	cd ui && npm run build
+	pwsh -File scripts/start-backend.ps1
+	cd ui && npm run test:integration
+	pwsh -File scripts/stop-backend.ps1
+
 test-e2e:
 	cd ui && npm run test:e2e
 
@@ -36,6 +45,8 @@ test-e2e-ui:
 # Verification
 verify:
 	sh ./scripts/verify.sh
+
+verify-all: verify test-unit test-e2e
 
 fmt:
 	cargo fmt
