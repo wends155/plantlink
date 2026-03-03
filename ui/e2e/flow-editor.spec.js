@@ -15,12 +15,12 @@ test.describe('Flow Editor', () => {
         await expect(page.locator('.palette-category')).toHaveCount(3);
         await expect(page.getByText('Common')).toBeVisible();
         await expect(page.getByText('Network')).toBeVisible();
-        await expect(page.getByText('Function')).toBeVisible();
+        await expect(page.getByText('Function', { exact: true })).toBeVisible();
     });
 
     test('should render palette items as draggable', async ({ page }) => {
         const paletteItems = page.locator('.palette-item');
-        await expect(paletteItems).toHaveCount(15); // Adjust based on actual node count
+        await expect(paletteItems).toHaveCount(8);
 
         const firstItem = paletteItems.first();
         await expect(firstItem).toHaveAttribute('draggable', 'true');
@@ -28,7 +28,7 @@ test.describe('Flow Editor', () => {
 
     test('should allow drag and drop of nodes', async ({ page }) => {
         // Find Inject node in palette
-        const injectNode = page.locator('.palette-item', { hasText: 'Inject' });
+        const injectNode = page.locator('.palette-item', { hasText: /inject/i });
         const canvas = page.locator('.flow-canvas');
 
         // Ensure elements are visible
@@ -58,7 +58,7 @@ test.describe('Flow Editor', () => {
 
         // Find and click theme toggle button
         // Adjust selector based on actual ThemeToggle component
-        const themeToggle = page.locator('button').filter({ hasText: /theme|light|dark/i }).first();
+        const themeToggle = page.locator('button[aria-label="Toggle Dark Mode"]');
         await themeToggle.click();
 
         // Wait for theme to change
@@ -85,5 +85,38 @@ test.describe('Flow Editor', () => {
         expect(width).not.toBe('0px');
         expect(height).not.toBe('auto');
         expect(height).not.toBe('0px');
+    });
+
+    test('should NOT auto-zoom when dropping first node on empty canvas', async ({ page }) => {
+        // Get the viewport transform before any nodes are placed
+        const getZoomLevel = () =>
+            page.locator('.svelte-flow__viewport').evaluate((el) => {
+                const transform = getComputedStyle(el).transform;
+                // CSS transform matrix: matrix(a, b, c, d, tx, ty) where a = scaleX
+                if (!transform || transform === 'none') return 1;
+                const match = transform.match(/matrix\(([^,]+)/);
+                return match ? parseFloat(match[1]) : 1;
+            });
+
+        const zoomBefore = await getZoomLevel();
+
+        // Drag an Inject node onto the canvas
+        const injectNode = page.locator('.palette-item', { hasText: 'Inject' });
+        const canvas = page.locator('.flow-canvas');
+        await expect(injectNode).toBeVisible();
+        await expect(canvas).toBeVisible();
+
+        const canvasBox = await canvas.boundingBox();
+        await injectNode.dragTo(canvas, {
+            targetPosition: { x: canvasBox.width / 2, y: canvasBox.height / 2 },
+        });
+
+        // Wait for node to be rendered
+        await page.waitForTimeout(500);
+        await expect(page.locator('.svelte-flow__node')).toHaveCount(1);
+
+        // Verify zoom level did NOT change (no auto-zoom)
+        const zoomAfter = await getZoomLevel();
+        expect(zoomAfter).toBeCloseTo(zoomBefore, 1);
     });
 });

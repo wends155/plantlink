@@ -13,13 +13,16 @@ export default defineConfig({
     },
     projects: [
         {
-            name: 'chromium',
-            use: { ...devices['Desktop Chrome'] },
+            name: 'chrome',
+            use: {
+                ...devices['Desktop Chrome'],
+                channel: 'chrome',
+            },
         },
-  },
+    ],
     webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:5173',
-    reuseExistingServer: !process.env.CI,
-},
+        command: 'node node_modules/vite/bin/vite.js --port 5173',
+        url: 'http://localhost:5173',
+        reuseExistingServer: !process.env.CI,
+    },
 });
