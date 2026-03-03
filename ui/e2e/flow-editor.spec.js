@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Flow Editor', () => {
     test.beforeEach(async ({ page }) => {
-        await page.goto('/');
+        await page.goto('/', { waitUntil: 'domcontentloaded' });
     });
 
     test('should render flow editor layout', async ({ page }) => {
@@ -212,7 +212,7 @@ test.describe('Flow Editor', () => {
             }
         });
 
-        await page.goto('/');
+        await page.goto('/', { waitUntil: 'domcontentloaded' });
         await page.waitForTimeout(1000); // Let page stabilize
 
         expect(errors).toEqual([]);
@@ -226,7 +226,7 @@ test.describe('Flow Editor', () => {
             }
         });
 
-        await page.goto('/');
+        await page.goto('/', { waitUntil: 'domcontentloaded' });
 
         const injectNode = page.locator('.palette-item', { hasText: /inject/i });
         const canvas = page.locator('.flow-canvas');
