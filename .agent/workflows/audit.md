@@ -42,6 +42,13 @@ It enforces the **Reflect** phase of the TARS protocol and generates a structure
 >
 > If Narsil MCP is available, also run `scan_security` and `check_cwe_top25`. Use `-Scope full` for compliance mode.
 
+> [!CAUTION]
+> **No ad-hoc `rg` for patterns covered by `sg scan` rules.** When `sgconfig.yml`
+> exists, all pattern checks (unwrap, hardcoded URLs, raw spawns, etc.) MUST use
+> `sg scan` — never raw `rg`. AST-aware rules exclude tests automatically and
+> avoid false positives in comments/strings. Using `rg` as a substitute is a
+> compliance violation.
+
 - Read `.agent/rules/audit-rules.md` for report format, finding classification, and verdict criteria.
 - Read `architecture.md` (if present) for project-specific design and toolchain.
 - Read `.agent/rules/coding-standard.md` (if present) for language-specific coding standards.
@@ -59,7 +66,7 @@ Before auditing, collect all relevant materials:
 - **Changed Files**: `git diff --name-only` to identify what was created, modified, or deleted.
 - **Implementation Plan**: Locate and re-read the original approved plan (post-implementation only).
 - **Verification Logs**: Review any test output, lint results, or build logs from the Act phase.
-- **Git Diff**: Run `git diff` or `git log` to see the exact changes made.
+- **Git Diff**: Run `make diff-last` (wraps `git log -1 -p`) to view the full patch of the last commit. Do **NOT** use `git diff HEAD~N` — the `~` character is banned by the IDE.
 
 ### 2. Compliance Audit
 

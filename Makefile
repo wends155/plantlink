@@ -1,4 +1,4 @@
-.PHONY: build-assets run test-e2e clean build-release dev preview toolcheck todos secrets
+.PHONY: build-assets run test-e2e clean build-release dev preview toolcheck todos secrets doc-coverage doc-comments diff-last
 
 # Development server
 dev:
@@ -78,3 +78,15 @@ todos:
 # Scan for hardcoded secrets
 secrets:
 	rg -n -i -e "API_KEY" -e "SECRET" -e "PASSWORD" -e "TOKEN" --glob "!.git" --glob "!target" --glob "!*.lock" . || true
+
+# Count public items per source file (doc coverage metric)
+doc-coverage:
+	rg -c -e "pub\s+fn\s+" -e "pub\s+struct\s+" -e "pub\s+enum\s+" -e "pub\s+trait\s+" -e "pub\s+type\s+" --glob "*.rs" . || true
+
+# Count doc comment lines per source file
+doc-comments:
+	rg -c "\s*///" --glob "*.rs" . || true
+
+# Show full patch of the most recent commit (safe: no ~ character)
+diff-last:
+	git log -1 -p

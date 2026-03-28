@@ -37,9 +37,9 @@ Gather the current documentation state:
 2. **Toolchain Config:** Check for `rustfmt.toml`, `clippy.toml`, `.cargo/config.toml` with `view_file`.
 3. **Doc Coverage (Rust):**
 // turbo
-   - `rg -c -e "pub\s+fn\s+" -e "pub\s+struct\s+" -e "pub\s+enum\s+" -e "pub\s+trait\s+" -e "pub\s+type\s+" src/ --glob "*.rs"` (public items)
+   - `make doc-coverage` (public items per file)
 // turbo
-   - `rg -c "\s*///" src/ --glob "*.rs"` (doc comment lines)
+   - `make doc-comments` (doc comment lines per file)
 4. **Section Audit:** Read `spec.md` with `view_file`. Check for required section headings from `doc-rules.md §4`.
 5. **Drift Detection:** If `spec.md` has `> Last verified against: <hash>`:
 // turbo
