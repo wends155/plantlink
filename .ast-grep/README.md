@@ -10,9 +10,8 @@ These rules leverage ast-grep's AST-awareness and path-scoping to detect archite
    ```sh
    cargo install ast-grep
    ```
-2. Copy `sgconfig.yml` to your project root (update `ruleDirs` to `.ast-grep/rules`).
-3. Sync the `.ast-grep/` directory from the template repo.
-4. Run the scan:
+2. `sgconfig.yml` is already present at the project root (`.ast-grep/rules` is preconfigured).
+3. Run the scan:
    ```sh
    sg scan
    ```
