@@ -19,5 +19,9 @@ uuid = { version = "1.20.0", features = ["v4"] }
 bytes = "1.11.0"
 tokio-util = "0.7.18"
 
+[dev-dependencies]
+plantlink-core = { path = "../plantlink-core", features = ["mocks"] }
+mockall = "0.13"
+
 [lints]
 workspace = true

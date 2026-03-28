@@ -1,4 +1,6 @@
+use crate::traits::{PubSubClient, PubSubMessage};
 use anyhow::Result;
+use futures::stream::BoxStream;
 use rumqttc::{AsyncClient, MqttOptions, QoS};
 use std::time::Duration;
 
@@ -10,10 +12,11 @@ use std::time::Duration;
 ///
 /// ```no_run
 /// use plantlink_core::mqtt::MqttDriver;
+/// use plantlink_core::traits::PubSubClient;
 ///
 /// # async fn example() -> anyhow::Result<()> {
 /// let driver = MqttDriver::connect("plant-01", "localhost", 1883).await?;
-/// driver.publish("sensors/temp", vec![0x42]).await?;
+/// driver.publish("sensors/temp", bytes::Bytes::from("hello")).await?;
 /// # Ok(())
 /// # }
 /// ```
@@ -26,6 +29,7 @@ impl MqttDriver {
     /// # Errors
     /// Returns an error if the MQTT options are invalid.
     #[allow(clippy::unused_async)]
+    #[tracing::instrument(skip(id, host, port), err)]
     pub async fn connect(id: &str, host: &str, port: u16) -> Result<Self> {
         let mut mqttoptions = MqttOptions::new(id, host, port);
         mqttoptions.set_keep_alive(Duration::from_secs(5));
@@ -59,14 +63,20 @@ impl MqttDriver {
 
         Ok(Self { client })
     }
+}
 
-    ///
-    /// # Errors
-    /// Returns an error if publishing to the broker fails.
-    pub async fn publish(&self, topic: &str, payload: Vec<u8>) -> Result<()> {
+#[async_trait::async_trait]
+impl PubSubClient for MqttDriver {
+    #[tracing::instrument(skip(self, payload), err)]
+    async fn publish(&self, topic: &str, payload: bytes::Bytes) -> Result<()> {
         self.client
-            .publish(topic, QoS::AtLeastOnce, false, payload)
+            .publish(topic, QoS::AtLeastOnce, false, payload.to_vec())
             .await?;
         Ok(())
+    }
+
+    #[tracing::instrument(skip(self), err)]
+    async fn subscribe(&self, _topic: &str) -> Result<BoxStream<'static, PubSubMessage>> {
+        Err(anyhow::anyhow!("MQTT subscribe not implemented yet"))
     }
 }

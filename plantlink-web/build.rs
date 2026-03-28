@@ -19,31 +19,28 @@ fn main() {
 
     if should_build {
         println!("cargo:warning=Building UI assets for {profile} profile...");
+        // Set working directory for UI build
+        let ui_dir = Path::new("../ui");
 
-        let shell = if cfg!(target_os = "windows") {
-            "cmd"
+        let npm_cmd = if cfg!(target_os = "windows") {
+            "npm.cmd"
         } else {
-            "sh"
-        };
-        let arg1 = if cfg!(target_os = "windows") {
-            "/C"
-        } else {
-            "-c"
+            "npm"
         };
 
         // npm install
-        let install_cmd = "cd ../ui && npm install".to_string();
-        let status = Command::new(shell)
-            .args([arg1, &install_cmd])
+        let status = Command::new(npm_cmd)
+            .arg("install")
+            .current_dir(ui_dir)
             .status()
             .expect("Failed to run npm install");
 
         assert!(status.success(), "Frontend npm install failed");
 
         // npm run build
-        let build_cmd = "cd ../ui && npm run build".to_string();
-        let status = Command::new(shell)
-            .args([arg1, &build_cmd])
+        let status = Command::new(npm_cmd)
+            .args(["run", "build"])
+            .current_dir(ui_dir)
             .status()
             .expect("Failed to run npm run build");
 

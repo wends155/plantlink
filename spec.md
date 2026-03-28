@@ -4,6 +4,8 @@
 > See `architecture.md` for *how* it's structured and `GEMINI.md` for operational rules.
 >
 > **Maintenance Rule**: The Architect must update this file whenever a public API changes.
+>
+> Last verified against: `bbb0abb`
 
 ---
 
@@ -95,7 +97,8 @@ The standard message envelope passed between nodes.
 | Method | Signature | Default | Errors |
 |--------|-----------|---------|--------|
 | `start` | `async fn start(&mut self, ctx: NodeContext) -> Result<()>` | `Ok(())` | Node-specific initialization failure. |
-| `on_input` | `async fn on_input(&mut self, port: usize, msg: MessagePayload, ctx: NodeContext) -> Result<()>` | `Ok(())` | Processing failure (logged, does not crash node). |
+| `receive` | `async fn receive(&mut self, port: usize, msg: Arc<MessagePayload>, ctx: NodeContext) -> Result<()>` | Shims to `on_input` | Primary handler. Optimized to avoid payload clones using `Arc`. |
+| `on_input` | `async fn on_input(&mut self, port: usize, msg: MessagePayload, ctx: NodeContext) -> Result<()>` | `Ok(())` | [DEPRECATED] Use `receive` instead. |
 | `stop` | `async fn stop(&mut self) -> Result<()>` | `Ok(())` | Cleanup failure. |
 
 - Requires `Send + Sync`.
@@ -105,11 +108,11 @@ The standard message envelope passed between nodes.
 
 | Method | Signature | Notes |
 |--------|-----------|-------|
-| `send_output` | `async fn send_output(&self, msg: MessagePayload) -> Result<()>` | Sends to port 0. Returns error if any downstream channel is closed. |
-| `send_output_port` | `async fn send_output_port(&self, port: usize, msg: MessagePayload) -> Result<()>` | Sends to a specific port. Logs per-failure, returns summary error. |
-| `emit_running` | `fn emit_running(&self, message: &str)` | Broadcasts `"running"` status. |
-| `emit_error` | `fn emit_error(&self, message: &str)` | Broadcasts `"error"` status. |
-| `emit_stopped` | `fn emit_stopped(&self, message: &str)` | Broadcasts `"stopped"` status. |
+| `send_output` | `async fn send_output(&self, msg: MessagePayload) -> Result<()>` | High-level output send. Wraps `msg` in `Arc` and routes to port 0. |
+| `send_output_port` | `async fn send_output_port(&self, port: usize, msg: MessagePayload) -> Result<()>` | Multi-casts the message to all connected target ports without duplicating the payload $O(N)$. |
+| `emit_running` | `fn emit_running(&self, message: &str)` | Broadcasts `"running"` status via JSON. |
+| `emit_error` | `fn emit_error(&self, message: &str)` | Broadcasts `"error"` status via JSON. |
+| `emit_stopped` | `fn emit_stopped(&self, message: &str)` | Broadcasts `"stopped"` status via JSON. |
 
 #### `send_node_status` (utility)
 **Purpose**: Constructs and broadcasts a standardized status JSON message.
@@ -128,6 +131,14 @@ fn send_node_status(tx: &broadcast::Sender<String>, node_id: String, state: &str
 | `create_node` | `fn create_node(type_name: &str, config: &NodeConfig) -> Result<Box<dyn NodeBehavior>>` | Returns error if type not found. |
 
 **Registered defaults**: `inject`, `console`, `nats-broker`, `nats-sub`, `nats-pub`, `rhai`, `function`, `rhai-function`.
+
+#### Node Communication Patterns
+
+| Pattern | Description | Implementation Details |
+|---------|-------------|-------------------------|
+| **Shared Resources** | Nodes sharing driver instances (e.g. NATS) | `nats-broker` registers a `PubSubClient` in `ctx.resources`. `nats-sub` and `nats-pub` look up the driver by the broker's ID. |
+| **Dynamic Wiring** | Changing node relationships at runtime | `nats-sub` and `nats-pub` accept a new `broker_id` string on port 0 to re-target their connection. |
+| **Scripting** | Arbitrary JSON logic | `RhaiNode` converts `MessagePayload` to a Rhai `Dynamic` (Map) for the `process(msg)` user script. |
 
 ### Data Models
 

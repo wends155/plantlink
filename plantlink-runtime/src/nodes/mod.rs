@@ -1,3 +1,9 @@
+//! Node Framework and Registry
+//!
+//! This module defines the core trait `NodeBehavior` that all node types
+//! must implement. It also provides the global `NodeRegistry` for dynamic
+//! node creation from configuration strings.
+
 pub mod base;
 pub mod console;
 pub mod inject;
@@ -18,8 +24,8 @@ use tokio::sync::RwLock;
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 
-pub type NodeSender = mpsc::Sender<(usize, MessagePayload)>;
-pub type NodeReceiver = mpsc::Receiver<(usize, MessagePayload)>;
+pub type NodeSender = mpsc::Sender<(usize, Arc<MessagePayload>)>;
+pub type NodeReceiver = mpsc::Receiver<(usize, Arc<MessagePayload>)>;
 pub type PortLinks = Vec<(NodeSender, usize)>;
 pub type OutputMap = HashMap<usize, PortLinks>;
 
@@ -68,7 +74,13 @@ pub fn register_defaults(registry: &mut registry::NodeRegistry) -> anyhow::Resul
     Ok(())
 }
 
-/// Context passed to the node during execution
+/// Capabilities and routing provided to a node instance.
+///
+/// Each node receives a `NodeContext` to interact with the broader flow:
+/// 1. **Output Routing**: Multi-casting messages to downstreams.
+/// 2. **Shared Resources**: Accessing shared driver instances.
+/// 3. **Observability**: Sending status updates and logs.
+/// 4. **Cancellation**: Responding to flow termination via `cancel`.
 #[derive(Clone)]
 pub struct NodeContext {
     pub id: String,
@@ -107,10 +119,11 @@ impl NodeContext {
     /// Send a message to a specific output port
     pub async fn send_output_port(&self, port: usize, msg: MessagePayload) -> Result<()> {
         if let Some(links) = self.outputs.get(&port) {
+            let arc_msg = Arc::new(msg);
             let mut failures = 0;
             for (sender, target_input_port) in links {
                 // Send (TargetPort, Payload) to the channel
-                if let Err(e) = sender.send((*target_input_port, msg.clone())).await {
+                if let Err(e) = sender.send((*target_input_port, arc_msg.clone())).await {
                     tracing::warn!(
                         node_id = %self.id,
                         port,
@@ -167,13 +180,42 @@ impl NodeContext {
     }
 }
 
-/// The behavior every node must implement
+/// The behavior trait every node must implement.
+///
+/// Nodes are concurrent units of logic that process messages. They
+/// are managed by the `RuntimeEngine` and communicate via `NodeContext`.
 #[async_trait]
 pub trait NodeBehavior: Send + Sync {
+    /// Initialize the node and start internal background tasks.
     async fn start(&mut self, _ctx: NodeContext) -> Result<()> {
         Ok(())
     }
 
+    /// Primary data handler for nodes.
+    ///
+    /// This is the preferred way to receive data. It uses `Arc<MessagePayload>`
+    /// to avoid deep-cloning payloads when fan-out is high.
+    ///
+    /// # Arguments
+    /// - `port`: Input port index.
+    /// - `msg`: `Arc`-wrapped `MessagePayload`.
+    /// - `ctx`: The node's runtime context.
+    async fn receive(
+        &mut self,
+        port: usize,
+        msg: Arc<MessagePayload>,
+        ctx: NodeContext,
+    ) -> Result<()> {
+        // Default implementation shims to deprecated on_input for backward compatibility
+        #[allow(deprecated)]
+        self.on_input(port, (*msg).clone(), ctx).await
+    }
+
+    /// [DEPRECATED] Use `receive` instead.
+    #[deprecated(
+        since = "0.2.0",
+        note = "Use `receive` instead to avoid cloning overhead"
+    )]
     async fn on_input(
         &mut self,
         _port: usize,

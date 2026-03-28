@@ -12,10 +12,10 @@ impl ConsoleNode {
 
 #[async_trait::async_trait]
 impl NodeBehavior for ConsoleNode {
-    async fn on_input(
+    async fn receive(
         &mut self,
         _port: usize,
-        msg: MessagePayload,
+        msg: std::sync::Arc<MessagePayload>,
         ctx: NodeContext,
     ) -> Result<()> {
         let payload_str = msg.payload.to_string();
@@ -58,7 +58,9 @@ mod tests {
             payload: DataValue::String("hello".into()),
             ..Default::default()
         };
-        node.on_input(0, msg, ctx).await.unwrap();
+        node.receive(0, std::sync::Arc::new(msg), ctx)
+            .await
+            .unwrap();
         let broadcast = rx.try_recv().expect("Expected broadcast");
         assert!(
             broadcast.contains("\"type\":\"log\""),
@@ -78,7 +80,7 @@ mod tests {
             type_: "console".into(),
             data: serde_json::json!({}),
         });
-        node.on_input(0, MessagePayload::default(), ctx)
+        node.receive(0, std::sync::Arc::new(MessagePayload::default()), ctx)
             .await
             .unwrap();
         let broadcast = rx.try_recv().expect("Expected broadcast");

@@ -245,7 +245,7 @@ impl FlowRuntime for RuntimeEngine {
                     }
 
                     while let Some((port_idx, msg)) = streams.next().await {
-                        if let Err(e) = node.on_input(port_idx, msg, ctx.clone()).await {
+                        if let Err(e) = node.receive(port_idx, msg, ctx.clone()).await {
                             tracing::error!("Node {} error on input: {}", node_id, e);
                         }
                     }

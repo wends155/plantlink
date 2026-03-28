@@ -1,8 +1,30 @@
+//! Rhai Scripting Nodes
+//!
+//! This module provides the `RhaiNode`, which enables user-defined logic
+//! using the Rhai scripting language. Each incoming `MessagePayload` is
+//! converted to a Rhai `Dynamic` object (Map), processed by a user script,
+//! and the result is converted back to a `MessagePayload`.
+
 use super::{NodeBehavior, NodeContext};
 use anyhow::Result;
 use plantlink_core::MessagePayload;
 use rhai::{AST, Dynamic, Engine, Scope};
 
+/// A node that executes a Rhai script.
+///
+/// Scripts must define a `process(msg)` function that takes the incoming
+/// message and returns the processed message.
+///
+/// # Configuration (`data`)
+/// - `code`: The Rhai script body. If not provided, defaults to `return msg;`.
+///
+/// # Example Script
+/// ```rhai
+/// fn process(msg) {
+///     msg.payload = msg.payload * 1.8 + 32.0; // Celsius to Fahrenheit
+///     return msg;
+/// }
+/// ```
 pub struct RhaiNode {
     engine: Engine,
     ast: Option<AST>,
@@ -52,17 +74,17 @@ impl NodeBehavior for RhaiNode {
         }
     }
 
-    async fn on_input(
+    async fn receive(
         &mut self,
         _port: usize,
-        msg: MessagePayload,
+        msg: std::sync::Arc<MessagePayload>,
         ctx: NodeContext,
     ) -> Result<()> {
         if let Some(ast) = &self.ast {
             let mut scope = Scope::new();
 
             // Convert MessagePayload to Rhai Dynamic (Map)
-            let dynamic_msg = match rhai::serde::to_dynamic(&msg) {
+            let dynamic_msg = match rhai::serde::to_dynamic(&*msg) {
                 Ok(d) => d,
                 Err(e) => {
                     let log = format!("RhaiNode [{}]: Serialization Error: {}", ctx.id, e);
@@ -146,6 +168,12 @@ mod tests {
     use tokio::sync::{RwLock, broadcast, mpsc};
     use tokio_util::sync::CancellationToken;
 
+    type CtxOutputStreams = (
+        NodeContext,
+        mpsc::Receiver<(usize, std::sync::Arc<MessagePayload>)>,
+        broadcast::Receiver<String>,
+    );
+
     fn make_node(script: Option<&str>) -> RhaiNode {
         let data = if let Some(s) = script {
             serde_json::json!({ "code": s })
@@ -159,13 +187,7 @@ mod tests {
         })
     }
 
-    fn make_ctx_with_output(
-        id: &str,
-    ) -> (
-        NodeContext,
-        mpsc::Receiver<(usize, MessagePayload)>,
-        broadcast::Receiver<String>,
-    ) {
+    fn make_ctx_with_output(id: &str) -> CtxOutputStreams {
         let (tx, rx) = mpsc::channel(16);
         let (sys_tx, sys_rx) = broadcast::channel(32);
         let mut outputs: OutputMap = HashMap::new();
@@ -186,7 +208,9 @@ mod tests {
         let (ctx, mut rx, _sys_rx) = make_ctx_with_output("r1");
         let msg = MessagePayload::default();
         let expected_id = msg.id.clone();
-        node.on_input(0, msg, ctx).await.unwrap();
+        node.receive(0, std::sync::Arc::new(msg), ctx)
+            .await
+            .unwrap();
         let (port, received) = rx.recv().await.expect("Expected output");
         assert_eq!(port, 0);
         assert_eq!(received.id, expected_id);
@@ -209,7 +233,9 @@ mod tests {
     async fn test_rhai_runtime_error_on_input() {
         let mut node = make_node(Some("throw \"boom\";"));
         let (ctx, mut _rx, mut sys_rx) = make_ctx_with_output("r1");
-        let result = node.on_input(0, MessagePayload::default(), ctx).await;
+        let result = node
+            .receive(0, std::sync::Arc::new(MessagePayload::default()), ctx)
+            .await;
         assert!(result.is_err(), "Expected Err on runtime error");
         // Drain broadcasts and check for runtime error log
         let mut found_error = false;
@@ -228,7 +254,9 @@ mod tests {
         let (ctx, mut rx, _sys_rx) = make_ctx_with_output("r1");
         let msg = MessagePayload::default();
         let expected_id = msg.id.clone();
-        node.on_input(0, msg, ctx).await.unwrap();
+        node.receive(0, std::sync::Arc::new(msg), ctx)
+            .await
+            .unwrap();
         let (_, received) = rx
             .recv()
             .await

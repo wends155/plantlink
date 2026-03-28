@@ -6,6 +6,7 @@
 //! This crate provides:
 //! - [`DataValue`] — A universal value type for node payloads.
 //! - [`MessagePayload`] — The standard message envelope passed between nodes.
+//! - Protocol traits: [`traits::PubSubClient`], [`traits::ModbusClient`].
 //! - Protocol drivers: [`mqtt::MqttDriver`], [`nats::NatsDriver`], [`modbus::ModbusTcpClient`].
 
 use serde::{Deserialize, Serialize};
@@ -105,6 +106,7 @@ impl Default for MessagePayload {
 pub mod modbus;
 pub mod mqtt;
 pub mod nats;
+pub mod traits;
 
 #[cfg(test)]
 mod tests {

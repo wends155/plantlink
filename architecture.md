@@ -58,8 +58,8 @@ All crates inherit shared lint rules from the root `Cargo.toml` via `[workspace.
 
 ## 6. Module Boundaries
 - **plantlink-core**: Owns shared types (`DataValue`, `MessagePayload`), protocol driver structs. Does NOT own node logic or HTTP.
-  - **Trait Interfaces**: None (concrete structs only).
-  - **Mock Availability**: None — protocols are concrete.
+  - **Trait Interfaces**: `PubSubClient`, `ModbusClient`.
+  - **Mock Availability**: Mockable via `MockPubSubClient` and `MockModbusClient`.
 - **plantlink-runtime**: Owns flow execution (`RuntimeEngine`), node lifecycle, node registry. Does NOT own HTTP endpoints or CLI parsing.
   - **Trait Interfaces**: `FlowRuntime`, `NodeBehavior`, `SimpleNode`, `BaseNodeAdapter` (adapter).
   - **Mock Availability**: `dyn FlowRuntime` allows mocking the entire engine. Testable via concrete node instances.
@@ -92,11 +92,13 @@ All crates inherit shared lint rules from the root `Cargo.toml` via `[workspace.
 - **Levels**: standard `ERROR`, `WARN`, `INFO`, `DEBUG`, and `TRACE` used per `GEMINI.md` guidelines.
 
 ## 10. Concurrency Model
-- **Actor-per-node**: Each node is spawned as an independent `tokio::spawn` task.
-- **Inter-node channels**: Bounded `mpsc` channels (capacity: 100) carry `(port_idx, MessagePayload)` tuples.
+- **Actor-per-node**: Each node is spawned as an independent `tokio::spawn` task, implementing the `NodeBehavior` trait.
+- **Inter-node channels**: Bounded `mpsc` channels (capacity: 100) carry `(port_idx, Arc<MessagePayload>)` tuples.
+- **Reference-counted payloads**: All messages are wrapped in `Arc` by the `NodeContext::send_output_port` method to eliminate deep clones ($O(N)$ memory duplication) during multi-port fan-out.
+- **Actor Interface**: Nodes implement the `receive` method (accepting `Arc<MessagePayload>`) for high-performance message handling. The legacy `on_input` method is deprecated.
 - **Source nodes**: Nodes with no input receivers are kept alive via `futures::future::pending()`.
-- **Stream multiplexing**: Nodes with multiple inputs use `tokio_stream::StreamMap` to merge all receivers.
-- **Cooperative shutdown**: `CancellationToken` (from `tokio-util`) is propagated from `RuntimeEngine` to all child tasks.
+- **Stream multiplexing**: Nodes with multiple inputs use `tokio_stream::StreamMap` to merge all receivers into a single event stream.
+- **Cooperative shutdown**: `CancellationToken` (from `tokio-util`) is propagated from `RuntimeEngine` to all child tasks for graceful exit.
 
 ## 11. State Management
 - **Shared resource registry**: `Arc<RwLock<HashMap<String, Box<dyn Any + Send + Sync>>>>` scoped per flow execution. Allows nodes to share typed state (e.g., protocol connections).

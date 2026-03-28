@@ -51,11 +51,14 @@
 51. **2026-03-28 (Toolcheck Automation):** Refactored `.agent/workflows/toolcheck.md` to remove the PowerShell version check from the Session Readiness Report template. This ensures fully automated, zero-intervention session bootstrap by avoiding `$PSVersionTable.PSVersion.ToString()`, which triggers IDE auto-run restrictions due to `$`-variable syntax.
 52. **2026-03-28 (Toolcheck Tool Reference Fix):** Replaced non-existent `find_by_name` tool reference in `.agent/workflows/toolcheck.md` Step 1 with `list_dir`, which is the actual native agent tool. This prevents agents from improvising banned shell commands (`;` chaining) when the referenced tool is unavailable.
 53. **2026-03-28 (Workflow RG Consolidation):** Consolidated blocked `rg` commands from `toolcheck.md`, `plan-making.md`, `audit.md`, `issue.md`, and `feature.md` into two new Makefile targets: `make todos` and `make secrets`. This eliminates IDE auto-run interception for these frequently used scans, ensuring zero-intervention execution across all major workflows.
+54. **2026-03-28 (Core Testability Refactor):** Refactored `plantlink-core` to support robust testing and observability by transitioning protocol drivers (NATS, MQTT, Modbus) to trait-based abstractions (`PubSubClient`, `ModbusClient`). Introduced `mockall` for dependency injection and implemented `tracing` instrumentation across all driver boundaries. Verified the refactor with a comprehensive unit test suite in `plantlink-runtime` and full quality gate compliance (total 54 tests passed).
+55. **2026-03-28 (Performance & Decoupling Refactor):** Remediated critical architectural debt in `plantlink-runtime`. Migrated the system bus to use `Arc<MessagePayload>` to eliminate $O(N)$ memory duplication during message fan-out. Refactored the `NodeBehavior` trait to introduce a high-performance `receive` method and deprecated `on_input`. Decoupled NATS nodes from the data/control plane by implementing predictable `broker_id` resource lookups from `NodeConfig`. Remediated SAST command injection warnings in `plantlink-web/build.rs` by transitioning from subshells to direct process execution. Restored full unit test coverage for NATS nodes and resolved all Rust 1.77+ Clippy warnings, achieving "Zero-Exit" status across 46 workspace tests (38 in runtime).
 
 ### 🧩 Active Components & APIs
-* `plantlink-core`: Shared data types (MessagePayload, DataValue) and protocol markers.
-    * `src/lib.rs`: Core traits and payload definitions.
-    * `src/mqtt.rs`, `src/modbus.rs`, `src/nats.rs`: Protocol-specific data structures.
+* `plantlink-core`: Shared data types (MessagePayload, DataValue) and protocol traits.
+    * `src/lib.rs`: Payload definitions and module exports.
+    * `src/traits.rs`: `PubSubClient` and `ModbusClient` trait definitions (mockable).
+    * `src/mqtt.rs`, `src/modbus.rs`, `src/nats.rs`: Concrete trait implementations with `tracing`.
 * `plantlink-runtime`: Flow execution engine.
     * `src/lib.rs`: Engine logic and node orchestration.
     * `src/nodes/`: Concrete node implementations (Rhai scripts, MQTT, etc.).
@@ -75,6 +78,8 @@
 * **Initial Design:** Chose **Rhai** for scripting due to its familiar syntax and easy integration with Rust.
 * **Error Handling:** Adopted a "No Silent Failure" policy for the runtime; `NodeContext::send_output` now returns `Result<()>` to ensure callers handle or log delivery failures.
 * **Resilience:** Implemented exponential backoff for MQTT event loops to prevent event loop crashes and ensure automatic recovery from connection errors.
+* **Trait-Based Mocking:** Transitioned protocol drivers to traits to enable isolated node-level testing. Chose `Arc<dyn Trait>` storage in the resource registry to allow downstream nodes to perform dependency injection via mock implementations during unit tests.
+* **Safe Sharing:** Wrapped the `tokio-modbus` client in a `Mutex` within the `ModbusTcpClient` implementation to maintain `Sync` compliance for the shared resource registry while preserving the required `&mut self` access for Modbus operations.
 
 ---
 

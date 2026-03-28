@@ -79,7 +79,7 @@ impl SimpleNode for InjectNode {
     async fn handle(
         &mut self,
         _port: usize,
-        _msg: MessagePayload,
+        _msg: std::sync::Arc<MessagePayload>,
         ctx: &NodeContext,
     ) -> Result<()> {
         // Trigger mode: output the configured payload immediately

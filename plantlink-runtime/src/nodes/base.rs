@@ -1,9 +1,19 @@
+//! Base Node Framework
+//!
+//! This module provides a simplified framework for implementing nodes.
+//! By implementing the `SimpleNode` trait and wrapping it in a `BaseNodeAdapter`,
+//! developers can focus on message processing without managing the full
+//! `NodeBehavior` async trait and resource lifecycle.
+
 use super::{NodeBehavior, NodeContext};
 use anyhow::Result;
 use plantlink_core::MessagePayload;
 
-/// A simplified trait for nodes that don't need full control over their lifecycle
-/// and just want to process messages.
+/// A simplified trait for nodes that primarily process messages.
+///
+/// Implemented by nodes that don't need low-level control over their
+/// concurrent lifecycle. The methods are called by `BaseNodeAdapter`
+/// which handles error reporting and logging.
 #[async_trait::async_trait]
 pub trait SimpleNode: Send + Sync {
     /// Called when the node is started. Can return initial state or error.
@@ -11,16 +21,33 @@ pub trait SimpleNode: Send + Sync {
         Ok(())
     }
 
-    /// Handle an incoming message. Return a Result.
-    /// If you need to send output, use `ctx.send_output()`.
-    async fn handle(&mut self, port: usize, msg: MessagePayload, ctx: &NodeContext) -> Result<()>;
+    /// Handle an incoming message.
+    ///
+    /// This is the primary processing hook. It is called by the adapter's
+    /// `receive` implementation. Logic should be non-blocking where possible.
+    ///
+    /// # Port Routing
+    /// - `port`: The index of the input port receiving the message.
+    /// - `msg`: An `Arc`-wrapped `MessagePayload`.
+    async fn handle(
+        &mut self,
+        port: usize,
+        msg: std::sync::Arc<plantlink_core::MessagePayload>,
+        ctx: &NodeContext,
+    ) -> Result<()>;
 
+    /// Called when the node is shut down.
     async fn on_stop(&mut self) -> Result<()> {
         Ok(())
     }
 }
 
-/// A wrapper that adapts a `SimpleNode` into a full `NodeBehavior`
+/// A wrapper that adapts a `SimpleNode` into a full `NodeBehavior`.
+///
+/// The adapter provides several automatic features for `SimpleNode` implementations:
+/// 1. **Status Reporting**: Broadcasts "running" status on start.
+/// 2. **Error Capture**: Catches errors from `handle` and broadcasts them as "error" status.
+/// 3. **Logging**: Automatically logs received errors to the system channel.
 #[derive(Clone)]
 pub struct BaseNodeAdapter<T: SimpleNode> {
     inner: T,
@@ -39,7 +66,12 @@ impl<T: SimpleNode + 'static> NodeBehavior for BaseNodeAdapter<T> {
         self.inner.on_start(&ctx).await
     }
 
-    async fn on_input(&mut self, port: usize, msg: MessagePayload, ctx: NodeContext) -> Result<()> {
+    async fn receive(
+        &mut self,
+        port: usize,
+        msg: std::sync::Arc<MessagePayload>,
+        ctx: NodeContext,
+    ) -> Result<()> {
         // We could wrap this in a catch_unwind or specific error handling logging
         if let Err(e) = self.inner.handle(port, msg, &ctx).await {
             // Automatic Error Reporting via System Channel
@@ -108,7 +140,7 @@ mod tests {
         async fn handle(
             &mut self,
             _port: usize,
-            _msg: MessagePayload,
+            _msg: std::sync::Arc<MessagePayload>,
             _ctx: &NodeContext,
         ) -> Result<()> {
             if self.fail_on_handle {
@@ -134,11 +166,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_adapter_on_input_error_broadcasts_status() {
+    async fn test_adapter_receive_error_broadcasts_status() {
         let node = DummySimpleNode::new(true);
         let mut adapter = BaseNodeAdapter::new(node);
         let (ctx, mut sys_rx) = NodeContext::for_test("base-err");
-        let result = adapter.on_input(0, MessagePayload::default(), ctx).await;
+        let result = adapter
+            .receive(0, std::sync::Arc::new(MessagePayload::default()), ctx)
+            .await;
         assert!(result.is_err(), "Expected error from failing handle");
         // Drain and look for "error" status in broadcast
         let mut found = false;

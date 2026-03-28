@@ -1,12 +1,28 @@
+//! NATS Protocol Nodes
+//!
+//! This module provides nodes for interacting with NATS messaging brokers.
+//! It implements a decoupled resource model where a `NatsBrokerNode` manages
+//! the connection and provides it to `NatsSubNode` and `NatsPubNode` via a
+//! shared resource registry indexed by `broker_id`.
+
 use super::{NodeBehavior, NodeContext};
 use anyhow::Result;
 use futures::StreamExt;
-use plantlink_core::{DataValue, MessagePayload, nats::NatsDriver};
+use plantlink_core::traits::PubSubClient;
+use plantlink_core::{DataValue, MessagePayload};
+use std::sync::Arc;
 
-// --- NATS Broker Node ---
+/// A node that manages a connection to a NATS broker.
+///
+/// This node connects to a server and registers the resulting `PubSubClient`
+/// in the shared resource registry. This allows other nodes to reference
+/// the connection by the `id` of this broker node.
+///
+/// # Configuration (`data`)
+/// - `url`: The NATS server URL (e.g., `nats://localhost:4222`).
 pub struct NatsBrokerNode {
     url: String,
-    conn_id: String,
+    id: String,
 }
 
 impl NatsBrokerNode {
@@ -19,7 +35,7 @@ impl NatsBrokerNode {
             .to_string();
         Self {
             url,
-            conn_id: uuid::Uuid::new_v4().to_string(),
+            id: config.id.clone(),
         }
     }
 }
@@ -29,38 +45,44 @@ impl NodeBehavior for NatsBrokerNode {
     async fn start(&mut self, ctx: NodeContext) -> Result<()> {
         tracing::info!("NatsBroker starting, connecting to {}", self.url);
 
-        match NatsDriver::connect(&self.url).await {
+        match plantlink_core::nats::NatsDriver::connect(&self.url).await {
             Ok(driver) => {
-                // Register connection in shared resources
+                // Register connection in shared resources using our own ID
                 {
                     let mut resources = ctx.resources.write().await;
-                    resources.insert(self.conn_id.clone(), Box::new(driver));
+                    resources.insert(
+                        self.id.clone(),
+                        Box::new(Arc::new(driver) as Arc<dyn PubSubClient>),
+                    );
                 }
 
-                // Emit success status
                 ctx.emit_running(&format!("Connected to {}", self.url));
-
-                // Broadcast the Connection ID to downstream nodes
-                let msg = MessagePayload {
-                    payload: DataValue::String(self.conn_id.clone()),
-                    ..Default::default()
-                };
-                ctx.send_output(msg).await?;
-
                 Ok(())
             }
             Err(e) => {
-                // Emit error status
                 ctx.emit_error(&format!("Connection failed: {e}"));
-                return Ok(());
+                Ok(())
             }
         }
     }
 }
 
-// --- NATS Sub Node ---
+/// A node that subscribes to a NATS subject.
+///
+/// This node retrieves a NATS client from the shared resource registry
+/// using its configured `broker_id` and spawns a background task to
+/// listener for messages.
+///
+/// # Configuration (`data`)
+/// - `subject`: The NATS subject to subscribe to (e.g., `sensors.temp`).
+/// - `broker`: The ID of the `NatsBrokerNode` providing the connection.
+///
+/// # Input Ports
+/// - `0`: Accepts a `DataValue::String` containing a new `broker_id` to
+///   dynamically re-assign the node's broker relationship.
 pub struct NatsSubNode {
     subject: String,
+    broker_id: String,
     sub_handle: Option<tokio::task::JoinHandle<()>>,
 }
 
@@ -72,8 +94,15 @@ impl NatsSubNode {
             .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string();
+        let broker_id = config
+            .data
+            .get("broker")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
         Self {
             subject,
+            broker_id,
             sub_handle: None,
         }
     }
@@ -81,28 +110,25 @@ impl NatsSubNode {
 
 #[async_trait::async_trait]
 impl NodeBehavior for NatsSubNode {
-    async fn on_input(
+    async fn receive(
         &mut self,
-        _port_idx: usize,
-        msg: MessagePayload,
+        port_idx: usize,
+        msg: Arc<MessagePayload>,
         ctx: NodeContext,
     ) -> Result<()> {
-        // Expect Connection ID in payload
-        let DataValue::String(conn_id) = msg.payload else {
-            return Ok(()); // Ignore invalid payloads
-        };
+        if let (0, DataValue::String(id)) = (port_idx, &msg.payload) {
+            self.broker_id.clone_from(id);
+        }
 
         // Retrieve Driver
         let driver = {
             let resources = ctx.resources.read().await;
-            if let Some(any) = resources.get(&conn_id) {
-                if let Some(driver) = any.downcast_ref::<NatsDriver>() {
-                    driver.clone()
-                } else {
-                    return Ok(());
-                }
-            } else {
-                return Ok(());
+            match resources
+                .get(&self.broker_id)
+                .and_then(|a| a.downcast_ref::<Arc<dyn PubSubClient>>())
+            {
+                Some(d) => d.clone(),
+                None => return Ok(()),
             }
         };
 
@@ -114,16 +140,14 @@ impl NodeBehavior for NatsSubNode {
                 return Ok(());
             }
         };
-        // let subject = self.subject.clone(); // Not used
 
         // Spawn listener
-        // Move ctx into task to send outputs
         let handle = tokio::spawn(async move {
             while let Some(nats_msg) = subscriber.next().await {
                 let payload_str = String::from_utf8_lossy(&nats_msg.payload).to_string();
                 let out_msg = MessagePayload {
-                    payload: DataValue::String(payload_str), // For now assume string
-                    topic: Some(nats_msg.subject.to_string()),
+                    payload: DataValue::String(payload_str),
+                    topic: Some(nats_msg.topic.clone()),
                     ..Default::default()
                 };
                 if let Err(e) = ctx.send_output(out_msg).await {
@@ -132,9 +156,6 @@ impl NodeBehavior for NatsSubNode {
             }
         });
 
-        // Store handle to abort later if needed (though on_input might be called multiple times?)
-        // If called multiple times (multiple brokers?), we spawn multiple subs?
-        // Ideally we should stop previous sub if any.
         if let Some(h) = self.sub_handle.replace(handle) {
             h.abort();
         }
@@ -150,10 +171,22 @@ impl NodeBehavior for NatsSubNode {
     }
 }
 
-// --- NATS Pub Node ---
+/// A node that publishes messages to a NATS subject.
+///
+/// This node retrieves a NATS client from the shared resource registry
+/// and publishes incoming payloads. If the node's `subject` is empty,
+/// it will attempt to use the `topic` field from the incoming `MessagePayload`.
+///
+/// # Configuration (`data`)
+/// - `subject`: Fixed NATS subject. If empty, uses the message topic.
+/// - `broker`: The ID of the `NatsBrokerNode` providing the connection.
+///
+/// # Input Ports
+/// - `0`: Accepts a `DataValue::String` to dynamically update the `broker_id`.
+/// - `1`: Receives payloads to be published to NATS.
 pub struct NatsPubNode {
     subject: String,
-    active_conn_id: Option<String>,
+    broker_id: String,
 }
 
 impl NatsPubNode {
@@ -164,64 +197,143 @@ impl NatsPubNode {
             .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string();
-        Self {
-            subject,
-            active_conn_id: None,
-        }
+        let broker_id = config
+            .data
+            .get("broker")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        Self { subject, broker_id }
     }
 }
 
 #[async_trait::async_trait]
 impl NodeBehavior for NatsPubNode {
-    async fn on_input(
+    async fn receive(
         &mut self,
         port_idx: usize,
-        msg: MessagePayload,
+        msg: Arc<MessagePayload>,
         ctx: NodeContext,
     ) -> Result<()> {
         if port_idx == 0 {
-            // Unpack Connection ID (Port 0)
-            if let DataValue::String(id) = msg.payload {
-                self.active_conn_id = Some(id);
+            // Unpack Connection ID
+            if let DataValue::String(id) = &msg.payload {
+                self.broker_id.clone_from(id);
             }
-        } else if port_idx == 1 {
-            // Data Payload (Port 1)
-            if let Some(conn_id) = &self.active_conn_id {
-                // Get Driver
-                let driver = {
-                    let resources = ctx.resources.read().await;
-                    match resources
-                        .get(conn_id)
-                        .and_then(|a| a.downcast_ref::<NatsDriver>())
-                    {
-                        Some(d) => d.clone(),
-                        None => return Ok(()),
-                    }
-                };
+            return Ok(());
+        }
 
-                // Publish
-                let payload_bytes = match msg.payload {
-                    DataValue::String(s) => s.into(),
-                    DataValue::Json(v) => v.to_string().into(),
-                    _ => bytes::Bytes::from(""),
-                };
-
-                // Use config subject, or msg topic if config is empty?
-                let target_subject = if !self.subject.is_empty() {
-                    &self.subject
-                } else if let Some(t) = &msg.topic {
-                    t
-                } else {
-                    return Ok(());
-                };
-
-                if let Err(e) = driver.publish(target_subject, payload_bytes).await {
-                    ctx.emit_error(&format!("Publish failed: {e}"));
+        if self.broker_id.is_empty() {
+            tracing::warn!("NatsPub: No active connection");
+        } else {
+            // Get Driver
+            let driver = {
+                let resources = ctx.resources.read().await;
+                match resources
+                    .get(&self.broker_id)
+                    .and_then(|a| a.downcast_ref::<Arc<dyn PubSubClient>>())
+                {
+                    Some(d) => d.clone(),
+                    None => return Ok(()),
                 }
+            };
+
+            // Publish
+            let payload_bytes = match &msg.payload {
+                DataValue::String(s) => bytes::Bytes::copy_from_slice(s.as_bytes()),
+                DataValue::Json(v) => bytes::Bytes::from(v.to_string()),
+                _ => bytes::Bytes::new(),
+            };
+
+            let target_subject = if !self.subject.is_empty() {
+                &self.subject
+            } else if let Some(t) = &msg.topic {
+                t
             } else {
-                tracing::warn!("NatsPub: No active connection");
+                return Ok(());
+            };
+
+            if let Err(e) = driver.publish(target_subject, payload_bytes).await {
+                ctx.emit_error(&format!("Publish failed: {e}"));
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::NodeConfig;
+    use serde_json::json;
+
+    #[test]
+    fn test_broker_config_parsing() {
+        let cfg = NodeConfig {
+            id: "b1".into(),
+            type_: "nats-broker".into(),
+            data: json!({ "url": "nats://test:4222" }),
+        };
+        let node = NatsBrokerNode::new(&cfg);
+        assert_eq!(node.url, "nats://test:4222");
+        assert_eq!(node.id, "b1");
+    }
+
+    #[test]
+    fn test_sub_config_parsing() {
+        let cfg = NodeConfig {
+            id: "s1".into(),
+            type_: "nats-sub".into(),
+            data: json!({ "subject": "test.*", "broker": "b1" }),
+        };
+        let node = NatsSubNode::new(&cfg);
+        assert_eq!(node.subject, "test.*");
+        assert_eq!(node.broker_id, "b1");
+    }
+
+    #[test]
+    fn test_pub_config_parsing() {
+        let cfg = NodeConfig {
+            id: "p1".into(),
+            type_: "nats-pub".into(),
+            data: json!({ "subject": "test.out", "broker": "b1" }),
+        };
+        let node = NatsPubNode::new(&cfg);
+        assert_eq!(node.subject, "test.out");
+        assert_eq!(node.broker_id, "b1");
+    }
+
+    #[tokio::test]
+    async fn test_sub_dynamic_broker_assignment() {
+        let cfg = NodeConfig {
+            id: "s1".into(),
+            type_: "nats-sub".into(),
+            data: json!({ "subject": "test", "broker": "old" }),
+        };
+        let mut node = NatsSubNode::new(&cfg);
+        let msg = Arc::new(MessagePayload {
+            payload: DataValue::String("new-broker".into()),
+            ..Default::default()
+        });
+        let (ctx, _) = NodeContext::for_test("s1");
+        node.receive(0, msg, ctx).await.unwrap();
+        assert_eq!(node.broker_id, "new-broker");
+    }
+
+    #[tokio::test]
+    async fn test_pub_dynamic_broker_assignment() {
+        let cfg = NodeConfig {
+            id: "p1".into(),
+            type_: "nats-pub".into(),
+            data: json!({ "subject": "test", "broker": "old" }),
+        };
+        let mut node = NatsPubNode::new(&cfg);
+        let msg = Arc::new(MessagePayload {
+            payload: DataValue::String("new-broker".into()),
+            ..Default::default()
+        });
+        let (ctx, _) = NodeContext::for_test("p1");
+        node.receive(0, msg, ctx).await.unwrap();
+        assert_eq!(node.broker_id, "new-broker");
     }
 }
