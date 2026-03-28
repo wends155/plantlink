@@ -38,7 +38,12 @@ mod tests {
     use crate::nodes::NodeContext;
     use plantlink_core::{DataValue, MessagePayload};
 
-    fn make_ctx(id: &str) -> (NodeContext, tokio::sync::broadcast::Receiver<crate::nodes::SystemEvent>) {
+    fn make_ctx(
+        id: &str,
+    ) -> (
+        NodeContext,
+        tokio::sync::broadcast::Receiver<crate::nodes::SystemEvent>,
+    ) {
         NodeContext::for_test(id)
     }
 
@@ -64,7 +69,7 @@ mod tests {
                 "Expected payload in log, got: {message}"
             );
         } else {
-            panic!("Expected SystemEvent::Log, got {:?}", broadcast);
+            panic!("Expected SystemEvent::Log, got {broadcast:?}");
         }
     }
 
@@ -86,7 +91,7 @@ mod tests {
                 "Expected node id in log, got: {message}"
             );
         } else {
-            panic!("Expected SystemEvent::Log, got {:?}", broadcast);
+            panic!("Expected SystemEvent::Log, got {broadcast:?}");
         }
     }
 }

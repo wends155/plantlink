@@ -233,10 +233,10 @@ mod tests {
         // Drain broadcasts and check for runtime error log
         let mut found_error = false;
         while let Ok(msg) = sys_rx.try_recv() {
-            if let super::super::SystemEvent::Log { message } = msg {
-                if message.contains("Runtime Error") {
-                    found_error = true;
-                }
+            if let super::super::SystemEvent::Log { message } = msg
+                && message.contains("Runtime Error")
+            {
+                found_error = true;
             }
         }
         assert!(found_error, "Expected 'Runtime Error' in broadcast log");

@@ -364,7 +364,7 @@ mod tests {
             assert_eq!(data.node_id, "test-node");
             assert_eq!(data.state, "running");
         } else {
-            panic!("Expected SystemEvent::Status, got {:?}", msg);
+            panic!("Expected SystemEvent::Status, got {msg:?}");
         }
     }
 
@@ -410,7 +410,7 @@ mod tests {
         if let nodes::SystemEvent::Status { data } = msg {
             assert_eq!(data.state, "stopped");
         } else {
-            panic!("Expected SystemEvent::Status, got {:?}", msg);
+            panic!("Expected SystemEvent::Status, got {msg:?}");
         }
     }
 

@@ -249,7 +249,7 @@ mod tests {
             assert_eq!(data.state, "stopped");
             assert_eq!(data.message, "Manual stop");
         } else {
-            panic!("Expected SystemEvent::Status, got {:?}", msg);
+            panic!("Expected SystemEvent::Status, got {msg:?}");
         }
     }
 
@@ -294,7 +294,7 @@ mod tests {
             assert_eq!(data.state, "running");
             assert_eq!(data.message, "All good");
         } else {
-            panic!("Expected SystemEvent::Status, got {:?}", msg);
+            panic!("Expected SystemEvent::Status, got {msg:?}");
         }
     }
 
@@ -307,7 +307,7 @@ mod tests {
             assert_eq!(data.state, "error");
             assert_eq!(data.message, "Something failed");
         } else {
-            panic!("Expected SystemEvent::Status, got {:?}", msg);
+            panic!("Expected SystemEvent::Status, got {msg:?}");
         }
     }
 }

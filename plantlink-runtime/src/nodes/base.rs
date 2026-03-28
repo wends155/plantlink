@@ -79,7 +79,10 @@ impl<T: SimpleNode + 'static> NodeBehavior for BaseNodeAdapter<T> {
 
             // Also log
             let log_msg = format!("Node [{}]: Error: {}", ctx.id, e);
-            if let Err(e) = ctx.system_tx.send(super::SystemEvent::Log { message: log_msg }) {
+            if let Err(e) = ctx
+                .system_tx
+                .send(super::SystemEvent::Log { message: log_msg })
+            {
                 tracing::warn!(node_id = %ctx.id, "Failed to broadcast error log: {}", e);
             }
 
@@ -164,10 +167,10 @@ mod tests {
         // Drain and look for "error" status in broadcast
         let mut found = false;
         while let Ok(msg) = sys_rx.try_recv() {
-            if let crate::nodes::SystemEvent::Status { data } = msg {
-                if data.state == "error" {
-                    found = true;
-                }
+            if let crate::nodes::SystemEvent::Status { data } = msg
+                && data.state == "error"
+            {
+                found = true;
             }
         }
         assert!(found, "Expected 'error' status broadcast from adapter");

@@ -186,15 +186,15 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
         loop {
             match rx.recv().await {
                 Ok(msg) => {
+                    #[allow(clippy::collapsible_if)]
                     if let Ok(json) = serde_json::to_string(&msg) {
-                        if sender.send(Message::Text(json.into())).await.is_err() {
+                        if sender.send(Message::Text(json)).await.is_err() {
                             break;
                         }
                     }
                 }
                 Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
                     tracing::warn!("WebSocket client lagged, dropped {} messages", n);
-                    continue;
                 }
                 Err(tokio::sync::broadcast::error::RecvError::Closed) => {
                     break;
