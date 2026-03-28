@@ -61,7 +61,7 @@ use tokio::sync::RwLock;
 
 #[derive(Clone)]
 struct AppState {
-    tx: broadcast::Sender<String>,
+    tx: broadcast::Sender<plantlink_runtime::SystemEvent>,
     runtime: Arc<RwLock<dyn plantlink_runtime::FlowRuntime>>,
 }
 
@@ -71,7 +71,7 @@ impl WebServer {
     /// Returns an error if the server fails to bind to the port or start up.
     pub async fn run(
         port: u16,
-        tx: broadcast::Sender<String>,
+        tx: broadcast::Sender<plantlink_runtime::SystemEvent>,
         runtime: Arc<RwLock<dyn plantlink_runtime::FlowRuntime>>,
     ) -> anyhow::Result<()> {
         let app_state = AppState {
@@ -183,9 +183,22 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
     let mut rx = state.tx.subscribe();
 
     tokio::spawn(async move {
-        while let Ok(msg) = rx.recv().await {
-            if sender.send(Message::Text(msg)).await.is_err() {
-                break;
+        loop {
+            match rx.recv().await {
+                Ok(msg) => {
+                    if let Ok(json) = serde_json::to_string(&msg) {
+                        if sender.send(Message::Text(json.into())).await.is_err() {
+                            break;
+                        }
+                    }
+                }
+                Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
+                    tracing::warn!("WebSocket client lagged, dropped {} messages", n);
+                    continue;
+                }
+                Err(tokio::sync::broadcast::error::RecvError::Closed) => {
+                    break;
+                }
             }
         }
     });
@@ -363,7 +376,7 @@ mod tests {
     }
 
     fn make_mock_state(
-        tx: broadcast::Sender<String>,
+        tx: broadcast::Sender<plantlink_runtime::SystemEvent>,
     ) -> (
         AppState,
         std::sync::Arc<std::sync::Mutex<bool>>,
