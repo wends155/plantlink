@@ -35,9 +35,13 @@ All workflows are orchestrated via the root `Makefile`:
 
 - **Formatter**: `cargo fmt` (Checked via `cargo fmt --all -- --check`)
 - **Linter**: `cargo clippy --all-targets --all-features -- -D warnings`
+- **AST Linter**: `make lint-ast` (Runs `sg scan` for AST-aware structural rules)
 - **Unit Tests**: `cargo test --all-features`
 - **Build Check**: `cargo check`
 - **UI E2E Tests**: `cd ui && npm run test:e2e` (Playwright)
+- **Doc Coverage**: `make doc-coverage` (Checks public item doc coverage)
+- **Doc Comments**: `make doc-comments` (Counts doc comment lines)
+- **Git Diff**: `make diff-last` (Safe patch viewing without banned IDE characters)
 - **Full Quality Gate**: `make verify` (Runs `./scripts/verify.sh`)
 
 ### Workspace Linting
