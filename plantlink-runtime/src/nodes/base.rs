@@ -70,30 +70,17 @@ impl<T: SimpleNode + 'static> NodeBehavior for BaseNodeAdapter<T> {
         &mut self,
         port: usize,
         msg: std::sync::Arc<MessagePayload>,
-        ctx: NodeContext,
+        ctx: &NodeContext,
     ) -> Result<()> {
         // We could wrap this in a catch_unwind or specific error handling logging
-        if let Err(e) = self.inner.handle(port, msg, &ctx).await {
+        if let Err(e) = self.inner.handle(port, msg, ctx).await {
             // Automatic Error Reporting via System Channel
-            let status = crate::nodes::NodeStatus {
-                node_id: ctx.id.clone(),
-                state: "error".to_string(),
-                message: e.to_string(),
-            };
-            #[allow(clippy::collapsible_if)]
-            if let Ok(json) = serde_json::to_string(&serde_json::json!({
-                "type": "status",
-                "data": status
-            })) {
-                if let Err(e) = ctx.system_tx.send(json) {
-                    tracing::warn!(node_id = %ctx.id, "Failed to broadcast node status: {}", e);
-                }
-            }
+            ctx.emit_error(&e.to_string());
+
             // Also log
             let log_msg = format!("Node [{}]: Error: {}", ctx.id, e);
-            let json_log = serde_json::json!({ "type": "log", "message": log_msg }).to_string();
-            if let Err(e) = ctx.system_tx.send(json_log) {
-                tracing::warn!(node_id = %ctx.id, "Failed to broadcast log: {}", e);
+            if let Err(e) = ctx.system_tx.send(super::SystemEvent::Log { message: log_msg }) {
+                tracing::warn!(node_id = %ctx.id, "Failed to broadcast error log: {}", e);
             }
 
             return Err(e);
@@ -171,14 +158,16 @@ mod tests {
         let mut adapter = BaseNodeAdapter::new(node);
         let (ctx, mut sys_rx) = NodeContext::for_test("base-err");
         let result = adapter
-            .receive(0, std::sync::Arc::new(MessagePayload::default()), ctx)
+            .receive(0, std::sync::Arc::new(MessagePayload::default()), &ctx)
             .await;
         assert!(result.is_err(), "Expected error from failing handle");
         // Drain and look for "error" status in broadcast
         let mut found = false;
         while let Ok(msg) = sys_rx.try_recv() {
-            if msg.contains("error") {
-                found = true;
+            if let crate::nodes::SystemEvent::Status { data } = msg {
+                if data.state == "error" {
+                    found = true;
+                }
             }
         }
         assert!(found, "Expected 'error' status broadcast from adapter");

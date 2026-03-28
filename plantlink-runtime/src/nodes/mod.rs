@@ -36,8 +36,16 @@ pub struct NodeStatus {
     pub message: String,
 }
 
+/// Events broadcast across the system-wide event bus
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "lowercase")]
+pub enum SystemEvent {
+    Status { data: NodeStatus },
+    Log { message: String },
+}
+
 pub fn send_node_status(
-    tx: &broadcast::Sender<String>,
+    tx: &broadcast::Sender<SystemEvent>,
     node_id: String,
     state: &str,
     message: &str,
@@ -47,14 +55,9 @@ pub fn send_node_status(
         state: state.to_string(),
         message: message.to_string(),
     };
-    #[allow(clippy::collapsible_if)]
-    if let Ok(json) = serde_json::to_string(&serde_json::json!({
-        "type": "status",
-        "data": status
-    })) {
-        if let Err(e) = tx.send(json) {
-            tracing::warn!("Failed to broadcast node status: {}", e);
-        }
+    let event = SystemEvent::Status { data: status };
+    if let Err(e) = tx.send(event) {
+        tracing::warn!("Failed to broadcast node status: {}", e);
     }
 }
 
@@ -89,7 +92,7 @@ pub struct NodeContext {
     /// Shared Resource Registry (Connection Objects, etc.)
     pub resources: Arc<RwLock<HashMap<String, Box<dyn Any + Send + Sync>>>>,
     /// System Broadcast Channel (For Logs and Status)
-    pub system_tx: broadcast::Sender<String>,
+    pub system_tx: broadcast::Sender<SystemEvent>,
     /// Cancellation Token for cooperative shutdown
     pub cancel: CancellationToken,
 }
@@ -99,7 +102,7 @@ impl NodeContext {
         id: String,
         outputs: OutputMap,
         resources: Arc<RwLock<HashMap<String, Box<dyn Any + Send + Sync>>>>,
-        system_tx: broadcast::Sender<String>,
+        system_tx: broadcast::Sender<SystemEvent>,
         cancel: CancellationToken,
     ) -> Self {
         Self {
@@ -167,7 +170,7 @@ impl NodeContext {
 
     /// Convenience constructor for unit tests with minimal boilerplate.
     #[cfg(test)]
-    pub fn for_test(id: &str) -> (Self, broadcast::Receiver<String>) {
+    pub fn for_test(id: &str) -> (Self, broadcast::Receiver<SystemEvent>) {
         let (tx, rx) = broadcast::channel(16);
         let ctx = Self::new(
             id.to_string(),
@@ -204,11 +207,12 @@ pub trait NodeBehavior: Send + Sync {
         &mut self,
         port: usize,
         msg: Arc<MessagePayload>,
-        ctx: NodeContext,
+        ctx: &NodeContext,
     ) -> Result<()> {
         // Default implementation shims to deprecated on_input for backward compatibility
         #[allow(deprecated)]
-        self.on_input(port, (*msg).clone(), ctx).await
+        // NOTE: This shim still clones but receive callers do not.
+        self.on_input(port, (*msg).clone(), ctx.clone()).await
     }
 
     /// [DEPRECATED] Use `receive` instead.
@@ -240,9 +244,13 @@ mod tests {
         let (ctx, mut rx) = NodeContext::for_test("test-node");
         ctx.emit_stopped("Manual stop");
         let msg = rx.try_recv().expect("Message not received");
-        assert!(msg.contains("test-node"));
-        assert!(msg.contains("stopped"));
-        assert!(msg.contains("Manual stop"));
+        if let SystemEvent::Status { data } = msg {
+            assert_eq!(data.node_id, "test-node");
+            assert_eq!(data.state, "stopped");
+            assert_eq!(data.message, "Manual stop");
+        } else {
+            panic!("Expected SystemEvent::Status, got {:?}", msg);
+        }
     }
 
     #[tokio::test]
@@ -282,8 +290,12 @@ mod tests {
         let (ctx, mut rx) = NodeContext::for_test("run-node");
         ctx.emit_running("All good");
         let msg = rx.try_recv().unwrap();
-        assert!(msg.contains("running"));
-        assert!(msg.contains("All good"));
+        if let SystemEvent::Status { data } = msg {
+            assert_eq!(data.state, "running");
+            assert_eq!(data.message, "All good");
+        } else {
+            panic!("Expected SystemEvent::Status, got {:?}", msg);
+        }
     }
 
     #[test]
@@ -291,7 +303,11 @@ mod tests {
         let (ctx, mut rx) = NodeContext::for_test("err-node");
         ctx.emit_error("Something failed");
         let msg = rx.try_recv().unwrap();
-        assert!(msg.contains("error"));
-        assert!(msg.contains("Something failed"));
+        if let SystemEvent::Status { data } = msg {
+            assert_eq!(data.state, "error");
+            assert_eq!(data.message, "Something failed");
+        } else {
+            panic!("Expected SystemEvent::Status, got {:?}", msg);
+        }
     }
 }

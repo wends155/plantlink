@@ -61,7 +61,7 @@ impl NodeBehavior for NatsBrokerNode {
             }
             Err(e) => {
                 ctx.emit_error(&format!("Connection failed: {e}"));
-                Ok(())
+                Err(anyhow::anyhow!("Connection failed: {e}"))
             }
         }
     }
@@ -114,7 +114,7 @@ impl NodeBehavior for NatsSubNode {
         &mut self,
         port_idx: usize,
         msg: Arc<MessagePayload>,
-        ctx: NodeContext,
+        ctx: &NodeContext,
     ) -> Result<()> {
         if let (0, DataValue::String(id)) = (port_idx, &msg.payload) {
             self.broker_id.clone_from(id);
@@ -137,11 +137,12 @@ impl NodeBehavior for NatsSubNode {
             Ok(s) => s,
             Err(e) => {
                 ctx.emit_error(&format!("Subscribe failed: {e}"));
-                return Ok(());
+                return Err(anyhow::anyhow!("Subscribe failed: {e}"));
             }
         };
 
         // Spawn listener
+        let ctx = ctx.clone();
         let handle = tokio::spawn(async move {
             while let Some(nats_msg) = subscriber.next().await {
                 let payload_str = String::from_utf8_lossy(&nats_msg.payload).to_string();
@@ -213,7 +214,7 @@ impl NodeBehavior for NatsPubNode {
         &mut self,
         port_idx: usize,
         msg: Arc<MessagePayload>,
-        ctx: NodeContext,
+        ctx: &NodeContext,
     ) -> Result<()> {
         if port_idx == 0 {
             // Unpack Connection ID
@@ -316,7 +317,7 @@ mod tests {
             ..Default::default()
         });
         let (ctx, _) = NodeContext::for_test("s1");
-        node.receive(0, msg, ctx).await.unwrap();
+        node.receive(0, msg, &ctx).await.unwrap();
         assert_eq!(node.broker_id, "new-broker");
     }
 
@@ -333,7 +334,7 @@ mod tests {
             ..Default::default()
         });
         let (ctx, _) = NodeContext::for_test("p1");
-        node.receive(0, msg, ctx).await.unwrap();
+        node.receive(0, msg, &ctx).await.unwrap();
         assert_eq!(node.broker_id, "new-broker");
     }
 }

@@ -18,6 +18,7 @@ pub trait FlowRuntime: Send + Sync {
 }
 
 mod nodes;
+pub use nodes::SystemEvent;
 use nodes::{NodeBehavior, NodeContext, NodeReceiver, OutputMap};
 use tokio_stream::StreamExt;
 
@@ -109,7 +110,7 @@ pub struct StopStatus {
 }
 
 pub struct RuntimeEngine {
-    tx: broadcast::Sender<String>,
+    tx: broadcast::Sender<nodes::SystemEvent>,
     tasks: HashMap<String, tokio::task::JoinHandle<()>>,
     /// Cancellation token for the current flow
     cancel: CancellationToken,
@@ -120,7 +121,7 @@ impl RuntimeEngine {
     ///
     /// # Errors
     /// Returns an error if the engine cannot be initialized.
-    pub fn new(tx: broadcast::Sender<String>) -> Result<Self> {
+    pub fn new(tx: broadcast::Sender<nodes::SystemEvent>) -> Result<Self> {
         let mut registry = nodes::registry::NodeRegistry::new();
         // Ensure defaults are registered
         nodes::register_defaults(&mut registry)?;
@@ -215,28 +216,12 @@ impl FlowRuntime for RuntimeEngine {
                 // Initialize Node
                 if let Err(e) = node.start(ctx.clone()).await {
                     tracing::error!("Node {} failed to start: {}", node_id, e);
-
-                    // Emit Error Status
-                    let status = nodes::NodeStatus {
-                        node_id: node_id.clone(),
-                        state: "error".to_string(),
-                        message: format!("Failed to start: {e}"),
-                    };
-                    #[allow(clippy::collapsible_if)]
-                    if let Ok(json) = serde_json::to_string(&serde_json::json!({
-                        "type": "status",
-                        "data": status
-                    })) {
-                        if let Err(e) = ctx.system_tx.send(json) {
-                            tracing::warn!(node_id = %node_id, "Failed to broadcast error status: {}", e);
-                        }
-                    }
+                    ctx.emit_error(&format!("Failed to start: {e}"));
                 }
 
                 // Listen Loop (if we have inputs)
                 if !inputs.is_empty() {
                     // Combine all receivers into a single stream
-                    // We map each receiver stream to extract just the Msg because StreamMap provides the Port Index (Key)
                     let mut streams = tokio_stream::StreamMap::new();
                     for (port_idx, rx) in inputs {
                         let stream =
@@ -245,7 +230,7 @@ impl FlowRuntime for RuntimeEngine {
                     }
 
                     while let Some((port_idx, msg)) = streams.next().await {
-                        if let Err(e) = node.receive(port_idx, msg, ctx.clone()).await {
+                        if let Err(e) = node.receive(port_idx, msg, &ctx).await {
                             tracing::error!("Node {} error on input: {}", node_id, e);
                         }
                     }
@@ -375,8 +360,12 @@ mod tests {
         let (tx, mut rx) = broadcast::channel(16);
         nodes::send_node_status(&tx, "test-node".to_string(), "running", "Active");
         let msg = rx.try_recv().expect("Message not received");
-        assert!(msg.contains("test-node"));
-        assert!(msg.contains("running"));
+        if let nodes::SystemEvent::Status { data } = msg {
+            assert_eq!(data.node_id, "test-node");
+            assert_eq!(data.state, "running");
+        } else {
+            panic!("Expected SystemEvent::Status, got {:?}", msg);
+        }
     }
 
     #[test]
@@ -418,7 +407,11 @@ mod tests {
         engine.stop_flow().await;
         // Should receive at least one "stopped" status
         let msg = rx.try_recv().expect("Expected stopped status");
-        assert!(msg.contains("stopped"));
+        if let nodes::SystemEvent::Status { data } = msg {
+            assert_eq!(data.state, "stopped");
+        } else {
+            panic!("Expected SystemEvent::Status, got {:?}", msg);
+        }
     }
 
     #[test]

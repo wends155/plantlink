@@ -1,4 +1,4 @@
-use super::{NodeBehavior, NodeContext};
+use super::{NodeBehavior, NodeContext, SystemEvent};
 use anyhow::Result;
 use plantlink_core::MessagePayload;
 
@@ -16,19 +16,15 @@ impl NodeBehavior for ConsoleNode {
         &mut self,
         _port: usize,
         msg: std::sync::Arc<MessagePayload>,
-        ctx: NodeContext,
+        ctx: &NodeContext,
     ) -> Result<()> {
         let payload_str = msg.payload.to_string();
         let log_msg = format!("Console [{}]: {}", ctx.id, payload_str);
 
         // Broadcast to WebSocket via System Channel
-        let json = serde_json::json!({
-            "type": "log",
-            "message": log_msg
-        })
-        .to_string();
+        let event = SystemEvent::Log { message: log_msg };
 
-        if let Err(e) = ctx.system_tx.send(json) {
+        if let Err(e) = ctx.system_tx.send(event) {
             tracing::warn!(node_id = %ctx.id, "Failed to broadcast log: {}", e);
         }
         Ok(())
@@ -42,7 +38,7 @@ mod tests {
     use crate::nodes::NodeContext;
     use plantlink_core::{DataValue, MessagePayload};
 
-    fn make_ctx(id: &str) -> (NodeContext, tokio::sync::broadcast::Receiver<String>) {
+    fn make_ctx(id: &str) -> (NodeContext, tokio::sync::broadcast::Receiver<crate::nodes::SystemEvent>) {
         NodeContext::for_test(id)
     }
 
@@ -58,18 +54,18 @@ mod tests {
             payload: DataValue::String("hello".into()),
             ..Default::default()
         };
-        node.receive(0, std::sync::Arc::new(msg), ctx)
+        node.receive(0, std::sync::Arc::new(msg), &ctx)
             .await
             .unwrap();
         let broadcast = rx.try_recv().expect("Expected broadcast");
-        assert!(
-            broadcast.contains("\"type\":\"log\""),
-            "Expected type:log, got: {broadcast}"
-        );
-        assert!(
-            broadcast.contains("hello"),
-            "Expected payload in log, got: {broadcast}"
-        );
+        if let crate::nodes::SystemEvent::Log { message } = broadcast {
+            assert!(
+                message.contains("hello"),
+                "Expected payload in log, got: {message}"
+            );
+        } else {
+            panic!("Expected SystemEvent::Log, got {:?}", broadcast);
+        }
     }
 
     #[tokio::test]
@@ -80,13 +76,17 @@ mod tests {
             type_: "console".into(),
             data: serde_json::json!({}),
         });
-        node.receive(0, std::sync::Arc::new(MessagePayload::default()), ctx)
+        node.receive(0, std::sync::Arc::new(MessagePayload::default()), &ctx)
             .await
             .unwrap();
         let broadcast = rx.try_recv().expect("Expected broadcast");
-        assert!(
-            broadcast.contains("my-node-id"),
-            "Expected node id in log, got: {broadcast}"
-        );
+        if let crate::nodes::SystemEvent::Log { message } = broadcast {
+            assert!(
+                message.contains("my-node-id"),
+                "Expected node id in log, got: {message}"
+            );
+        } else {
+            panic!("Expected SystemEvent::Log, got {:?}", broadcast);
+        }
     }
 }

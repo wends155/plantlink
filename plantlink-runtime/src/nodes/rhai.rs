@@ -62,8 +62,8 @@ impl NodeBehavior for RhaiNode {
     async fn start(&mut self, ctx: NodeContext) -> Result<()> {
         if let Some(err) = &self.compile_error {
             let log_msg = format!("RhaiNode [{}]: Compilation Error: {}", ctx.id, err);
-            let json_log = serde_json::json!({ "type": "log", "message": log_msg }).to_string();
-            if let Err(e) = ctx.system_tx.send(json_log) {
+            let event = super::SystemEvent::Log { message: log_msg };
+            if let Err(e) = ctx.system_tx.send(event) {
                 tracing::warn!(node_id = %ctx.id, "Failed to broadcast log: {}", e);
             }
             ctx.emit_error(&format!("Compilation Error: {err}"));
@@ -78,7 +78,7 @@ impl NodeBehavior for RhaiNode {
         &mut self,
         _port: usize,
         msg: std::sync::Arc<MessagePayload>,
-        ctx: NodeContext,
+        ctx: &NodeContext,
     ) -> Result<()> {
         if let Some(ast) = &self.ast {
             let mut scope = Scope::new();
@@ -88,7 +88,8 @@ impl NodeBehavior for RhaiNode {
                 Ok(d) => d,
                 Err(e) => {
                     let log = format!("RhaiNode [{}]: Serialization Error: {}", ctx.id, e);
-                    if let Err(e) = ctx.system_tx.send(log) {
+                    let event = super::SystemEvent::Log { message: log };
+                    if let Err(e) = ctx.system_tx.send(event) {
                         tracing::warn!(node_id = %ctx.id, "Failed to broadcast log: {}", e);
                     }
                     return Ok(());
@@ -96,12 +97,6 @@ impl NodeBehavior for RhaiNode {
             };
 
             // Call the 'process' function
-            // We use call_fn which captures runtime errors (exceptions)
-            // Note: call_fn arguments are passed as a tuple
-            let _options = rhai::CallFnOptions::new().eval_ast(false); // Do not re-evaluate constants if possible check docs?
-            // Actually call_fn on Engine:
-            // engine.call_fn(&mut scope, &ast, "process", (dynamic_msg,))
-
             match self
                 .engine
                 .call_fn::<Dynamic>(&mut scope, ast, "process", (dynamic_msg,))
@@ -119,9 +114,8 @@ impl NodeBehavior for RhaiNode {
                                 "RhaiNode [{}]: Return type mismatch. Script must return MessagePayload msg. Error: {}",
                                 ctx.id, e
                             );
-                            let json = serde_json::json!({ "type": "log", "message": log_msg })
-                                .to_string();
-                            if let Err(e) = ctx.system_tx.send(json) {
+                            let event = super::SystemEvent::Log { message: log_msg };
+                            if let Err(e) = ctx.system_tx.send(event) {
                                 tracing::warn!(node_id = %ctx.id, "Failed to broadcast log: {}", e);
                             }
                             ctx.emit_error(&format!("Return Type Mismatch: {e}"));
@@ -131,8 +125,8 @@ impl NodeBehavior for RhaiNode {
                 }
                 Err(e) => {
                     let log_msg = format!("RhaiNode [{}]: Runtime Error: {}", ctx.id, e);
-                    let json = serde_json::json!({ "type": "log", "message": log_msg }).to_string();
-                    if let Err(e) = ctx.system_tx.send(json) {
+                    let event = super::SystemEvent::Log { message: log_msg };
+                    if let Err(e) = ctx.system_tx.send(event) {
                         tracing::warn!(node_id = %ctx.id, "Failed to broadcast log: {}", e);
                     }
                     ctx.emit_error(&format!("Runtime Error: {e}"));
@@ -141,14 +135,13 @@ impl NodeBehavior for RhaiNode {
             }
         } else {
             // Node is in error state due to compilation failure
-            // We already logged in start, but we can log again on attempts to use
             if let Some(err) = &self.compile_error {
                 let log_msg = format!(
                     "RhaiNode [{}]: Cannot process input. Compilation failed: {}",
                     ctx.id, err
                 );
-                let json = serde_json::json!({ "type": "log", "message": log_msg }).to_string();
-                if let Err(e) = ctx.system_tx.send(json) {
+                let event = super::SystemEvent::Log { message: log_msg };
+                if let Err(e) = ctx.system_tx.send(event) {
                     tracing::warn!(node_id = %ctx.id, "Failed to broadcast log: {}", e);
                 }
             }
@@ -171,7 +164,7 @@ mod tests {
     type CtxOutputStreams = (
         NodeContext,
         mpsc::Receiver<(usize, std::sync::Arc<MessagePayload>)>,
-        broadcast::Receiver<String>,
+        broadcast::Receiver<super::super::SystemEvent>,
     );
 
     fn make_node(script: Option<&str>) -> RhaiNode {
@@ -208,7 +201,7 @@ mod tests {
         let (ctx, mut rx, _sys_rx) = make_ctx_with_output("r1");
         let msg = MessagePayload::default();
         let expected_id = msg.id.clone();
-        node.receive(0, std::sync::Arc::new(msg), ctx)
+        node.receive(0, std::sync::Arc::new(msg), &ctx)
             .await
             .unwrap();
         let (port, received) = rx.recv().await.expect("Expected output");
@@ -234,14 +227,16 @@ mod tests {
         let mut node = make_node(Some("throw \"boom\";"));
         let (ctx, mut _rx, mut sys_rx) = make_ctx_with_output("r1");
         let result = node
-            .receive(0, std::sync::Arc::new(MessagePayload::default()), ctx)
+            .receive(0, std::sync::Arc::new(MessagePayload::default()), &ctx)
             .await;
         assert!(result.is_err(), "Expected Err on runtime error");
         // Drain broadcasts and check for runtime error log
         let mut found_error = false;
         while let Ok(msg) = sys_rx.try_recv() {
-            if msg.contains("Runtime Error") {
-                found_error = true;
+            if let super::super::SystemEvent::Log { message } = msg {
+                if message.contains("Runtime Error") {
+                    found_error = true;
+                }
             }
         }
         assert!(found_error, "Expected 'Runtime Error' in broadcast log");
@@ -254,7 +249,7 @@ mod tests {
         let (ctx, mut rx, _sys_rx) = make_ctx_with_output("r1");
         let msg = MessagePayload::default();
         let expected_id = msg.id.clone();
-        node.receive(0, std::sync::Arc::new(msg), ctx)
+        node.receive(0, std::sync::Arc::new(msg), &ctx)
             .await
             .unwrap();
         let (_, received) = rx
