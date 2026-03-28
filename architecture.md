@@ -168,9 +168,15 @@ sequenceDiagram
     WEB-->>UI: WebSocket update
 ```
 
-## 16. Known Constraints & Bugs
+## 16. Known Constraints & Technical Debt
 - **Environment**: Must run in Windows non-admin space using BusyBox/PowerShell.
 - **Deployment**: Single-binary release capability with embedded assets requires `rust-embed` in `plantlink-web`.
 - **Status Reporting**: Centrally managed via `plantlink_runtime::nodes::send_node_status`.
 - **MQTT Reconnection**: `MqttDriver` event loop uses exponential backoff (1s–60s) on connection errors. Reconnection is handled by `rumqttc` internally; the driver logs warnings but never panics.
 - **Channel Error Propagation**: `NodeContext::send_output` and `send_output_port` return `Result<()>`. Callers must handle or propagate downstream channel failures.
+
+## 17. Environment Configuration
+The system is designed for dynamic discovery and late-binding of connections:
+- **Broker Discovery**: Endpoints for NATS and MQTT brokers are provided at runtime via the `FlowConfig` JSON payload, not static environment variables.
+- **Secrets Management**: While the current MVP uses plaintext passwords in the `FlowConfig`, the architecture supports future integration with platform-native secrets managers by swapping the `PubSubClient` implementation.
+- **Crate Environment**: `plantlink-web` looks for frontend assets in `../ui/dist` during development, or embedded within the binary in production mode.
