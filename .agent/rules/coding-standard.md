@@ -27,14 +27,14 @@ Every PR / commit **must** pass all three gates before merge:
 cargo fmt  --all -- --check   # Gate 1: Formatting
 cargo clippy --all-targets --all-features -- -D warnings  # Gate 2: Linting
 cargo test  --all-features    # Gate 3: Tests
-sg scan                       # Gate 4: AST Linting (conditional — requires sgconfig.yml)
+make lint-ast                # Gate 4: AST Linting
 ```
 
 | Metric | Target |
 | :--- | :--- |
 | Formatting | 100% `rustfmt` compliance |
 | Linting | Zero `clippy` warnings (deny mode) |
-| AST Linting | Zero `ast-grep` findings (when configured) |
+| AST Linting | Zero `ast-grep` findings |
 | Documentation | 100% of public APIs documented |
 | Test coverage | 100% of public functions tested |
 | Benchmarks | Critical paths benchmarked with Criterion |

@@ -1,4 +1,4 @@
-.PHONY: build-assets run test-e2e clean build-release dev preview toolcheck todos secrets doc-coverage doc-comments diff-last
+.PHONY: build-assets run test-e2e clean build-release dev preview toolcheck todos secrets doc-coverage doc-comments diff-last lint-ast
 
 # Development server
 dev:
@@ -53,6 +53,10 @@ fmt:
 
 clippy:
 	cargo clippy -- -D warnings
+
+# Gate 4: AST linting (ast-grep)
+lint-ast:
+	sg scan
 
 check:
 	cargo check

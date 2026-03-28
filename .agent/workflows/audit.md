@@ -32,22 +32,21 @@ It enforces the **Reflect** phase of the TARS protocol and generates a structure
 // turbo
 > - Tests: `cargo test --all-features`
 // turbo
-> - Unwrap scan: covered by `sg scan` rule `unwrap-in-production` *(see L41 — only if `sgconfig.yml` exists)*
+> - Unwrap scan: covered by `make lint-ast` rule `unwrap-in-production`
 // turbo
 > - Secret scan: `make secrets`
 // turbo
 > - TODO markers: `make todos`
 // turbo
-> - AST lint scan: `sg scan` *(only if `sgconfig.yml` exists in project root)*
+> - AST lint scan: `make lint-ast`
 >
 > If Narsil MCP is available, also run `scan_security` and `check_cwe_top25`. Use `-Scope full` for compliance mode.
 
 > [!CAUTION]
-> **No ad-hoc `rg` for patterns covered by `sg scan` rules.** When `sgconfig.yml`
-> exists, all pattern checks (unwrap, hardcoded URLs, raw spawns, etc.) MUST use
-> `sg scan` — never raw `rg`. AST-aware rules exclude tests automatically and
-> avoid false positives in comments/strings. Using `rg` as a substitute is a
-> compliance violation.
+> **No ad-hoc `rg` for patterns covered by `sg scan` rules.** All pattern checks
+> (unwrap, hardcoded URLs, raw spawns, etc.) MUST use `make lint-ast` — never raw
+> `rg`. AST-aware rules exclude tests automatically and avoid false positives in
+> comments/strings. Using `rg` as a substitute is a compliance violation.
 
 - Read `.agent/rules/audit-rules.md` for report format, finding classification, and verdict criteria.
 - Read `architecture.md` (if present) for project-specific design and toolchain.

@@ -104,7 +104,7 @@ FMT + LINT + TEST
 Use the exact commands from `architecture.md § Toolchain`. Confirm zero-exit on all gates.
 
 > [!NOTE]
-> If `sgconfig.yml` exists in the project root, also run `sg scan` as Gate 4 (AST Linting) and confirm zero findings.
+> Also run `make lint-ast` as Gate 4 (AST Linting) and confirm zero findings.
 
 ### 5. Builder Notes Review
 
