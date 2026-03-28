@@ -26,31 +26,16 @@ Run the following checks. All are auto-runnable:
 
 **Shell Tools:**
 // turbo
-- `git --version`
-// turbo
-- `rg --version`
+- `make toolcheck`
 // turbo
 - `sg --version`
 
 **Git Non-Interactive Safety:**
-// turbo
-- `git config credential.helper`
+Check the output of `make toolcheck` for the `git config credential.helper` result.
 
 If the output matches `manager`, `wincred`, or `osxkeychain`, set these env vars for the session:
 - `$env:GCM_INTERACTIVE = 'never'`
 - `$env:GIT_TERMINAL_PROMPT = '0'`
-
-**Rust Toolchain:**
-// turbo
-- `rustc --version`
-// turbo
-- `cargo --version`
-// turbo
-- `cargo clippy --version`
-// turbo
-- `rustfmt --version`
-// turbo
-- `rustup show`
 
 **Workflow & Script Files:**
 Use `find_by_name` to verify all expected `.md` files exist in `.agent/workflows/` and all expected `.ps1` files exist in `.agent/scripts/`.

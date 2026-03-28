@@ -1,4 +1,4 @@
-.PHONY: build-assets run test-e2e clean build-release dev preview
+.PHONY: build-assets run test-e2e clean build-release dev preview toolcheck
 
 # Development server
 dev:
@@ -59,3 +59,14 @@ check:
 
 test:
 	cargo test
+
+# Environment toolcheck
+toolcheck:
+	git --version
+	rg --version
+	rustc --version
+	cargo --version
+	cargo clippy --version
+	rustfmt --version
+	rustup show
+	git config credential.helper
