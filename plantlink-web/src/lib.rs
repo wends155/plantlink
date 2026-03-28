@@ -60,25 +60,81 @@ use tokio::sync::RwLock;
 
 // ...
 
+/// Maintains the latest [`plantlink_runtime::NodeStatus`] for all active nodes.
+///
+/// Populated by a background aggregator task that subscribes to
+/// the system event bus broadcast channel. WebSocket handlers
+/// read snapshots from this cache on connect and on lag recovery.
+#[derive(Clone, Default)]
+pub(crate) struct EventCache {
+    pub(crate) statuses:
+        Arc<RwLock<std::collections::HashMap<String, plantlink_runtime::NodeStatus>>>,
+}
+
+impl EventCache {
+    #[must_use]
+    pub(crate) fn new() -> Self {
+        Self {
+            statuses: Arc::new(RwLock::new(std::collections::HashMap::new())),
+        }
+    }
+}
+
 #[derive(Clone)]
 struct AppState {
     tx: broadcast::Sender<plantlink_runtime::SystemEvent>,
     runtime: Arc<RwLock<dyn plantlink_runtime::FlowRuntime>>,
+    cache: EventCache,
 }
 
 impl WebServer {
-    ///
     /// # Errors
     /// Returns an error if the server fails to bind to the port or start up.
+    ///
+    /// # Arguments
+    /// * `port` - The TCP port to listen on.
+    /// * `tx` - The system event bus broadcast sender.
+    /// * `runtime` - The flow runtime to manage via REST API.
+    /// * `shutdown_signal` - A future that completes when the server should stop.
     pub async fn run(
         port: u16,
         tx: broadcast::Sender<plantlink_runtime::SystemEvent>,
         runtime: Arc<RwLock<dyn plantlink_runtime::FlowRuntime>>,
         shutdown_signal: impl std::future::Future<Output = ()> + Send + 'static,
     ) -> anyhow::Result<()> {
+        let cache = EventCache::new();
+
+        // Spawn state sync aggregator
+        let mut rx = tx.subscribe();
+        let cache_clone = cache.clone();
+        tokio::spawn(async move {
+            tracing::info!("EventCache aggregator started");
+            loop {
+                match rx.recv().await {
+                    Ok(msg) => {
+                        if let plantlink_runtime::SystemEvent::Status { data } = msg {
+                            cache_clone
+                                .statuses
+                                .write()
+                                .await
+                                .insert(data.node_id.clone(), data);
+                        }
+                    }
+                    Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
+                        tracing::warn!(dropped = n, "EventCache aggregator lagged, resuming");
+                    }
+                    Err(tokio::sync::broadcast::error::RecvError::Closed) => {
+                        tracing::info!("EventCache aggregator stopped: channel closed");
+                        break;
+                    }
+                }
+            }
+        });
+
         let app_state = AppState {
             tx,
             runtime: runtime.clone(),
+            cache,
         };
 
         let app = Router::new()
@@ -144,6 +200,19 @@ async fn ws_handler(ws: WebSocketUpgrade, State(state): State<AppState>) -> Resp
 async fn handle_socket(socket: WebSocket, state: AppState) {
     let (mut sender, _) = socket.split();
     let mut rx = state.tx.subscribe();
+    let cache = state.cache;
+
+    // Send initial snapshot
+    let statuses = cache.statuses.read().await;
+    for status in statuses.values() {
+        let event = plantlink_runtime::SystemEvent::Status {
+            data: status.clone(),
+        };
+        if let Ok(json) = serde_json::to_string(&event) {
+            let _ = sender.send(Message::Text(json)).await;
+        }
+    }
+    drop(statuses);
 
     tokio::spawn(async move {
         loop {
@@ -158,7 +227,22 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                     }
                 }
                 Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
-                    tracing::warn!("WebSocket client lagged, dropped {} messages", n);
+                    tracing::warn!(
+                        "WebSocket client lagged, dropped {} messages. Resyncing.",
+                        n
+                    );
+                    let rx_statuses = cache.statuses.read().await;
+                    for status in rx_statuses.values() {
+                        let event = plantlink_runtime::SystemEvent::Status {
+                            data: status.clone(),
+                        };
+                        #[allow(clippy::collapsible_if)]
+                        if let Ok(json) = serde_json::to_string(&event) {
+                            if sender.send(Message::Text(json)).await.is_err() {
+                                break;
+                            }
+                        }
+                    }
                 }
                 Err(tokio::sync::broadcast::error::RecvError::Closed) => {
                     break;
@@ -243,7 +327,11 @@ mod tests {
         let runtime: Arc<RwLock<dyn plantlink_runtime::FlowRuntime>> = Arc::new(RwLock::new(
             plantlink_runtime::RuntimeEngine::new(tx.clone()).unwrap(),
         ));
-        let _state = AppState { tx, runtime };
+        let _state = AppState {
+            tx,
+            runtime,
+            cache: EventCache::new(),
+        };
     }
 
     use axum::body::Body;
@@ -257,7 +345,11 @@ mod tests {
         let runtime: Arc<RwLock<dyn plantlink_runtime::FlowRuntime>> = Arc::new(RwLock::new(
             plantlink_runtime::RuntimeEngine::new(tx.clone()).unwrap(),
         ));
-        let state = AppState { tx, runtime };
+        let state = AppState {
+            tx,
+            runtime,
+            cache: EventCache::new(),
+        };
 
         let app = Router::new()
             .route("/health", get(|| async { "OK" }))
@@ -279,7 +371,11 @@ mod tests {
         let runtime: Arc<RwLock<dyn plantlink_runtime::FlowRuntime>> = Arc::new(RwLock::new(
             plantlink_runtime::RuntimeEngine::new(tx.clone()).unwrap(),
         ));
-        let state = AppState { tx, runtime };
+        let state = AppState {
+            tx,
+            runtime,
+            cache: EventCache::new(),
+        };
 
         let app = Router::new()
             .route("/api/flow", axum::routing::post(deploy_flow))
@@ -302,7 +398,11 @@ mod tests {
         let runtime: Arc<RwLock<dyn plantlink_runtime::FlowRuntime>> = Arc::new(RwLock::new(
             plantlink_runtime::RuntimeEngine::new(tx.clone()).unwrap(),
         ));
-        let state = AppState { tx, runtime };
+        let state = AppState {
+            tx,
+            runtime,
+            cache: EventCache::new(),
+        };
 
         let app = Router::new()
             .route("/api/flow/stop", axum::routing::post(stop_flow_handler))
@@ -353,7 +453,15 @@ mod tests {
             stopped: std::sync::Arc::clone(&stopped),
         };
         let runtime: Arc<RwLock<dyn plantlink_runtime::FlowRuntime>> = Arc::new(RwLock::new(mock));
-        (AppState { tx, runtime }, deployed, stopped)
+        (
+            AppState {
+                tx,
+                runtime,
+                cache: EventCache::new(),
+            },
+            deployed,
+            stopped,
+        )
     }
 
     #[tokio::test]
@@ -441,5 +549,97 @@ mod tests {
         let req = Request::builder().uri("/").body(Body::empty()).unwrap();
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
+    }
+    #[tokio::test]
+    async fn test_event_cache_aggregator_populates() {
+        let (tx, mut rx) = broadcast::channel(16);
+        let cache = EventCache::new();
+        let cache_clone = cache.clone();
+
+        // Simulate aggregator loop
+        tokio::spawn(async move {
+            loop {
+                match rx.recv().await {
+                    Ok(plantlink_runtime::SystemEvent::Status { data }) => {
+                        cache_clone
+                            .statuses
+                            .write()
+                            .await
+                            .insert(data.node_id.clone(), data);
+                    }
+                    Ok(_) | Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {}
+                    Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
+                }
+            }
+        });
+
+        let status = plantlink_runtime::NodeStatus {
+            node_id: "test-node".into(),
+            state: "running".into(),
+            message: "All systems go".into(),
+        };
+        tx.send(plantlink_runtime::SystemEvent::Status { data: status })
+            .unwrap();
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+
+        let map = cache.statuses.read().await;
+        assert_eq!(map.len(), 1);
+        assert_eq!(map.get("test-node").unwrap().state, "running");
+    }
+
+    #[tokio::test]
+    async fn test_event_cache_survives_lagged() {
+        // Capacity of 1 forces Lagged errors on overflow
+        let (tx, mut rx) = broadcast::channel(1);
+        let cache = EventCache::new();
+        let cache_clone = cache.clone();
+
+        tokio::spawn(async move {
+            loop {
+                match rx.recv().await {
+                    Ok(plantlink_runtime::SystemEvent::Status { data }) => {
+                        cache_clone
+                            .statuses
+                            .write()
+                            .await
+                            .insert(data.node_id.clone(), data);
+                    }
+                    Ok(_) | Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {}
+                    Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
+                }
+            }
+        });
+
+        // Overflow the channel to trigger Lagged
+        let s1 = plantlink_runtime::NodeStatus {
+            node_id: "n1".into(),
+            state: "running".into(),
+            message: "msg1".into(),
+        };
+        let s2 = plantlink_runtime::NodeStatus {
+            node_id: "n2".into(),
+            state: "running".into(),
+            message: "msg2".into(),
+        };
+        let s3 = plantlink_runtime::NodeStatus {
+            node_id: "n3".into(),
+            state: "stopped".into(),
+            message: "msg3".into(),
+        };
+        tx.send(plantlink_runtime::SystemEvent::Status { data: s1 })
+            .unwrap();
+        tx.send(plantlink_runtime::SystemEvent::Status { data: s2 })
+            .unwrap();
+        tx.send(plantlink_runtime::SystemEvent::Status { data: s3 })
+            .unwrap();
+
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+
+        // Despite Lagged, the aggregator survived and processed at least the last message
+        let map = cache.statuses.read().await;
+        assert!(
+            map.contains_key("n3"),
+            "Aggregator should survive Lagged and process subsequent messages"
+        );
     }
 }

@@ -18,8 +18,8 @@ pub trait FlowRuntime: Send + Sync {
 }
 
 mod nodes;
-pub use nodes::SystemEvent;
 use nodes::{NodeBehavior, NodeContext, NodeReceiver, OutputMap};
+pub use nodes::{NodeStatus, SystemEvent};
 use tokio_stream::StreamExt;
 
 /// Configuration for a single node in a flow.

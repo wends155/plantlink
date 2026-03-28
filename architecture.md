@@ -174,7 +174,7 @@ sequenceDiagram
 - **Status Reporting**: Centrally managed via `plantlink_runtime::nodes::send_node_status`.
 - **MQTT Reconnection**: `MqttDriver` event loop uses exponential backoff (1s–60s) on connection errors. Reconnection is handled by `rumqttc` internally; the driver logs warnings but never panics.
 - **Channel Error Propagation**: `NodeContext::send_output` and `send_output_port` return `Result<()>`. Callers must handle or propagate downstream channel failures.
-- **WebSocket State-Sync**: The shared `SystemEvent` broadcast channel in `plantlink-web` can drop messages (including critical `Status` updates) during periods of extreme high load or network lag (`RecvError::Lagged`). This can cause the UI to become desynchronized until a page refresh occurs. Future remediation requires segregating status updates into a state-retaining mechanism like `tokio::sync::watch`.
+- **WebSocket State-Sync**: Remediated. An `EventCache` aggregator in `plantlink-web` subscribes to the system event bus and maintains the latest `NodeStatus` for all nodes. WebSocket clients receive a full snapshot on connect and are automatically resynchronized on `RecvError::Lagged`. The aggregator task itself handles `Lagged` gracefully by logging and continuing.
 
 ## 17. Environment Configuration
 The system is designed for dynamic discovery and late-binding of connections:

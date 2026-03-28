@@ -5,7 +5,7 @@
 >
 > **Maintenance Rule**: The Architect must update this file whenever a public API changes.
 >
-> Last verified against: `bbb0abb`
+> Last verified against: `94c47ec`
 
 ---
 
@@ -225,7 +225,15 @@ stateDiagram-v2
 
 | Method | Signature | Errors | Invariants |
 |--------|-----------|--------|------------|
-| `run` | `async fn run(port: u16, tx: broadcast::Sender<SystemEvent>, runtime: Arc<RwLock<RuntimeEngine>>) -> Result<()>` | Bind failure, graceful shutdown errors. | Registers graceful shutdown on `SIGINT`/`SIGTERM`. |
+| `run` | `async fn run(port: u16, tx: broadcast::Sender<SystemEvent>, runtime: Arc<RwLock<dyn FlowRuntime>>, stop: impl Future) -> Result<()>` | Bind failure, startup errors. | Spawns a background `EventCache` aggregator. Shuts down when the provided `stop` future completes. |
+
+#### `EventCache` (internal)
+**Purpose**: Maintains a live snapshot of node statuses to prevent state-sync drift for WebSocket clients.
+
+- **Sync Policy**: Aggregates `SystemEvent::Status` messages from the broadcast bus.
+- **Resilience**: Survives `RecvError::Lagged` by logging the event and resuming the loop.
+- **Snapshots**: WebSocket clients receive a full cache snapshot immediately upon connection.
+- **Lag Recovery**: WebSocket clients receive a full cache resync if the per-client broadcast channel lags.
 
 ### Integration Points
 
