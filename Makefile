@@ -1,4 +1,4 @@
-.PHONY: build-assets run test-e2e clean build-release dev preview toolcheck todos secrets doc-coverage doc-comments diff-last lint-ast
+.PHONY: build-assets run test-e2e clean build-release dev preview toolcheck todos secrets doc-coverage doc-comments diff-last lint-ast sections
 
 # Development server
 dev:
@@ -94,3 +94,7 @@ doc-comments:
 # Show full patch of the most recent commit (safe: no ~ character)
 diff-last:
 	git log -1 -p
+
+# List markdown section headings (for architecture audit)
+sections:
+	rg -n "## " $(FILE)

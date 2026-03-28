@@ -55,6 +55,8 @@ Gather background information:
 >    - `git log -n 20 --oneline`
 // turbo
 >    - `make todos`
+// turbo
+>    - `make lint-ast`
 
 - **`architecture.md`**: Identify relevant modules, patterns, and frameworks.
 - **`context.md`**: Check for prior decisions, known bugs, or related history.
@@ -66,6 +68,7 @@ Gather background information:
 Search the codebase to understand the problem area:
 
 - **Identify suspect files**: `grep` / `ripgrep` for keywords related to the issue.
+- **Structural search**: Prefer `sg run -p '<pattern>'` over `rg` for finding code patterns (functions, structs, trait impls). AST-aware search avoids false positives in comments and strings.
 - **Read relevant code**: Outline the affected functions/modules.
 - **Map dependencies**: What calls into or depends on the affected code?
 - **Look for obvious causes**: Missing error handling, logic errors, race conditions, etc.

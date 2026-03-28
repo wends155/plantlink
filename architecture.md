@@ -42,6 +42,7 @@ All workflows are orchestrated via the root `Makefile`:
 - **Doc Coverage**: `make doc-coverage` (Checks public item doc coverage)
 - **Doc Comments**: `make doc-comments` (Counts doc comment lines)
 - **Git Diff**: `make diff-last` (Safe patch viewing without banned IDE characters)
+- **MD Sections**: `make sections FILE=<file>` (Lists Markdown section headings safely)
 - **Full Quality Gate**: `make verify` (Runs `./scripts/verify.sh`)
 
 ### Workspace Linting

@@ -55,6 +55,10 @@ read enough surrounding context to understand the logic.
 // turbo
 > - `git log -n N --name-only --oneline` (recent commits — `~` is banned by IDE; use explicit hashes for diffs)
 
+> [!TIP]
+> Run `make lint-ast` first to get a baseline of any structural anti-patterns
+> (e.g., `.unwrap()` in production code) before applying qualitative review lenses.
+
 ### 3. Apply Review Lenses
 
 Apply the selected lens (or all lenses). Each lens has specific questions to answer.

@@ -17,6 +17,8 @@ It enforces the Planning Gate and Think Phase of the TARS protocol.
 >    - `git log -n 20 --oneline`
 // turbo
 >    - `make todos`
+// turbo
+>    - `make lint-ast`
 
 - Read `architecture.md` (if present) for project-specific design, toolchain, and patterns.
 - Read `.agent/rules/coding-standard.md` (if present) for language-specific coding standards.
@@ -72,7 +74,7 @@ Before drafting the plan, the Architect **MUST** use `sequentialthinking` with
 2. **Change ordering** — What's the dependency graph of the changes? What must
    come first?
 3. **Blast radius analysis** — Using Narsil `find_references`,
-   `find_symbol_usages`, and `get_import_graph` (or `rg`/manual analysis when
+   `find_symbol_usages`, and `get_import_graph` (or `sg run`/`rg`/manual analysis when
    Narsil is unavailable), map every consumer of the interfaces being modified.
    Populate the Blast Radius Table (see `ipr.md`).
 4. **Interface contract risks** — Will any signature changes break downstream

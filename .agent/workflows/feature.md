@@ -27,6 +27,8 @@ User invokes: `/feature <description>`
 >    - `git log -n 20 --oneline`
 // turbo
 >    - `make todos`
+// turbo
+>    - `make lint-ast`
 
 - Read `.agent/rules/feature-rules.md` for classification criteria, report format, and architectural fit assessment.
 - Read `architecture.md` (if present) for project structure, patterns, and constraints.
@@ -79,6 +81,9 @@ Investigate how the feature could be built:
 - Identify **at least 2 approaches** where possible (including the user's original idea).
 - For each approach, note: pros, cons, complexity, and trade-offs.
 - **Recommend** a preferred approach with reasoning.
+
+> [!TIP]
+> Use `sg run -p '<pattern>'` for AST-aware code search when comparing implementation approaches — it's more precise than `rg` for finding structural patterns like trait impls or function signatures.
 
 > [!TIP]
 > The goal is to give the user enough information to make an informed decision —

@@ -187,7 +187,7 @@ Output an **Architecture Recommendations Report** — do NOT edit architecture.m
 // turbo
 1. Re-read `architecture.md` with `view_file` and verify all 15 required section headings from `architecture-rules.md §1` are present.
 // turbo
-2. `rg -n "## " architecture.md` (section heading audit).
+2. `make sections FILE=architecture.md` (section heading audit).
 3. Cross-reference the draft/report against `architecture-rules.md §1` checklist.
 4. Verify all 15 required sections are present (New/Discover) or assessed (Audit).
 
