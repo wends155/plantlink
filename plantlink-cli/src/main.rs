@@ -10,7 +10,10 @@ struct Args {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .init();
+
     let args = Args::parse();
 
     let version = env!("CARGO_PKG_VERSION");
@@ -25,8 +28,39 @@ async fn main() -> anyhow::Result<()> {
             plantlink_runtime::RuntimeEngine::new(tx.clone())?,
         ));
 
-    // Spawn Web Server
-    WebServer::run(args.port, tx, runtime).await?;
+    // Define shutdown signal
+    let runtime_for_shutdown = runtime.clone();
+    let shutdown = async move {
+        let ctrl_c = async {
+            tokio::signal::ctrl_c()
+                .await
+                .expect("failed to install Ctrl+C handler");
+        };
+
+        #[cfg(unix)]
+        let terminate = async {
+            tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+                .expect("failed to install signal handler")
+                .recv()
+                .await;
+        };
+
+        #[cfg(not(unix))]
+        let terminate = std::future::pending::<()>();
+
+        tokio::select! {
+            () = ctrl_c => {},
+            () = terminate => {},
+        }
+
+        tracing::info!("Signal received, starting graceful shutdown...");
+        let mut rt = runtime_for_shutdown.write().await;
+        let status = rt.stop_flow().await;
+        tracing::info!("Runtime stopped. {} tasks aborted.", status.tasks_aborted);
+    };
+
+    // Spawn Web Server with the shutdown signal
+    WebServer::run(args.port, tx, runtime, shutdown).await?;
 
     Ok(())
 }

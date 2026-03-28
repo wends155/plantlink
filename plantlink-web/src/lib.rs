@@ -47,8 +47,9 @@ struct Asset;
 ///
 /// # async fn example() -> anyhow::Result<()> {
 /// let (tx, _) = broadcast::channel(100);
-/// let runtime = Arc::new(RwLock::new(RuntimeEngine::new(tx.clone())?));
-/// WebServer::run(3000, tx, runtime).await?;
+/// let tx_clone = tx.clone();
+/// let runtime = Arc::new(RwLock::new(RuntimeEngine::new(tx_clone)?));
+/// WebServer::run(3000, tx, runtime, std::future::pending()).await?;
 /// # Ok(())
 /// # }
 /// ```
@@ -73,6 +74,7 @@ impl WebServer {
         port: u16,
         tx: broadcast::Sender<plantlink_runtime::SystemEvent>,
         runtime: Arc<RwLock<dyn plantlink_runtime::FlowRuntime>>,
+        shutdown_signal: impl std::future::Future<Output = ()> + Send + 'static,
     ) -> anyhow::Result<()> {
         let app_state = AppState {
             tx,
@@ -93,50 +95,11 @@ impl WebServer {
         let listener = TcpListener::bind(addr).await?;
 
         axum::serve(listener, app)
-            .with_graceful_shutdown(shutdown_signal(runtime))
+            .with_graceful_shutdown(shutdown_signal)
             .await?;
 
         Ok(())
     }
-}
-
-async fn shutdown_signal(runtime: Arc<RwLock<dyn plantlink_runtime::FlowRuntime>>) {
-    let ctrl_c = async {
-        if let Err(e) = tokio::signal::ctrl_c().await {
-            tracing::error!("Failed to install Ctrl+C handler: {}", e);
-        }
-    };
-
-    #[cfg(unix)]
-    let terminate = async {
-        match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
-            Ok(mut signal) => {
-                signal.recv().await;
-            }
-            Err(e) => {
-                tracing::error!("Failed to install SIGTERM handler: {}", e);
-            }
-        }
-    };
-
-    #[cfg(not(unix))]
-    let terminate = std::future::pending::<()>();
-
-    tokio::select! {
-        () = ctrl_c => {},
-        () = terminate => {},
-    }
-
-    tracing::info!("Signal received, starting graceful shutdown...");
-
-    // Stop the runtime tasks
-    let mut rt = runtime.write().await;
-    let status = rt.stop_flow().await;
-
-    tracing::info!(
-        "Runtime stopped. {} tasks aborted. Exiting.",
-        status.tasks_aborted
-    );
 }
 
 // ...
@@ -185,7 +148,8 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
     tokio::spawn(async move {
         loop {
             match rx.recv().await {
-                Ok(msg) => {
+                Ok(msg) =>
+                {
                     #[allow(clippy::collapsible_if)]
                     if let Ok(json) = serde_json::to_string(&msg) {
                         if sender.send(Message::Text(json)).await.is_err() {
