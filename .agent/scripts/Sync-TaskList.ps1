@@ -1,4 +1,7 @@
 <#
+# ⚠️ REFERENCE ONLY — Workflows now use inline auto-runnable commands.
+# This script is retained as documentation of the procedure it implements.
+# See .agent/workflows/plan-making.md, build.md for the current inline procedures.
 .SYNOPSIS
     Synchronizes task.md with plan artifacts and generates doc update targets.
 

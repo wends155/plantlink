@@ -1,0 +1,14 @@
+id: raw-tokio-spawn
+language: rust
+severity: hint
+rule:
+  any:
+    - kind: call_expression
+      pattern: "tokio::spawn($$$A)"
+    - kind: call_expression
+      pattern: "tokio::task::spawn($$$A)"
+ignores:
+  - "**/main.rs"
+  - "tests/**"
+message: "Prefer JoinSet or TaskTracker over raw tokio::spawn (coding-standard §4.2)"
+note: "Structured concurrency (JoinSet, TaskTracker) ensures spawned tasks are tracked and awaited. Raw tokio::spawn creates fire-and-forget tasks."

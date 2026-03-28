@@ -1,0 +1,12 @@
+id: block-on-in-async
+language: rust
+severity: error
+message: "block_on() can deadlock the tokio runtime — use .await instead (coding-standard §4.2)"
+note: "Calling block_on inside an async context blocks the runtime thread, causing deadlocks. Use .await for async operations or tokio::task::spawn_blocking for CPU-bound work."
+rule:
+  any:
+    - pattern: block_on($$$)
+    - pattern: $X.block_on($$$)
+ignores:
+  - "**/tests/**"
+  - "**/*_test.rs"

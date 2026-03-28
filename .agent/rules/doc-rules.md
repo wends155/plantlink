@@ -96,6 +96,7 @@ The `/update-doc` workflow owns `spec.md` behavioral contracts:
 
 > [!NOTE]
 > `architecture.md` is owned by the `/architecture` workflow — NOT by `/update-doc`.
+> For `spec.md` template, BDD format conventions, and section requirements, see `spec-rules.md`.
 
 ## 5. Drift Detection
 

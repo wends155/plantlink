@@ -29,19 +29,21 @@ User invokes: `/update-doc`
 
 ## Steps
 
-### 1. Mechanical Scan (Script)
+### 1. Documentation Scan (Agent Procedure)
 
-Run the companion script to extract the current documentation state:
+Gather the current documentation state:
 
-```powershell
-pwsh -NonInteractive -Command "& '.agent/scripts/Scan-ProjectDocs.ps1' -Mode scan"
-```
-
-This produces a structured report with:
-- Project detection (language, edition, toolchain)
-- Doc coverage (public items vs documented items)
-- spec.md section audit (present / missing per `doc-rules.md` §4)
-- Drift detection (source commits since last spec.md verification)
+1. **Project Detection:** Read `Cargo.toml`, `package.json`, or `go.mod` with `view_file`.
+2. **Toolchain Config:** Check for `rustfmt.toml`, `clippy.toml`, `.cargo/config.toml` with `view_file`.
+3. **Doc Coverage (Rust):**
+// turbo
+   - `rg -c -e "pub\s+fn\s+" -e "pub\s+struct\s+" -e "pub\s+enum\s+" -e "pub\s+trait\s+" -e "pub\s+type\s+" src/ --glob "*.rs"` (public items)
+// turbo
+   - `rg -c "\s*///" src/ --glob "*.rs"` (doc comment lines)
+4. **Section Audit:** Read `spec.md` with `view_file`. Check for required section headings from `doc-rules.md §4`.
+5. **Drift Detection:** If `spec.md` has `> Last verified against: <hash>`:
+// turbo
+   - `git rev-list --count <hash>..HEAD -- src/` (commits since verification)
 
 > [!TIP]
 > Review the scan output before proceeding. If doc coverage is high and spec.md
@@ -60,7 +62,7 @@ If **Narsil MCP** is available, use it to extract code-level data:
 | `get_symbol_definition` | Read signatures of undocumented public items |
 
 If Narsil is **not available**, fall back to manual investigation:
-- `rg "pub (fn|struct|enum|trait|type)"` for public API surface
+- `rg "pub (fn|struct|enum|trait|type)"` for public API surface *(⚠️ contains `|` — use `grep_search` instead)*
 - Read key files directly
 
 #### Sequential Thinking MCP
@@ -118,17 +120,14 @@ Write or update the metadata line in `spec.md`:
 
 This enables drift detection in future scans (see `doc-rules.md` §5).
 
-### 5. Validate (Script)
+### 5. Validate (Agent Procedure)
 
-Run the validation mode to confirm completeness:
+Re-run the documentation scan from Step 1. Confirm:
+- All required spec.md sections present ✅
+- Doc coverage improved from opening scan
+- No drift warning (or drift is expected)
 
-```powershell
-pwsh -NonInteractive -Command "& '.agent/scripts/Scan-ProjectDocs.ps1' -Mode validate"
-```
-
-Expected: spec.md sections ✅, doc coverage improved, no drift warning.
-
-If validation fails, return to Step 3 and address the gaps.
+If any check fails, return to Step 3 and address the gaps.
 
 ### 6. Pause for Review
 

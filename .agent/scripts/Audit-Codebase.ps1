@@ -1,4 +1,7 @@
 <#
+# ⚠️ REFERENCE ONLY — Workflows now use inline auto-runnable commands.
+# This script is retained as documentation of the procedure it implements.
+# See .agent/workflows/audit.md for the current inline procedure.
 .SYNOPSIS
     Automates mechanical audit checks for the /audit workflow.
 

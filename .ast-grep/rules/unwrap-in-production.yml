@@ -1,0 +1,11 @@
+id: unwrap-in-production
+language: rust
+severity: warning
+rule:
+  pattern: "$EXPR.unwrap()"
+ignores:
+  - "tests/**"
+  - "**/*test*"
+  - "benches/**"
+message: ".unwrap() in production code — use ?, .map_err(), or .unwrap_or_default() (coding-standard §4.1)"
+note: "Reserve .unwrap() for tests and provably-infallible cases. For .unwrap() inside inline #[cfg(test)] modules, use // ast-grep-ignore above the line."

@@ -1,0 +1,16 @@
+id: scattered-env-var
+language: rust
+severity: warning
+message: "std::env::var() should be centralized in config modules (coding-standard §4.10)"
+note: "Read all environment variables once at startup into a typed config struct. Scattered env var reads cause runtime surprises and make configuration hard to audit."
+rule:
+  any:
+    - pattern: std::env::var($$$)
+    - pattern: std::env::var_os($$$)
+    - pattern: env::var($$$)
+    - pattern: env::var_os($$$)
+ignores:
+  - "**/config.rs"
+  - "**/config/**"
+  - "**/tests/**"
+  - "**/*_test.rs"

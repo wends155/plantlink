@@ -27,12 +27,14 @@ Every PR / commit **must** pass all three gates before merge:
 cargo fmt  --all -- --check   # Gate 1: Formatting
 cargo clippy --all-targets --all-features -- -D warnings  # Gate 2: Linting
 cargo test  --all-features    # Gate 3: Tests
+sg scan                       # Gate 4: AST Linting (conditional — requires sgconfig.yml)
 ```
 
 | Metric | Target |
 | :--- | :--- |
 | Formatting | 100% `rustfmt` compliance |
 | Linting | Zero `clippy` warnings (deny mode) |
+| AST Linting | Zero `ast-grep` findings (when configured) |
 | Documentation | 100% of public APIs documented |
 | Test coverage | 100% of public functions tested |
 | Benchmarks | Critical paths benchmarked with Criterion |
@@ -105,6 +107,27 @@ Enable these when they apply to your project:
 | `clippy::unwrap_used` | `deny` | For production services (not tests) |
 | `clippy::expect_used` | `warn` | Pair with `unwrap_used` for stricter error handling |
 | `clippy::indexing_slicing` | `warn` | For safety-critical code avoiding panics |
+
+### 3.3 ast-grep Configuration
+
+AST-aware linting enforces structural patterns that `clippy` cannot cover (e.g., path-scoped rules like "no DB queries outside `repo` modules"). 
+
+The workspace provides starter rule templates in `.ast-grep/`. Downstream projects should adopt these by copying `sgconfig.yml` to their project root.
+
+| Rule ID | Enforces | Severity | Customization |
+| :--- | :--- | :--- | :--- |
+| `scattered-env-var` | §4.10 Centralized config | Warning | Adjust `ignores` for your config module path |
+| `block-on-in-async` | §4.2 Async deadlocks | Error | - |
+| `raw-thread-spawn` | §10 Structured concurrency | Warning | - |
+| `hardcoded-url` | §4.10 Centralized config | Hint | - |
+| `sqlx-outside-repo` | §4.6.7 Repository pattern | Warning | Adjust `ignores` for your infra modules |
+| `mutex-option-antipattern` | §4.6.5 Interior mutability | Hint | - |
+| `arc-vec-antipattern` | §4.3 Memory management | Warning | - |
+| `raw-tokio-spawn` | §4.2 Async best practices | Hint | Add your startup/background files to `ignores` |
+| `wildcard-import` | §4.7.4 Re-exports & Prelude | Warning | - |
+| `missing-instrument` | §4.8 Observability | Hint | Add your test files to `ignores` |
+| `scattered-dotenv` | §4.10 Environment Config | Warning | Add your startup/config files to `ignores` |
+| `unwrap-in-production` | §4.1 Error Handling | Warning | Add project `tests/**` paths to `ignores` if different |
 
 ---
 
@@ -477,6 +500,59 @@ Validate inputs, enforce invariants, and handle edge cases — don't assume call
 
 ---
 
+### 4.10 Environment Configuration
+
+Centralize configuration loading and validation to prevent runtime surprises.
+
+#### File Hierarchy
+
+| File | Committed? | Purpose |
+|:---|:---:|:---|
+| `.env.example` | ✅ Yes | Template with all keys, placeholder values, and comments |
+| `.env` | ❌ No (gitignored) | Local development values — real API keys for dev |
+| `.env.test` | ⚠️ Optional | Test-safe values (no real API keys, localhost URLs) |
+| Production | N/A | Real env vars injected by deployment platform |
+
+> [!IMPORTANT]
+> `.env.example` must be committed and kept up-to-date. It serves as documentation
+> for every configuration key the application requires. Never put real secrets in it.
+
+#### Config Struct Pattern
+
+All configuration must flow through a typed, validated struct:
+
+- Parse from environment at application startup using `dotenvy` + `std::env::var`
+- Fail fast — if a required variable is missing, the application must exit immediately with a
+  clear error message naming the missing variable
+- Use newtypes (§ 4.4) for validated config values (e.g., `DatabaseUrl`, `ApiKey`, `Port`)
+- Use an `Environment` enum (`Dev`, `Staging`, `Prod`) to control behavior differences
+
+**Rules:**
+- Never scatter `std::env::var()` calls throughout the codebase — read all env vars once into
+  the config struct at startup
+- Never use `Option<T>` for required configuration — if it's required, fail at startup, not at
+  first use
+- Never hardcode URLs, ports, or credentials — all external endpoints come from config
+- Load `.env` only in dev/test — production uses real env vars
+- Use `#[cfg(test)]` or a test-specific config constructor for test environments
+
+#### Gitignore Requirements
+
+Every project with environment configuration must include in `.gitignore`:
+
+```
+.env
+.env.local
+.env.*.local
+```
+
+> [!CAUTION]
+> If `.env` is accidentally committed, rotate ALL secrets immediately.
+> `git rm --cached .env` removes it from tracking, but the secrets are
+> already in git history.
+
+---
+
 ## 5. Testing Standards
 
 ### 5.1 TDD Flow
@@ -495,11 +571,117 @@ Tests follow the **Arrange-Act-Assert** pattern. Co-locate unit tests in a `#[cf
 
 Place integration tests in a top-level `tests/` directory. Each file in `tests/` is compiled as a separate crate — it can only access the public API.
 
-**Rules:**
+**General Rules:**
 - One file per feature area (e.g., `tests/auth.rs`, `tests/pipeline.rs`).
 - Use shared fixtures via a `tests/common/mod.rs` helper module.
 - Integration tests should exercise real module interactions, not mock everything.
-- For tests requiring external services (DB, HTTP), use `testcontainers` or in-memory fakes.
+- For tests requiring external services (DB, HTTP), use `testcontainers` or `wiremock`.
+
+---
+
+#### 5.3.1 Database Tests (Testcontainers)
+
+Use `testcontainers` to spin up ephemeral database containers for integration tests. Each test suite gets a fresh, isolated database — no shared state, no dependency on local infrastructure.
+
+**Pattern — `TestDb` shared fixture:**
+
+Create a reusable `TestDb` struct in `tests/common/mod.rs` that manages the container lifecycle:
+- Start a Postgres container via `testcontainers::runners::AsyncRunner`
+- Run migrations automatically (via `sqlx::migrate!()` or `refinery`)
+- Provide a connection pool to the test
+- Container is dropped (and destroyed) when the test ends
+
+**Rules:**
+- Each test suite gets its own container — no sharing between test files
+- Migrations run before every suite — tests always start with a known schema
+- Never depend on local `docker compose up` for tests — tests must be self-contained
+- Use `#[tokio::test]` for async database tests
+- Keep a `docker-compose.yml` in the project root for **local development only** (committed, documented in `architecture.md`)
+
+**Docker Compose (for local dev only, not tests):**
+
+```yaml
+# docker-compose.yml — local development services
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: myapp_dev
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
+```
+
+> [!CAUTION]
+> `docker-compose.yml` is for developer convenience — `cargo test` must never require
+> `docker compose up`. If tests need a database, they spin up their own via testcontainers.
+
+---
+
+#### 5.3.2 External API Tests (Wiremock)
+
+Use `wiremock` to simulate external HTTP APIs in integration tests. This enables testing
+HTTP interaction patterns (headers, status codes, timeouts) without calling live services.
+
+**Three-Layer Testing Strategy:**
+
+| Layer | Tool | What It Tests | When to Use |
+|:---|:---|:---|:---|
+| **Unit** | `mockall` | Business logic in isolation | Always — every function |
+| **Integration** | `wiremock` | HTTP request/response contracts | When code makes HTTP calls |
+| **E2E / Sandbox** | Real API (dev endpoint) | Full end-to-end integration | Manual / staging only |
+
+**Pattern — Wiremock MockServer:**
+
+- Create a `wiremock::MockServer::start()` in the test setup
+- Mount response mocks for expected endpoints
+- Pass the mock server's URI to the client under test (via config or constructor)
+- Assert that the mock was called with expected request properties
+
+**Response Scenarios to Cover:**
+
+| Scenario | Response | Why It Matters |
+|:---|:---|:---|
+| Success | 200 + valid JSON body | Happy path |
+| Client error | 400/422 + error body | Input validation feedback |
+| Auth failure | 401/403 | Token expiry, permission checks |
+| Not found | 404 | Missing resource handling |
+| Rate limit | 429 + `Retry-After` header | Backoff logic |
+| Server error | 500/503 | Retry and fallback behavior |
+| Timeout | No response (delay) | Timeout handling and circuit breaking |
+
+**Rules:**
+- Every external API must be behind a trait (§ 4.6.8) — the trait enables both mockall
+  (unit) and wiremock (integration) testing
+- Integration tests must cover at least: success, error response, and timeout scenarios
+- Never call live external APIs in CI — all integration tests use wiremock
+- Document the response contract (status codes, headers, body shape) in the trait's doc comment
+- Use `wiremock::matchers` to verify request method, path, headers, and body — not just the response
+
+> [!TIP]
+> For APIs with complex auth flows (OAuth, JWT), create a dedicated `MockAuthServer`
+> test fixture that handles token issuance and validation.
+
+---
+
+#### 5.3.3 Test Environment Configuration
+
+Separate test configuration from production configuration to prevent accidental
+use of real credentials in tests.
+
+**Rules:**
+- Create a test-specific config constructor (e.g., `AppConfig::for_test()`) that uses safe defaults
+- Use `.env.test` for integration test environment variables when needed
+- Test timeouts should be shorter than production (e.g., 5s vs 30s) to catch slow tests early
+- Test databases use either testcontainers (preferred) or a `_test`-suffixed database name
+- Never use production API keys in test config — use wiremock or sandbox keys
+- Load test config via `#[cfg(test)]` module or a test helper function
 
 ### 5.4 Property-Based Tests
 
@@ -514,6 +696,9 @@ Use `proptest` for invariant checking on complex transformations. The test gener
 - [ ] Integration tests cover cross-module interactions.
 - [ ] Mocks (`mockall`) are used for external dependencies (see § 4.6.8).
 - [ ] Doc-tests compile and pass (`cargo test --doc`).
+- [ ] External APIs are tested with wiremock (HTTP) or mockall (trait) — not called live in CI.
+- [ ] Database tests use testcontainers or isolated test databases.
+- [ ] `.env.example` is committed and up-to-date with all required keys.
 
 ---
 
@@ -550,13 +735,25 @@ At minimum, the pipeline must enforce the Code Quality Gate (§2).
 | `criterion` | Statistical benchmarking |
 | `proptest` | Property-based / fuzz testing |
 | `mockall` | Mocking framework |
+| `testcontainers` | Ephemeral Docker containers for integration tests |
+| `wiremock` | HTTP API mocking for integration tests |
 | `cargo-tarpaulin` | Code coverage |
+
+### Infrastructure
+
+| Tool | Purpose |
+| :--- | :--- |
+| `docker-compose` | Local development services (Postgres, Redis, etc.) |
+| `dotenvy` | `.env` file loading |
+| `sqlx` | Async SQL with compile-time checked queries |
+| `refinery` | Database migration management |
 
 ### Quality & Security
 
 | Tool | Purpose |
 | :--- | :--- |
 | `cargo audit` | Security vulnerability scanning |
+| `ast-grep` | AST-aware pattern linting (Clippy gaps) |
 | `cargo outdated` | Dependency staleness check |
 | `cargo tree` | Dependency graph visualization |
 | `cargo expand` | Macro expansion debugging |
@@ -609,6 +806,17 @@ At minimum, the pipeline must enforce the Code Quality Gate (§2).
 | `Mutex<Option<T>>` for lazy init | `OnceLock` or `LazyLock` (§ 4.6.5) |
 | Direct DB access in business logic | Repository pattern (§ 4.6.7) |
 | Hard-coded dependencies | DI via Traits (§ 4.6.8) |
+| Scattered `std::env::var` calls | Centralized config struct (§ 4.10) |
+| Calling live APIs in CI tests | Wiremock or mockall (§ 5.3.2) |
+| Shared test database state | Testcontainers per suite or transaction rollback (§ 5.3.1) |
+| `.env` committed to git | `.env.example` only; `.env` in `.gitignore` (§ 4.10) |
+
+---
+
+> [!NOTE]
+> `todo!()` remains prohibited. For multi-phase projects, use `// STUB(Phase N): description`
+> markers instead (see `phase-rules.md §3`). Stubs must be functional code that returns Ok
+> and logs a warning — never panicking placeholders.
 
 ---
 

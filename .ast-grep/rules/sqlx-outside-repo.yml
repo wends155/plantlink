@@ -1,0 +1,20 @@
+id: sqlx-outside-repo
+language: rust
+severity: warning
+message: "sqlx queries should only appear in repository/persistence modules (coding-standard §4.6.7)"
+note: "Centralize data access behind repository traits. Direct sqlx usage in business logic makes testing harder and couples logic to the database."
+rule:
+  any:
+    - pattern: sqlx::query($$$)
+    - pattern: sqlx::query_as($$$)
+    - pattern: sqlx::query_scalar($$$)
+    - pattern: sqlx::query_as!($$$)
+    - pattern: sqlx::query!($$$)
+ignores:
+  - "**/repo/**"
+  - "**/repository/**"
+  - "**/persistence/**"
+  - "**/infra/**"
+  - "**/db/**"
+  - "**/tests/**"
+  - "**/*_test.rs"

@@ -15,7 +15,11 @@ Create, discover, or audit a project's architectural documentation.
 - Confirm you are operating in **Planning mode** (no code edits allowed).
 
 > [!TIP]
-> Run `pwsh -NonInteractive -Command "& '.agent/scripts/Scan-ProjectDocs.ps1' -Mode scan -Scope arch"` to gather project state.
+> Scan project state using native agent tools (zero-prompt):
+> 1. Read `Cargo.toml`, `package.json`, or `go.mod` with `view_file`.
+> 2. Use `find_by_name` to list source files and config files (`rustfmt.toml`, `clippy.toml`).
+// turbo
+> 3. `git log -n 10 --oneline` — recent changes for context.
 
 ## Step 1: Assess Project State
 
@@ -88,7 +92,8 @@ Also scan for data model indicators:
 - ORM config (diesel.toml, prisma schema, sqlx queries)
 - Database connection setup code
 
-Run `pwsh -NonInteractive -Command "& '.agent/scripts/Scan-ProjectDocs.ps1' -Mode scan -Scope arch"` for additional project metadata.
+// turbo
+Also: `git log -n 10 --oneline` for recent changes and `view_file` on `Cargo.toml` for project metadata.
 
 ### Step 3D: Map Boundaries & Dependencies
 
@@ -179,9 +184,12 @@ Output an **Architecture Recommendations Report** — do NOT edit architecture.m
 
 ## Step 5 (all paths): Validate
 
-1. Run `pwsh -NonInteractive -Command "& '.agent/scripts/Scan-ProjectDocs.ps1' -Mode validate -Scope arch"` — must exit 0.
-2. Cross-reference the draft/report against `architecture-rules.md` §1 checklist.
-3. Verify all 15 required sections are present (New/Discover) or assessed (Audit).
+// turbo
+1. Re-read `architecture.md` with `view_file` and verify all 15 required section headings from `architecture-rules.md §1` are present.
+// turbo
+2. `rg -n "## " architecture.md` (section heading audit).
+3. Cross-reference the draft/report against `architecture-rules.md §1` checklist.
+4. Verify all 15 required sections are present (New/Discover) or assessed (Audit).
 
 ## Rules
 

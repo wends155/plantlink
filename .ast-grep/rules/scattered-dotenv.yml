@@ -1,0 +1,20 @@
+id: scattered-dotenv
+language: rust
+severity: warning
+rule:
+  any:
+    - kind: call_expression
+      pattern: "dotenvy::dotenv()"
+    - kind: call_expression
+      pattern: "dotenv::dotenv()"
+    - kind: call_expression
+      pattern: "dotenvy::dotenv().ok()"
+    - kind: call_expression
+      pattern: "dotenv::dotenv().ok()"
+ignores:
+  - "**/main.rs"
+  - "**/config.rs"
+  - "**/config/*.rs"
+  - "tests/**"
+message: "dotenv loading should be centralized in main/config only (coding-standard §4.10)"
+note: "Load .env once at startup in main() or the config module. Scattered dotenv calls make configuration loading unpredictable."

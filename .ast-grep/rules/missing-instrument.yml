@@ -1,0 +1,10 @@
+id: missing-instrument
+language: rust
+severity: hint
+rule:
+  pattern: "pub async fn $NAME($$$) { $$$ }"
+ignores:
+  - "tests/**"
+  - "**/*test*"
+message: "pub async fn missing #[instrument] — add tracing instrumentation (coding-standard §4.8)"
+note: "Every public async function should have #[tracing::instrument] for observability. Use skip(sensitive_field) for secrets."

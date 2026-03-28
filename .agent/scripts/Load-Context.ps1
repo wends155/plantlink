@@ -1,4 +1,7 @@
 <#
+# ⚠️ REFERENCE ONLY — Workflows now use inline auto-runnable commands.
+# This script is retained as documentation of the procedure it implements.
+# See .agent/workflows/issue.md, feature.md, plan-making.md, toolcheck.md for the current inline procedures.
 .SYNOPSIS
     Loads project context for /issue and /plan-making workflows.
 

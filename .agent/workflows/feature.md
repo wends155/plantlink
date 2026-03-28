@@ -20,7 +20,13 @@ User invokes: `/feature <description>`
 ## Prerequisites
 
 > [!TIP]
-> Run `pwsh -NonInteractive -Command "& '.agent/scripts/Load-Context.ps1' -Mode issue"` to load context automatically.
+> Load context using native agent tools (zero-prompt):
+> 1. Read `architecture.md` and `context.md` with `view_file` (if they exist).
+> 2. Run these auto-runnable commands:
+// turbo
+>    - `git log -n 20 --oneline`
+// turbo
+>    - `rg -n "TODO|FIXME|HACK" --type-add "code:*.{rs,go,ts,js,svelte,py}" --type code .`
 
 - Read `.agent/rules/feature-rules.md` for classification criteria, report format, and architectural fit assessment.
 - Read `architecture.md` (if present) for project structure, patterns, and constraints.

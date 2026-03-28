@@ -1,4 +1,7 @@
 <#
+# ⚠️ REFERENCE ONLY — Workflows now use inline auto-runnable commands.
+# This script is retained as documentation of the procedure it implements.
+# See .agent/workflows/toolcheck.md for the current inline procedure.
 .SYNOPSIS
     Scans the development environment for session readiness.
 
@@ -246,8 +249,9 @@ $WorkflowDir = Join-Path $RepoRoot ".agent" "workflows"
 
 # Required workflows (must exist)
 $RequiredWorkflows = @(
-    'architecture.md', 'audit.md', 'design.md', 'feature.md', 'issue.md',
-    'plan-making.md', 'toolcheck.md', 'update-doc.md'
+    'ago.md', 'architecture.md', 'audit.md', 'brainstorm.md', 'build.md',
+    'design.md', 'feature.md', 'issue.md',
+    'plan-making.md', 'spec.md', 'toolcheck.md', 'update-doc.md'
 )
 # Alternative workflows (at least one per group must exist)
 $AlternativeWorkflows = @{

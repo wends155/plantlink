@@ -1,0 +1,11 @@
+id: hardcoded-url
+language: rust
+severity: hint
+message: "Hardcoded URL detected — URLs should come from configuration (coding-standard §4.10)"
+note: "External endpoints should be configurable via environment variables or config structs, not hardcoded in source. Exceptions: documentation strings and test fixtures."
+rule:
+  kind: string_literal
+  regex: "https?://"
+ignores:
+  - "**/tests/**"
+  - "**/*_test.rs"

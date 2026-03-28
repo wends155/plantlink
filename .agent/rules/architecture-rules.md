@@ -25,6 +25,7 @@ Every project's `architecture.md` must contain these sections:
 13. **Architecture Diagrams** — Mermaid: module graph, data flow, error flow
 14. **Known Constraints & Technical Debt** — limitations, workarounds, planned fixes
 15. **Data Model** *(if persistent storage)* — tables/collections, relationships, ERD diagram, migration strategy
+16. **Environment Configuration** *(if external services)* — .env hierarchy, config struct, deployment environments, Docker compose setup
 
 ## 2. Objectives & Key Features Conventions
 
@@ -141,3 +142,33 @@ These are common patterns the Architect should consider. Projects may deviate wi
 - **Common architectures as reference**: Clean Architecture, Hexagonal (Ports & Adapters), Onion. Choose one and document the mapping in architecture.md.
 - **Feature flag organization**: Workspace-level feature flags, not scattered per-module. Document in architecture.md § Dependencies.
 - **Dependency inversion**: High-level modules define traits. Low-level modules provide implementations. Never the reverse.
+
+## 9. Environment Configuration Conventions *(if external services)*
+
+Required when the project connects to external APIs, databases, or third-party services.
+References `coding-standard.md §4.10` for code-level patterns.
+
+### Required Content
+
+- **Supported environments**: List each environment (Dev, Staging, Prod) with purpose and constraints.
+- **Environment variables**: Table of all env vars with type, default, and whether required or optional.
+- **Docker compose**: Document local dev services (`docker-compose.yml`) per `coding-standard.md §5.3.1`.
+- **Secrets management**: How secrets are handled per environment (env vars, vault, etc.).
+
+### Example
+
+```markdown
+## Environment Configuration
+
+| Environment | Purpose | Config Source |
+|:---|:---|:---|
+| Dev | Local development | `.env` + docker-compose |
+| Staging | Pre-production testing | Platform env vars |
+| Prod | Production | Platform env vars + secrets vault |
+
+| Variable | Type | Required | Default | Notes |
+|:---|:---|:---:|:---|:---|
+| `DATABASE_URL` | String | ✅ | — | Postgres connection string |
+| `API_KEY` | String | ✅ | — | External API authentication |
+| `LOG_LEVEL` | Enum | ❌ | `info` | debug / info / warn / error |
+```

@@ -20,9 +20,27 @@ It enforces the **Reflect** phase of the TARS protocol and generates a structure
 
 ## Prerequisites
 
+// turbo
 > [!TIP]
-> Run `pwsh -NonInteractive -Command "& '.agent/scripts/Audit-Codebase.ps1' -Mode scan"` to automate context gathering
-> and mechanical checks. Use `-Scope full` for compliance mode.
+> Run these auto-runnable commands to gather context and mechanical checks:
+// turbo
+> - `git show --name-only --format="" HEAD` (changed files in last commit)
+// turbo
+> - Formatter check: `cargo fmt --all -- --check` *(or the command from `architecture.md § Toolchain`)*
+// turbo
+> - Linter: `cargo clippy --all-targets --all-features -- -D warnings`
+// turbo
+> - Tests: `cargo test --all-features`
+// turbo
+> - Unwrap scan: covered by `sg scan` rule `unwrap-in-production` *(see L41 — only if `sgconfig.yml` exists)*
+// turbo
+> - Secret scan: `rg -n -i -e "API_KEY\s*=" -e "SECRET\s*=" -e "PASSWORD\s*=" -e "TOKEN\s*=" . --glob "!.git" --glob "!target" --glob "!*.lock"`
+// turbo
+> - TODO markers: `rg -n -e "TODO" -e "FIXME" -e "HACK" --glob "*.rs" --glob "*.go" --glob "*.ts" --glob "*.js" --glob "*.svelte" .`
+// turbo
+> - AST lint scan: `sg scan` *(only if `sgconfig.yml` exists in project root)*
+>
+> If Narsil MCP is available, also run `scan_security` and `check_cwe_top25`. Use `-Scope full` for compliance mode.
 
 - Read `.agent/rules/audit-rules.md` for report format, finding classification, and verdict criteria.
 - Read `architecture.md` (if present) for project-specific design and toolchain.
@@ -51,6 +69,19 @@ Systematically verify the code against project standards.
 - [ ] Every plan item maps to a `[x]` in `task.md` and a corresponding `git diff`
 - [ ] No unapproved changes were introduced (check for Additions per Fidelity Matrix)
 - [ ] If deviations occurred, they are documented with justification
+- [ ] Builder Notes section of `task.md` reviewed and processed (see §2a-bis)
+- [ ] No stale stubs remain: `STUB(Phase N)` where N ≤ current phase are all addressed *(multi-phase only — verify with `rg "STUB\(Phase"`)*
+
+#### 2a-bis. Builder Notes Processing *(if Builder Notes exist in task.md)*
+
+Review each note in the `## Builder Notes` section:
+
+- **💡 Suggestions**: Promote to a future plan backlog item, or dismiss with brief rationale.
+- **⚠️ Observations**: Acknowledge and record in `context.md` if relevant to future work.
+
+> [!NOTE]
+> Builder Notes are informational — they were logged during `/build` per
+> `builder-rules.md §7`. The Architect decides what action (if any) to take.
 
 #### 2b. GEMINI.md Compliance *(skip items already covered by §2f)*
 - [ ] **Error Handling**: No silent failures; errors communicate what/where/why
@@ -123,9 +154,17 @@ Re-run the project's standard verification pipeline and confirm zero-exit:
 > If `architecture.md` is absent, inspect build/config files to determine correct commands.
 > For Rust projects, also verify that clippy lint levels match `coding-standard.md` § 3.2.
 
+// turbo
 > [!TIP]
-> Run `pwsh -NonInteractive -Command "& '.agent/scripts/Audit-Codebase.ps1' -Mode gate"` to execute the verification
-> pipeline automatically.
+> Run the full verification pipeline (commands from `architecture.md § Toolchain`):
+// turbo
+> - `cargo fmt --all -- --check`
+// turbo
+> - `cargo clippy --all-targets --all-features -- -D warnings`
+// turbo
+> - `cargo test --all-features`
+>
+> All three must exit 0.
 
 ### 4. Audit Report
 
@@ -184,3 +223,4 @@ The task is now considered fully closed under the TARS protocol.
 3. **Use MCP tools** — prefer Narsil and Sequential Thinking when available for accuracy.
 4. **Preserve passing items** — document compliant items too, not just failures.
 5. **Respect the Planning Gate** — never tell the Builder to fix without routing through `/plan-making`.
+6. **Command Execution** — **NEVER** use shell operators (`&&`, `||`, `;`, `>`, `2>&1`, `|`). The IDE captures stderr automatically; redirects are unnecessary and blocked. One command per `run_command` call. See `builder-rules.md §7`.

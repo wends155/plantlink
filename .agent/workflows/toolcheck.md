@@ -2,6 +2,8 @@
 description: Validate tooling environment at session start (Session Bootstrap)
 ---
 
+// turbo-all
+
 # Toolcheck Workflow
 
 This workflow validates the agent's tooling environment at session start.
@@ -18,22 +20,45 @@ User invokes: `/toolcheck`
 
 ## Steps
 
-### 1. Environment Scan (Script)
+### 1. Environment Scan
 
-Run the companion script to check all mechanical items:
+Run the following checks. All are auto-runnable:
 
-```powershell
-pwsh -NonInteractive -Command "& '.agent/scripts/Check-Environment.ps1' -Mode scan"
-```
+**Shell Tools:**
+// turbo
+- `git --version`
+// turbo
+- `rg --version`
+// turbo
+- `sg --version`
 
-This produces a structured report covering:
-- Shell tools (git, rg, PowerShell version)
-- Rust toolchain (rustc, cargo, clippy, rustfmt, rustup)
-- Linkers (MSVC link.exe/cl.exe, gcc — including scoop conflict detection)
-- Workflow files (8 required + 1 alternative group in `.agent/workflows/`)
-- Script files (7 expected in `.agent/scripts/`)
-- Repo root scripts (any .ps1, .sh, Makefile, justfile)
-- Project detection (Cargo.toml, package.json, go.mod)
+**Git Non-Interactive Safety:**
+// turbo
+- `git config credential.helper`
+
+If the output matches `manager`, `wincred`, or `osxkeychain`, set these env vars for the session:
+- `$env:GCM_INTERACTIVE = 'never'`
+- `$env:GIT_TERMINAL_PROMPT = '0'`
+
+**Rust Toolchain:**
+// turbo
+- `rustc --version`
+// turbo
+- `cargo --version`
+// turbo
+- `cargo clippy --version`
+// turbo
+- `rustfmt --version`
+// turbo
+- `rustup show`
+
+**Workflow & Script Files:**
+Use `find_by_name` to verify all expected `.md` files exist in `.agent/workflows/` and all expected `.ps1` files exist in `.agent/scripts/`.
+
+**Project Detection:**
+Use `view_file` on `Cargo.toml`, `package.json`, or `go.mod` (whichever exists in repo root).
+
+Produce a structured report from the above output (see Session Readiness Report format in Step 6).
 
 ### 2. Diagnose & Fix
 
@@ -52,7 +77,8 @@ For each ❌ item in the scan report:
    | Scoop `link.exe` shadowing MSVC | Advise user to reorder PATH |
    | Missing workflow/script file | ⚠️ Cannot fix — warn user |
 
-3. **Re-scan** — run `pwsh -NonInteractive -Command "& '.agent/scripts/Check-Environment.ps1' -Mode scan"` again to confirm the fix.
+
+3. **Re-scan** — re-run the individual version commands from Step 1 to confirm the fix.
 
 4. **If unfixable** — collect into warnings with:
    - What failed
@@ -106,7 +132,10 @@ Report any critical vulnerabilities or structural issues found.
 If **Sequential Thinking MCP** is available, use `sequentialthinking` to analyze:
 
 1. **Scan results** — are there patterns that could be automated?
-2. **TODO/FIXME markers** — load via `pwsh -NonInteractive -Command "& '.agent/scripts/Load-Context.ps1' -Mode issue"` output.
+
+2. **TODO/FIXME markers** — scan with:
+// turbo
+   `rg -n -e "TODO" -e "FIXME" -e "HACK" --glob "*.rs" --glob "*.go" --glob "*.ts" --glob "*.js" --glob "*.svelte" --glob "*.py" .`
 3. **Project structure** — are there build scripts, CI configs, or Makefiles?
 4. **MCP capabilities** — which Narsil tools could help with current project state?
 5. **Script gaps** — are there repetitive tasks that need a new script?
@@ -128,6 +157,7 @@ Produce the final structured report:
 | Rust | ✅/❌ | version + edition |
 | Linker | ✅/❌ | MSVC/GCC + conflict status |
 | rg | ✅/❌ | version |
+| ast-grep | ✅/❌ | version |
 
 ### MCP Servers
 | Server | Status | Details |
@@ -162,9 +192,10 @@ or:
 
 ## Rules
 
-1. **Always scan first** — never skip `Check-Environment.ps1`, even if "everything looks fine."
+1. **Always scan first** — never skip the environment scan (Step 1), even if "everything looks fine."
 2. **Fix before warn** — attempt user-space fixes before escalating to the user.
 3. **No admin** — all fixes must be user-space (rustup, cargo install, scoop).
 4. **Always index** — trigger Narsil `reindex` for fresh data every session.
 5. **Don't block** — unfixable issues are warnings, not blockers. Other workflows fall back to manual investigation.
 6. **Report everything** — even passing items go in the report for the session record.
+7. **Auto-run** — see `GEMINI.md` §6 Auto-Run table. All commands in this workflow are read-only; set `SafeToAutoRun: true` for every `run_command` call.

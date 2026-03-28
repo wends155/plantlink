@@ -1,0 +1,12 @@
+id: raw-thread-spawn
+language: rust
+severity: warning
+message: "Prefer tokio::spawn with structured concurrency over std::thread::spawn (coding-standard §10)"
+note: "Raw thread::spawn bypasses the async runtime's task tracking. Use tokio::spawn or tokio::task::spawn_blocking for structured concurrency."
+rule:
+  any:
+    - pattern: std::thread::spawn($$$)
+    - pattern: thread::spawn($$$)
+ignores:
+  - "**/tests/**"
+  - "**/*_test.rs"

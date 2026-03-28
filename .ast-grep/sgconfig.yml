@@ -1,0 +1,5 @@
+# ast-grep project configuration (template)
+# Copy to your project root. ruleDirs is relative to this file's location.
+# See README.md in this directory for adoption instructions.
+ruleDirs:
+  - .ast-grep/rules

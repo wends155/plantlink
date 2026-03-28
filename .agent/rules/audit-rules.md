@@ -80,11 +80,14 @@ Used during post-implementation audits to verify plan adherence.
 | Type | Definition | Impact |
 |------|-----------|--------|
 | **Omission** | Plan item not implemented | Fail — missing deliverable |
-| **Addition** | Unplanned change introduced | Fail unless justified and documented |
+| **Addition** | Unplanned substantive change introduced | Fail unless justified and documented |
+| **Minor Addition** | Pre-approved per `builder-rules.md §4` (imports, derives, formatting) | Not a finding |
+| **Stale Stub** | `STUB(Phase N)` where N ≤ current phase remains unreplaced | Fail — deferred work not completed |
 | **Deviation** | Implementation differs from plan | Fail unless justified and documented |
 | **Justified** | Deviation with documented reasoning | Acceptable — note in findings |
 
 Scoring:
 - Any unjustified Omission → ❌ Fail
 - Any unjustified Addition or Deviation → ❌ Fail
+- Minor Additions (as defined in `builder-rules.md §4`) are pre-approved and excluded from fidelity scoring
 - Justified deviations are noted as `medium` findings with documentation

@@ -1,4 +1,7 @@
 <#
+# ⚠️ REFERENCE ONLY — Workflows now use inline auto-runnable commands.
+# This script is retained as documentation of the procedure it implements.
+# See .agent/workflows/update-doc.md, architecture.md for the current inline procedures.
 .SYNOPSIS
     Scans a project for documentation state and completeness.
 

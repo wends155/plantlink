@@ -31,22 +31,32 @@ The output is a diagnostic report that feeds directly into `/issue` for formal t
 ### 1. Discovery
 
 // turbo
-Run the log inspection script to get the full severity breakdown:
-```powershell
-pwsh -NonInteractive -File .agent/scripts/Check-Logs.ps1 -Level TRACE
+Run these log inspection commands (auto-runnable):
+
+```
+rg -c "TRACE|DEBUG|INFO|WARN|ERROR" logs/
+```
+```
+rg -n "WARN|ERROR" logs/ --max-count 50
 ```
 
-This auto-detects the log format (tracing-subscriber, JSON, log4j, generic) and
-outputs a structured report with severity breakdown and tail entries.
+This produces a severity count per log file and the most recent warning/error entries.
 
 > **IMPORTANT**: If the project has logs in a non-default directory, use `-LogDir <path>`.
 
 ### 1b. Lifecycle Discovery
 
 // turbo
-Run the lifecycle extraction to get thread and connection pool event timelines:
-```powershell
-pwsh -NonInteractive -File .agent/scripts/Check-Logs.ps1 -Level TRACE -Lifecycle
+Run the lifecycle extraction commands:
+
+```
+rg -n "thread spawned|thread started|thread exiting|initialized|shutting down|dropping" logs/
+```
+```
+rg -n "connection established|connection closed|reconnect|evict|cache hit|cache miss" logs/
+```
+```
+rg -n "elapsed_ms=|duration_ms=|took [0-9]+ms|latency_ms=" logs/
 ```
 
 This produces:
@@ -59,16 +69,20 @@ Use this output to pre-populate §3b (Event Ordering) and §3d (Resource Lifecyc
 ### 1c. Deep Analysis Discovery
 
 // turbo
-Run the statistical analysis to get timing, churn, repetition, and span reports:
-```powershell
-pwsh -NonInteractive -File .agent/scripts/Check-Logs.ps1 -Level TRACE -DeepAnalysis
+Run these deep analysis commands:
+
+```
+rg -c "elapsed_ms=[0-9]+|duration_ms=[0-9]+|took [0-9]+ms" logs/
+```
+```
+rg -o "elapsed_ms=[0-9]+" logs/ --no-filename
 ```
 
-This produces:
-- **§A Timing Statistics**: min/max/avg with outlier breakdown (>100ms).
-- **§B Connection Churn**: connection/reconnect ratio and cache health.
-- **§C Repetition**: top 10 most-repeated log messages (timestamps stripped).
-- **§D Span Integrity**: grouped tracing span counts.
+Agent performs statistical analysis on the output:
+- **Timing:** extract numeric values from timing entries, compute min/max/avg, flag outliers >100ms
+- **Connection churn:** count establish vs close vs reconnect events; flag high reconnect ratios
+- **Repetition:** read full log with `view_file`, strip timestamps, group identical messages by count
+- **Span integrity:** group `\w+\.\w+\{` patterns by span type and verify close/open balance
 
 Use this output to pre-populate §3c (Timing), §3e (Repetition), and §3f (Span Integrity) analysis.
 

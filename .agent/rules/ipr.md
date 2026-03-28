@@ -17,8 +17,8 @@
 | Tier | Files | Required Sections |
 |------|-------|-------------------|
 | **S** (patch) | 1-3 | Header, Problem Statement, Global Execution Order, Verification Plan, Plan Summary |
-| **M** (feature) | 4-10 | + Builder Context, Interface Contracts, Test Plan, Negative Scope |
-| **L** (refactor) | 10+ | + Module Boundaries, Cross-Module Handshakes, Architecture Diagram, Dependency Chain |
+| **M** (feature) | 4-10 | + Builder Context, Interface Contracts, Blast Radius Table, Deprecation Schedule *(if triggered)*, Test Plan, Negative Scope, Phase Context *(if multi-phase)* |
+| **L** (refactor) | 10+ | + Module Boundaries, Cross-Module Handshakes, Architecture Diagram, Dependency Chain, Blast Radius Table, Deprecation Schedule *(if triggered)*, Phase Manifest *(if multi-phase)* |
 
 ### Header
 
@@ -42,6 +42,24 @@ Read before starting:
 - `src/error.rs` (current error types)
 - `architecture.md § Error Handling` (project convention)
 ```
+
+### Phase Context *(M/L tier, multi-phase only)*
+
+For plans that are part of a multi-phase project (see `phase-rules.md`):
+
+```markdown
+## Phase Context
+- **Phase:** 2 of 5 (Core Feature)
+- **Prior phase:** Phase 1 delivered foundation (config, errors, DB, tracing)
+- **Stubs for this phase:** STUB(Phase 2) items from prior Phase Manifest:
+  - `MockPaymentGateway` in src/infra/payment.rs → replace with Stripe integration
+  - `NoOpNotifier` in src/infra/notify.rs → replace with webhook dispatcher
+- **Reference:** See `phase-rules.md` for full conventions
+```
+
+> [!NOTE]
+> Phase Context is only required for multi-phase plans. Single-phase plans omit this section.
+> The Architect determines if a plan is multi-phase during scope analysis in `/plan-making`.
 
 ### Problem Statement
 
@@ -73,6 +91,54 @@ For every new or changed public function, struct, or trait:
 - Exact signature (name, params, return type, error type).
 - Invariants (preconditions, postconditions).
 - Error conditions (what can fail and what the caller gets back).
+
+### Blast Radius Table *(M/L tier)*
+
+For every public function, struct, trait, or interface being modified, document
+the downstream impact:
+
+| Symbol | File | Direct Callers | Indirect Deps | Test-Only | Cross-Package? |
+|--------|------|---------------|---------------|-----------|----------------|
+| `fn_name()` | `src/mod.rs` | 3 | 1 | 2 | Yes → `package-b` |
+
+> [!TIP]
+> Use Narsil `find_references`, `find_symbol_usages`, and `get_import_graph`
+> to populate this table when available. Otherwise use `rg` or manual analysis.
+
+If any row has `Cross-Package? = Yes`, the Deprecation Protocol applies (see
+Deprecation Schedule section).
+
+> [!NOTE]
+> Adapt column names to your language ecosystem (e.g., "Cross-Crate?" for Rust,
+> "Cross-Module?" for Go, "Cross-Package?" for npm/TypeScript).
+
+### Deprecation Schedule *(when Deprecation Protocol triggers)*
+
+Required when the Blast Radius Table shows cross-package impact, the change
+affects a published package, or >5 call sites are affected (even internally).
+
+| Old Symbol | New Symbol | Introduced | Removal Target | Migration |
+|-----------|-----------|-----------|---------------|-----------|
+| `old_fn()` | `new_fn()` | v0.5.0 | v0.7.0 | See doc comment |
+
+**Deprecation Protocol Rules:**
+
+1. Create the new function with the improved signature.
+2. Mark the old function with the language's standard deprecation mechanism
+   (e.g., Rust: `#[deprecated(since, note)]`, TypeScript: `@deprecated` JSDoc,
+   Go: `// Deprecated:` comment, Python: `warnings.warn(DeprecationWarning)`).
+3. Add a migration guide in the new function's doc comment showing before/after.
+4. Add `// TODO(deprecation): remove old_fn in v<target>` marker.
+5. Update all internal callers in the same PR when feasible.
+
+**Threshold Table:**
+
+| Scenario | Strategy |
+|----------|----------|
+| Internal-only, ≤5 call sites | Update all callers in same plan |
+| Published package or external consumers | Deprecate + migration window |
+| >5 call sites (even internal) | Deprecate for incremental migration |
+| Interface/trait method with multiple implementations | Always deprecate |
 
 ### Module Boundaries *(L tier only)*
 
@@ -195,7 +261,7 @@ When revising an approved or in-progress plan:
 2. **Mark revisions** — Tag changed sections with `[REVISED]` so the diff is visible.
 3. **No summarization** — Never condense unchanged content. If a section wasn't
    discussed in the revision, do not touch it.
-4. **Re-sync task.md** — After any revision, re-run `pwsh .agent/scripts/Sync-TaskList.ps1 -Mode validate`.
+4. **Re-sync task.md** — After any revision, re-run the **Validate task.md** procedure defined in `plan-making.md`.
 
 ## 4. Decision Resolution
 

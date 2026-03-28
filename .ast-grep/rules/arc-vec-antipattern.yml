@@ -1,0 +1,8 @@
+id: arc-vec-antipattern
+language: rust
+severity: warning
+rule:
+  kind: generic_type
+  regex: "Arc\\s*<\\s*Vec\\s*<"
+message: "Arc<Vec<T>> → use Arc<[T]> for immutable shared slices (coding-standard §4.3)"
+note: "Arc<[T]> avoids the extra pointer indirection. Use .into() to convert from Vec<T>."

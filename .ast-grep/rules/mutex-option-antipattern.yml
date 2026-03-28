@@ -1,0 +1,8 @@
+id: mutex-option-antipattern
+language: rust
+severity: hint
+rule:
+  kind: generic_type
+  regex: "Mutex\\s*<\\s*Option\\s*<"
+message: "Mutex<Option<T>> for lazy init → use OnceLock or LazyLock (coding-standard §4.6.5)"
+note: "Mutex<Option<T>> is valid for .take() semantics, but for lazy initialization prefer std::sync::OnceLock or LazyLock."

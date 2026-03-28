@@ -48,7 +48,13 @@ before proceeding to Step 2.
 Gather background information:
 
 > [!TIP]
-> Run `pwsh -NonInteractive -Command "& '.agent/scripts/Load-Context.ps1' -Mode issue"` to gather all context below in one step.
+> Load context using native agent tools (zero-prompt):
+> 1. Read `architecture.md` and `context.md` with `view_file` (if they exist).
+> 2. Run these auto-runnable commands:
+// turbo
+>    - `git log -n 20 --oneline`
+// turbo
+>    - `rg -n "TODO|FIXME|HACK" --type-add "code:*.{rs,go,ts,js,svelte,py}" --type code .`
 
 - **`architecture.md`**: Identify relevant modules, patterns, and frameworks.
 - **`context.md`**: Check for prior decisions, known bugs, or related history.
