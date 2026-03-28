@@ -26,7 +26,7 @@ User invokes: `/feature <description>`
 // turbo
 >    - `git log -n 20 --oneline`
 // turbo
->    - `rg -n "TODO|FIXME|HACK" --type-add "code:*.{rs,go,ts,js,svelte,py}" --type code .`
+>    - `make todos`
 
 - Read `.agent/rules/feature-rules.md` for classification criteria, report format, and architectural fit assessment.
 - Read `architecture.md` (if present) for project structure, patterns, and constraints.

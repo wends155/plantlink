@@ -34,9 +34,9 @@ It enforces the **Reflect** phase of the TARS protocol and generates a structure
 // turbo
 > - Unwrap scan: covered by `sg scan` rule `unwrap-in-production` *(see L41 — only if `sgconfig.yml` exists)*
 // turbo
-> - Secret scan: `rg -n -i -e "API_KEY\s*=" -e "SECRET\s*=" -e "PASSWORD\s*=" -e "TOKEN\s*=" . --glob "!.git" --glob "!target" --glob "!*.lock"`
+> - Secret scan: `make secrets`
 // turbo
-> - TODO markers: `rg -n -e "TODO" -e "FIXME" -e "HACK" --glob "*.rs" --glob "*.go" --glob "*.ts" --glob "*.js" --glob "*.svelte" .`
+> - TODO markers: `make todos`
 // turbo
 > - AST lint scan: `sg scan` *(only if `sgconfig.yml` exists in project root)*
 >

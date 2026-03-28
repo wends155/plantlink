@@ -38,7 +38,7 @@ If the output matches `manager`, `wincred`, or `osxkeychain`, set these env vars
 - `$env:GIT_TERMINAL_PROMPT = '0'`
 
 **Workflow & Script Files:**
-Use `find_by_name` to verify all expected `.md` files exist in `.agent/workflows/` and all expected `.ps1` files exist in `.agent/scripts/`.
+Use `list_dir` on `.agent/workflows/` and `.agent/scripts/` to verify all expected files are present.
 
 **Project Detection:**
 Use `view_file` on `Cargo.toml`, `package.json`, or `go.mod` (whichever exists in repo root).
@@ -120,7 +120,7 @@ If **Sequential Thinking MCP** is available, use `sequentialthinking` to analyze
 
 2. **TODO/FIXME markers** — scan with:
 // turbo
-   `rg -n -e "TODO" -e "FIXME" -e "HACK" --glob "*.rs" --glob "*.go" --glob "*.ts" --glob "*.js" --glob "*.svelte" --glob "*.py" .`
+   `make todos`
 3. **Project structure** — are there build scripts, CI configs, or Makefiles?
 4. **MCP capabilities** — which Narsil tools could help with current project state?
 5. **Script gaps** — are there repetitive tasks that need a new script?
@@ -137,7 +137,6 @@ Produce the final structured report:
 ### Environment
 | Tool | Status | Version/Details |
 |------|--------|----------------|
-| PowerShell | ✅/❌ | version (edition) |
 | Git | ✅/❌ | version |
 | Rust | ✅/❌ | version + edition |
 | Linker | ✅/❌ | MSVC/GCC + conflict status |

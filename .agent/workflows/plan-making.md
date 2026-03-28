@@ -16,7 +16,7 @@ It enforces the Planning Gate and Think Phase of the TARS protocol.
 // turbo
 >    - `git log -n 20 --oneline`
 // turbo
->    - `rg -n -e "TODO" -e "FIXME" -e "HACK" --glob "*.rs" --glob "*.go" --glob "*.ts" --glob "*.js" --glob "*.svelte" --glob "*.py" .`
+>    - `make todos`
 
 - Read `architecture.md` (if present) for project-specific design, toolchain, and patterns.
 - Read `.agent/rules/coding-standard.md` (if present) for language-specific coding standards.

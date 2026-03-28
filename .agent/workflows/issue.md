@@ -54,7 +54,7 @@ Gather background information:
 // turbo
 >    - `git log -n 20 --oneline`
 // turbo
->    - `rg -n "TODO|FIXME|HACK" --type-add "code:*.{rs,go,ts,js,svelte,py}" --type code .`
+>    - `make todos`
 
 - **`architecture.md`**: Identify relevant modules, patterns, and frameworks.
 - **`context.md`**: Check for prior decisions, known bugs, or related history.

@@ -1,4 +1,4 @@
-.PHONY: build-assets run test-e2e clean build-release dev preview toolcheck
+.PHONY: build-assets run test-e2e clean build-release dev preview toolcheck todos secrets
 
 # Development server
 dev:
@@ -70,3 +70,11 @@ toolcheck:
 	rustfmt --version
 	rustup show
 	git config credential.helper
+
+# Scan for TODO/FIXME/HACK markers across source files
+todos:
+	rg -n -e "TODO" -e "FIXME" -e "HACK" --glob "*.rs" --glob "*.go" --glob "*.ts" --glob "*.js" --glob "*.svelte" --glob "*.py" . || true
+
+# Scan for hardcoded secrets
+secrets:
+	rg -n -i -e "API_KEY" -e "SECRET" -e "PASSWORD" -e "TOKEN" --glob "!.git" --glob "!target" --glob "!*.lock" . || true
