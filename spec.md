@@ -87,7 +87,7 @@ The standard message envelope passed between nodes.
 
 | Method | Signature | Errors | Invariants |
 |--------|-----------|--------|------------|
-| `new` | `fn new(tx: broadcast::Sender<String>) -> Result<Self>` | Registry lock poisoning. | Calls `register_defaults()` to populate the node registry. |
+| `new` | `fn new(tx: broadcast::Sender<SystemEvent>) -> Result<Self>` | Registry lock poisoning. | Calls `register_defaults()` to populate the node registry. |
 | `update_flow` | `async fn update_flow(&mut self, flow: FlowConfig) -> Result<()>` | Returns `Err` if any nodes fail to create. | Stops existing flow first, then spawns new nodes. |
 | `stop_flow` | `async fn stop_flow(&mut self) -> StopStatus` | Never fails. | Returns count of aborted tasks. |
 
@@ -118,7 +118,7 @@ The standard message envelope passed between nodes.
 **Purpose**: Constructs and broadcasts a standardized status JSON message.
 
 ```
-fn send_node_status(tx: &broadcast::Sender<String>, node_id: String, state: &str, message: &str)
+fn send_node_status(tx: &broadcast::Sender<SystemEvent>, node_id: String, state: &str, message: &str)
 ```
 - Wire format: `{ "type": "status", "data": { "node_id": "...", "state": "...", "message": "..." } }`
 
@@ -141,6 +141,16 @@ fn send_node_status(tx: &broadcast::Sender<String>, node_id: String, state: &str
 | **Scripting** | Arbitrary JSON logic | `RhaiNode` converts `MessagePayload` to a Rhai `Dynamic` (Map) for the `process(msg)` user script. |
 
 ### Data Models
+
+#### `SystemEvent` (enum)
+**Purpose**: Strongly-typed events broadcast over the system message bus to external consumers.
+
+| Variant | Tag | Inner Payload | Notes |
+|---------|-----|---------------|-------|
+| `Status` | `"status"` | `{ data: NodeStatus }` | Node lifecycle and state changes. |
+| `Log` | `"log"` | `{ message: String }` | Free-form console output or diagnostic logs. |
+
+- Serialized with `#[serde(tag = "type", rename_all = "lowercase")]` for direct frontend ingestion.
 
 #### `FlowConfig` (struct)
 | Field | Type | Required |
@@ -215,7 +225,7 @@ stateDiagram-v2
 
 | Method | Signature | Errors | Invariants |
 |--------|-----------|--------|------------|
-| `run` | `async fn run(port: u16, tx: broadcast::Sender<String>, runtime: Arc<RwLock<RuntimeEngine>>) -> Result<()>` | Bind failure, graceful shutdown errors. | Registers graceful shutdown on `SIGINT`/`SIGTERM`. |
+| `run` | `async fn run(port: u16, tx: broadcast::Sender<SystemEvent>, runtime: Arc<RwLock<RuntimeEngine>>) -> Result<()>` | Bind failure, graceful shutdown errors. | Registers graceful shutdown on `SIGINT`/`SIGTERM`. |
 
 ### Integration Points
 

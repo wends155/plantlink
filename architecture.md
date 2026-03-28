@@ -102,7 +102,7 @@ All crates inherit shared lint rules from the root `Cargo.toml` via `[workspace.
 
 ## 11. State Management
 - **Shared resource registry**: `Arc<RwLock<HashMap<String, Box<dyn Any + Send + Sync>>>>` scoped per flow execution. Allows nodes to share typed state (e.g., protocol connections).
-- **System event bus**: `broadcast::Sender<String>` carries JSON-serialized status and log events from nodes to the WebSocket layer.
+- **System event bus**: `broadcast::Sender<SystemEvent>` carries strongly-typed JSON-serializable status and log events from nodes to the WebSocket layer.
 
 ## 12. Testing Strategy
 - **Unit Testing**: Rust unit tests are co-located in `src/` modules.
