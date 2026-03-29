@@ -5,7 +5,7 @@
 >
 > **Maintenance Rule**: The Architect must update this file whenever a public API changes.
 >
-> Last verified against: 2ed9554
+> Last verified against: 3b3e8b8
 
 ---
 
@@ -243,7 +243,7 @@ stateDiagram-v2
 
 | Method | Signature | Errors | Invariants |
 |--------|-----------|--------|------------|
-| `run` | `async fn run(port: u16, tx: broadcast::Sender<SystemEvent>, runtime: Arc<RwLock<dyn FlowRuntime>>, stop: impl Future) -> Result<()>` | Bind failure, startup errors. | Spawns a background `EventCache` aggregator. Shuts down when the provided `stop` future completes. |
+| `run` | `async fn run(port: u16, tx: broadcast::Sender<SystemEvent>, runtime: Arc<RwLock<dyn FlowRuntime>>, auth_token: Option<String>, stop: impl Future) -> Result<()>` | Bind failure, startup errors. | All tasks (aggregator, websockets) are tracked by a `TaskTracker` and cooperative stopped via `CancellationToken`. Shuts down cleanly when the `stop` future completes. |
 
 #### `EventCache` (internal)
 **Purpose**: Maintains a live snapshot of node statuses to prevent state-sync drift for WebSocket clients.
@@ -260,30 +260,31 @@ stateDiagram-v2
 | Method | Path | Request Body | Response | Status |
 |--------|------|-------------|----------|--------|
 | `GET` | `/health` | — | `"OK"` | `200` |
-| `POST` | `/api/flow` | `FlowConfig` (JSON) | `"Flow Deployed"` / Err string | `200` / `500` |
-| `POST` | `/api/flow/stop` | — | `StopStatus` (JSON) | `200` |
+| `POST` | `/api/flow` | `FlowConfig` (JSON) | `"Flow Deployed"` / Err string | `200` / `401` / `500` |
+| `POST` | `/api/flow/stop` | — | `StopStatus` (JSON) | `200` / `401` |
 | `GET` | `/*` | — | Static asset / SPA fallback | `200` / `404` |
 
 - Static assets support gzip (`Content-Encoding: gzip`) when client sends `Accept-Encoding: gzip`.
 - SPA fallback: unknown paths return `index.html`.
+- Authentication: Mutating endpoints under `/api/flow/*` require an `Authorization: Bearer <token>` header if configured to prevent RCE.
 
 #### WebSocket
 
 | Path | Direction | Format |
 |------|-----------|--------|
-| `/ws` | Server → Client | JSON: `{ "type": "status", "data": { "node_id": "...", "state": "...", "message": "..." } }` |
+| `/ws` | Server ↔ Client | JSON: `{ "type": "status", "data": { ... } }` |
 
-- One-way broadcast (server pushes to all connected clients).
-- No client-to-server messages are processed.
+- One-way state broadcast (server pushes to all connected clients). No client-to-server messages are processed except `Ping/Pong`.
+- Server emits a `Ping` every 15 seconds. Active clients respond with `Pong` to keep the tracked connection alive across proxies.
 
 ### Required Test Coverage
 - [x] `AppState` construction.
 - [x] `/health` returns 200.
 - [x] `/api/flow` accepts valid `FlowConfig` JSON.
-- [ ] `/api/flow` returns 500 on partial failure.
+- [x] `/api/flow` returns 500 on partial failure.
 - [x] `/api/flow/stop` stops runtime and returns JSON status.
-- [ ] WebSocket receives status broadcasts.
-- [ ] SPA fallback serves `index.html` for unknown routes.
+- [x] WebSocket receives status broadcasts.
+- [x] SPA fallback serves `index.html` for unknown routes.
 
 ---
 

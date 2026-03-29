@@ -130,6 +130,7 @@ impl WebServer {
     /// * `port` - The TCP port to listen on.
     /// * `tx` - The system event bus broadcast sender.
     /// * `runtime` - The flow runtime to manage via REST API.
+    /// * `auth_token` - Optional Bearer token for authenticating REST deployments.
     /// * `shutdown_signal` - A future that completes when the server should stop.
     pub async fn run(
         port: u16,
