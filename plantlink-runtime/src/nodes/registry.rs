@@ -51,7 +51,7 @@ impl NodeRegistry {
     /// Dynamically instantiates a node using the registered factory.
     ///
     /// # Arguments
-    /// 
+    ///
     /// * `type_name` - The identifier of the node type to create.
     /// * `config` - The configuration containing instance-specific data.
     ///
