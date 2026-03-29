@@ -66,6 +66,7 @@
 72. **2026-03-29 (Workflow Execution Safety):** Eradicated IDE-banned raw `rg` commands containing shell operators from all agent workflows and rules. Abstracted complex log analysis regexes and stub-discovery into robust `Makefile` targets (`make log-summary`, `make log-lifecycle`, `make check-stubs`). Explicitly mandated the use of native JSON `grep_search` tool for impromptu sweeps inside `.agent/rules/ipr.md`. Verified full execution safety and "Zero-Exit" compliance across the test suite.
 73. **2026-03-29 (AST Linter Tooling Compliance):** Fixed lingering `unwrap-in-production` violations in `plantlink-web` tests by strictly applying line-level `// ast-grep-ignore` macros. Removed a stale module-level suppression in `plantlink-cli`. Established constraints that the AST linter requires suppressions directly prior to the line invoking `.unwrap()`, even inside async method chains or `Builder` patterns, as module-level inline suppressions are no longer recognized.
 74. **2026-03-29 (Verification Toolchain Consolidation):** Consolidated fragmented `cargo` commands into a unified `make verify` target in the root `Makefile`. Replaced the existing `verify` script with a strict 4-gate pipeline (fmt, clippy, test, ast-grep) using canonical project flags. Synchronized all agent workflows (`build.md`, `audit.md`) and rules (`ipr.md`) to point to `make verify`, eliminating illegal shell operator chaining (`&&`) by the Builder. Deleted `scripts/verify.sh`.
+75. **2026-03-29 (AST Linter Scope Awareness):** Refactored `unwrap-in-production.yml` and `wildcard-import.yml` to automatically exclude `#[cfg(test)] mod tests` blocks via AST semantic nesting. Removed over 77 orphaned and redundant `// ast-grep-ignore` macros across the codebase. Suppressions are now strictly reserved for exceptional cases outside test modules.
 
 ### 🧩 Active Components & APIs
 * `plantlink-core`: Shared data types (MessagePayload, DataValue) and protocol traits.
@@ -111,8 +112,6 @@
 * **Rhai Validation**: `NodeFactory` needs to return `Result` to allow pre-deployment validation of scripts.
 * **Structured Spawns**: Transition remaining `tokio::spawn` calls to `JoinSet`/`TaskTracker`.
 
-
----
 
 ## 🧪 Tooling & Scripts
 *Manual and automated scripts for development and verification.*
