@@ -476,6 +476,7 @@ mod tests {
             ],
             edges: vec![],
         };
+        // ast-grep-ignore
         engine.update_flow(flow).await.unwrap();
         let status = engine.stop_flow().await;
         assert_eq!(status.tasks_aborted, 2, "Should report 2 aborted tasks");
@@ -550,6 +551,7 @@ mod tests {
     #[tokio::test]
     async fn test_update_flow_replaces_previous() {
         let (tx, _rx) = broadcast::channel(32);
+        // ast-grep-ignore
         let mut engine = RuntimeEngine::new(tx).unwrap();
 
         // Deploy flow A: 2 nodes

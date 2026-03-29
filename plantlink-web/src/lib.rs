@@ -528,6 +528,12 @@ mod tests {
             .route("/api/flow", axum::routing::post(deploy_flow))
             .with_state(state);
 
+        let req = Request::builder()
+            .method("POST")
+            .uri("/api/flow")
+            .header("content-type", "application/json")
+            .body(Body::from("not valid json"))
+            .unwrap();
         // ast-grep-ignore
         let resp = app.oneshot(req).await.unwrap();
         assert_ne!(
