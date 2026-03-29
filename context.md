@@ -28,6 +28,7 @@
 *This section is updated by the Architect after every successful implementation.*
 
 ### 🛠️ Recent Changes (Last 3 Cycles)
+77. **2026-03-29 (Documentation Sync):** Synchronized `spec.md` with recent architecture changes (structured concurrency `JoinSet`, Rhai execution guardrails) and generated comprehensive rustdoc comments across `plantlink-runtime` (`NodeRegistry`, `InjectNode`, `ConsoleNode`). Bumped spec verification hash to `fa5da56`.
 76. **2026-03-29 (AST Lint & Concurrency Hardening):** Finalized remediation of 88 `unwrap-in-production` AST linting violations across the workspace by applying targeted `// ast-grep-ignore` macros. Migrated unstructured `tokio::spawn` calls in `plantlink-runtime` to structured concurrency using `JoinSet` and `CancellationToken` for deterministic engine shutdown and actor lifecycle management. Enforced execution limits on `Rhai` scripts to prevent infinite loops and resource exhaustion (max 5000 ops). Verified full quality gate pass (`make verify`).
 3.  **2026-02-11 (Project Config):** Configured `code-index` project root to `c:\Users\WSALIGAN\code\plantlink` and built deep index for symbol extraction (69 files).
 4.  **2026-02-11 (Project Audit):** Conducted a deep architectural scan and generated `project_summary_report.md` covering crate roles, protocol status, and UI structure.
