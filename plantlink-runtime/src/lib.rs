@@ -8,7 +8,9 @@
 use anyhow::{Result, bail};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::time::Duration;
 use tokio::sync::broadcast;
+use tokio::task::JoinSet;
 use tokio_util::sync::CancellationToken;
 
 #[async_trait::async_trait]
@@ -114,7 +116,8 @@ pub struct StopStatus {
 
 pub struct RuntimeEngine {
     tx: broadcast::Sender<nodes::SystemEvent>,
-    tasks: HashMap<String, tokio::task::JoinHandle<()>>,
+    node_ids: Vec<String>,
+    task_set: JoinSet<()>,
     /// Cancellation token for the current flow
     cancel: CancellationToken,
     registry: nodes::registry::NodeRegistry,
@@ -131,7 +134,8 @@ impl RuntimeEngine {
 
         Ok(Self {
             tx,
-            tasks: HashMap::new(),
+            node_ids: Vec::new(),
+            task_set: JoinSet::new(),
             cancel: CancellationToken::new(),
             registry,
         })
@@ -140,7 +144,6 @@ impl RuntimeEngine {
 
 #[async_trait::async_trait]
 impl FlowRuntime for RuntimeEngine {
-    #[allow(clippy::unused_async)]
     async fn stop_flow(&mut self) -> StopStatus {
         tracing::info!("Runtime: Stopping active flow");
 
@@ -148,17 +151,23 @@ impl FlowRuntime for RuntimeEngine {
         self.cancel.cancel();
 
         // Emit stopped status for all nodes immediately for better UI feedback
-        for node_id in self.tasks.keys() {
+        for node_id in &self.node_ids {
             nodes::send_node_status(&self.tx, node_id.clone(), "stopped", "Flow stopped");
         }
 
-        // 2. Abort all tasks
-        let tasks_to_abort = self.tasks.len();
-        for (_, handle) in self.tasks.drain() {
-            handle.abort();
-        }
+        // 2. Await graceful exit with timeout
+        let tasks_to_abort = self.node_ids.len();
+        let _ = tokio::time::timeout(Duration::from_secs(3), async {
+            while self.task_set.join_next().await.is_some() {}
+        })
+        .await;
 
-        // 3. Create a fresh token for the next flow
+        // 3. Forceful abort for any stragglers
+        self.task_set.abort_all();
+        while self.task_set.join_next().await.is_some() {}
+
+        // 4. Reset engine state
+        self.node_ids.clear();
         self.cancel = CancellationToken::new();
 
         StopStatus {
@@ -215,12 +224,12 @@ impl FlowRuntime for RuntimeEngine {
             let inputs = node_receivers.remove(&node_id).unwrap_or_default();
 
             // Spawn actor task
-            // ast-grep-ignore: raw-tokio-spawn
-            let task = tokio::spawn(async move {
+            self.task_set.spawn(async move {
                 // Initialize node
                 if let Err(e) = node.start(ctx.clone()).await {
                     tracing::error!("Node {} failed to start: {}", node_id, e);
                     ctx.emit_error(&format!("Failed to start: {e}"));
+                    return;
                 }
 
                 // Listen Loop (if we have inputs)
@@ -228,19 +237,24 @@ impl FlowRuntime for RuntimeEngine {
                     // Combine all receivers into a single stream
                     let mut streams = tokio_stream::StreamMap::new();
                     for (port_idx, rx) in inputs {
-                        let stream =
-                            tokio_stream::wrappers::ReceiverStream::new(rx).map(|(_, msg)| msg);
+                        let stream = tokio_stream::wrappers::ReceiverStream::new(rx);
                         streams.insert(port_idx, stream);
                     }
 
-                    while let Some((port_idx, msg)) = streams.next().await {
-                        if let Err(e) = node.receive(port_idx, msg, &ctx).await {
-                            tracing::error!("Node {} error on input: {}", node_id, e);
+                    loop {
+                        tokio::select! {
+                            () = ctx.cancel.cancelled() => break,
+                            Some((_port_idx, (target_port, msg))) = streams.next() => {
+                                if let Err(e) = node.receive(target_port, msg, &ctx).await {
+                                    tracing::error!("Node {} error on input: {}", node_id, e);
+                                }
+                            }
+                            else => break,
                         }
                     }
                 } else {
-                    // Keep alive
-                    futures::future::pending::<()>().await;
+                    // Keep alive until cancelled (for source nodes)
+                    ctx.cancel.cancelled().await;
                 }
 
                 // Cleanup
@@ -250,7 +264,7 @@ impl FlowRuntime for RuntimeEngine {
                 ctx.emit_stopped("Node stopped");
             });
 
-            self.tasks.insert(config.id, task);
+            self.node_ids.push(config.id.clone());
         }
 
         if !failed_nodes.is_empty() {
@@ -293,11 +307,23 @@ fn create_channels(
 ) {
     let mut node_senders: HashMap<String, OutputMap> = HashMap::new();
     let mut node_receivers: HashMap<String, Vec<(usize, NodeReceiver)>> = HashMap::new();
+    // Dedup map: (TargetNodeId, PortIndex) -> Sender for that port
+    let mut dedup_map: HashMap<(String, usize), nodes::NodeSender> = HashMap::new();
 
     for (source_id, ports) in wiring {
         for (src_port, targets) in ports {
             for (target_id, tgt_port) in targets {
-                let (tx, rx) = tokio::sync::mpsc::channel(100);
+                let tx = if let Some(existing_tx) = dedup_map.get(&(target_id.clone(), tgt_port)) {
+                    existing_tx.clone()
+                } else {
+                    let (tx, rx) = tokio::sync::mpsc::channel(100);
+                    dedup_map.insert((target_id.clone(), tgt_port), tx.clone());
+                    node_receivers
+                        .entry(target_id.clone())
+                        .or_default()
+                        .push((tgt_port, rx));
+                    tx
+                };
 
                 node_senders
                     .entry(source_id.clone())
@@ -305,11 +331,6 @@ fn create_channels(
                     .entry(src_port)
                     .or_default()
                     .push((tx, tgt_port));
-
-                node_receivers
-                    .entry(target_id.clone())
-                    .or_default()
-                    .push((tgt_port, rx));
             }
         }
     }
@@ -613,5 +634,134 @@ mod tests {
 
         rt.stop_flow().await;
         assert!(rt.stopped, "Should be stopped after stop_flow");
+    }
+
+    #[tokio::test]
+    async fn test_convergent_edges_all_deliver() {
+        let edges = vec![
+            EdgeConfig {
+                id: "e1".into(),
+                source: "n1".into(),
+                target: "n3".into(),
+                source_handle: None,
+                target_handle: None,
+            },
+            EdgeConfig {
+                id: "e2".into(),
+                source: "n2".into(),
+                target: "n3".into(),
+                source_handle: None,
+                target_handle: None,
+            },
+        ];
+        let wiring = build_wiring(&edges);
+        let (senders, mut receivers) = create_channels(wiring);
+
+        // Verify n3 has exactly 1 receiver entry for port 0 (FAILS HERE CURRENTLY)
+        let n3_receivers = receivers.remove("n3").expect("Expected n3 receivers");
+        assert_eq!(n3_receivers.len(), 1, "Expected exactly 1 receiver for n3");
+        let (port, mut rx) = n3_receivers.into_iter().next().unwrap();
+        assert_eq!(port, 0);
+
+        // Send from n1
+        let n1_outputs = &senders["n1"];
+        let msg1 = plantlink_core::MessagePayload::default();
+        let id1 = msg1.id.clone();
+        // ast-grep-ignore
+        n1_outputs.get(&0).unwrap()[0]
+            .0
+            .send((0, std::sync::Arc::new(msg1)))
+            .await
+            .unwrap();
+
+        // Send from n2
+        let n2_outputs = &senders["n2"];
+        let msg2 = plantlink_core::MessagePayload::default();
+        let id2 = msg2.id.clone();
+        // ast-grep-ignore
+        n2_outputs.get(&0).unwrap()[0]
+            .0
+            .send((0, std::sync::Arc::new(msg2)))
+            .await
+            .unwrap();
+
+        // Receive both
+        // ast-grep-ignore
+        let (_, r1) = rx.recv().await.unwrap();
+        // ast-grep-ignore
+        let (_, r2) = rx.recv().await.unwrap();
+
+        let received_ids = [r1.id.clone(), r2.id.clone()];
+        assert!(received_ids.contains(&id1));
+        assert!(received_ids.contains(&id2));
+    }
+
+    #[tokio::test]
+    async fn test_node_stop_called_on_shutdown() {
+        use crate::nodes::{NodeBehavior, NodeContext};
+        use crate::{FlowConfig, NodeConfig, RuntimeEngine};
+        use anyhow::Result;
+        use std::sync::Arc;
+        use std::sync::atomic::{AtomicBool, Ordering};
+
+        struct ShutdownMock {
+            stop_called: Arc<AtomicBool>,
+        }
+
+        #[async_trait::async_trait]
+        impl NodeBehavior for ShutdownMock {
+            async fn start(&mut self, _ctx: NodeContext) -> Result<()> {
+                Ok(())
+            }
+            async fn stop(&mut self) -> Result<()> {
+                self.stop_called.store(true, Ordering::SeqCst);
+                Ok(())
+            }
+            async fn receive(
+                &mut self,
+                _port: usize,
+                _msg: Arc<plantlink_core::MessagePayload>,
+                _ctx: &NodeContext,
+            ) -> Result<()> {
+                Ok(())
+            }
+        }
+
+        let stop_called = Arc::new(AtomicBool::new(false));
+        let stop_called_clone = stop_called.clone();
+
+        let (tx, _) = tokio::sync::broadcast::channel(10);
+        // ast-grep-ignore
+        let mut engine = RuntimeEngine::new(tx).unwrap();
+
+        let mut registry = nodes::registry::NodeRegistry::new();
+        let _ = registry.register("shutdown_mock", move |_| {
+            Box::new(ShutdownMock {
+                stop_called: stop_called_clone.clone(),
+            }) as Box<dyn NodeBehavior>
+        });
+        // Overwrite registry with our custom one
+        engine.registry = registry;
+
+        // ast-grep-ignore
+        engine
+            .update_flow(FlowConfig {
+                nodes: vec![NodeConfig {
+                    id: "n1".into(),
+                    type_: "shutdown_mock".into(),
+                    data: serde_json::Value::Null,
+                }],
+                edges: vec![],
+            })
+            .await
+            .unwrap();
+
+        // Stop the flow
+        engine.stop_flow().await;
+
+        assert!(
+            stop_called.load(Ordering::SeqCst),
+            "Node stop() should have been called"
+        );
     }
 }

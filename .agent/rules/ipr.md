@@ -185,7 +185,7 @@ Step N: [NEW/MODIFY/DELETE/TEST] file_path — function_name() (L##-##)
 | `CLIPPY` | Lint passes | `cargo clippy -- -D warnings` |
 | `TEST` | Tests pass | `cargo test` |
 | `BUILD` | Full build | `cargo build` |
-| `ALL` | FMT + CLIPPY + TEST | Full pipeline |
+| `ALL` | Full pipeline | `make verify` |
 
 > [!NOTE]
 > Default commands shown. Projects override in `architecture.md § Toolchain`.

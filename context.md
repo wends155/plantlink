@@ -65,6 +65,7 @@
 68. **2026-03-29 (Core Hardening Refactor):** Remediated architectural debt in `plantlink-core` by migrating from `anyhow` to structured `thiserror` error handling. Introduced `PlantLinkError` enum for matchable protocol failures. Hardened `MqttDriver` with a managed lifecycle using `CancellationToken` and `JoinHandle` for deterministic shutdown. Refactored `ModbusClient` to use `&self` (from `&mut self`) with internal `Mutex` synchronization, enabling shared connection access. Verified "Zero-Exit" status across 68 total tests (59 unit/doc + 9 integration/web).
 72. **2026-03-29 (Workflow Execution Safety):** Eradicated IDE-banned raw `rg` commands containing shell operators from all agent workflows and rules. Abstracted complex log analysis regexes and stub-discovery into robust `Makefile` targets (`make log-summary`, `make log-lifecycle`, `make check-stubs`). Explicitly mandated the use of native JSON `grep_search` tool for impromptu sweeps inside `.agent/rules/ipr.md`. Verified full execution safety and "Zero-Exit" compliance across the test suite.
 73. **2026-03-29 (AST Linter Tooling Compliance):** Fixed lingering `unwrap-in-production` violations in `plantlink-web` tests by strictly applying line-level `// ast-grep-ignore` macros. Removed a stale module-level suppression in `plantlink-cli`. Established constraints that the AST linter requires suppressions directly prior to the line invoking `.unwrap()`, even inside async method chains or `Builder` patterns, as module-level inline suppressions are no longer recognized.
+74. **2026-03-29 (Verification Toolchain Consolidation):** Consolidated fragmented `cargo` commands into a unified `make verify` target in the root `Makefile`. Replaced the existing `verify` script with a strict 4-gate pipeline (fmt, clippy, test, ast-grep) using canonical project flags. Synchronized all agent workflows (`build.md`, `audit.md`) and rules (`ipr.md`) to point to `make verify`, eliminating illegal shell operator chaining (`&&`) by the Builder. Deleted `scripts/verify.sh`.
 
 ### 🧩 Active Components & APIs
 * `plantlink-core`: Shared data types (MessagePayload, DataValue) and protocol traits.
@@ -120,9 +121,8 @@
 * **Makefile**: The central workflow orchestrator.
     * `make run`: Builds UI and launches CLI in dev mode.
     * `make check`: Runs `cargo check` for fast feedback.
-    * `make verify`: Executes `scripts/verify.sh` for the full quality gate.
+    * `make verify`: Executes the strict 4-gate quality pipeline (fmt, clippy, test, ast-grep).
     * `make build-release`: Creates the production binary in `target/release/`.
-* **scripts/verify.sh**: A strict quality gate running `fmt`, `clippy`, and `test`.
 * **context7 (MCP)**: Specialized documentation server for Rust crates and industrial protocols (Modbus, NATS, etc.).
 * **code-index (MCP)**: In-memory symbol indexer for fast file discovery, symbol extraction, and code pattern searching.
 * **rust-mcp (MCP)**: Specialized Rust toolchain integration for workspace management, dependency analysis, and error diagnosis.

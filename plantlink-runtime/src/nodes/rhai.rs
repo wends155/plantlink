@@ -43,7 +43,11 @@ impl RhaiNode {
 
         let wrapped_script = format!("fn process(msg) {{\n{user_script}\n}}");
 
-        let engine = Engine::new();
+        let mut engine = Engine::new();
+        engine.set_max_operations(5000);
+        engine.set_max_array_size(100);
+        engine.set_max_map_size(100);
+
         let (ast, compile_error) = match engine.compile(&wrapped_script) {
             Ok(ast) => (Some(ast), None),
             Err(e) => (None, Some(e.to_string())),
@@ -260,5 +264,22 @@ mod tests {
             .await
             .expect("Expected output from default passthrough");
         assert_eq!(received.id, expected_id);
+    }
+
+    #[tokio::test]
+    async fn test_rhai_infinite_loop_terminates() {
+        // Create an infinite loop script
+        let mut node = make_node(Some("let x = 0; loop { x += 1; }"));
+        let (ctx, _rx, _sys_rx) = make_ctx_with_output("r1");
+
+        let msg = MessagePayload::default();
+        let res = node.receive(0, std::sync::Arc::new(msg), &ctx).await;
+
+        assert!(res.is_err(), "Infinite loop should trigger error, not hang");
+        let err_msg = res.unwrap_err().to_string();
+        assert!(
+            err_msg.contains("Too many operations"),
+            "Error should mention operation limit. Got: {err_msg}"
+        );
     }
 }

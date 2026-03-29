@@ -95,16 +95,14 @@ that exercised the stub.
 
 ### 4. Final Verification
 
-After all steps are complete, run the full verification pipeline one last time:
+After all steps are complete, run the full verification pipeline:
 
+// turbo
 ```
-FMT + LINT + TEST
+make verify
 ```
 
-Use the exact commands from `architecture.md § Toolchain`. Confirm zero-exit on all gates.
-
-> [!NOTE]
-> Also run `make lint-ast` as Gate 4 (AST Linting) and confirm zero findings.
+Confirm zero-exit. This runs Gates 1–4 (fmt, clippy, test, ast-grep).
 
 ### 5. Builder Notes Review
 

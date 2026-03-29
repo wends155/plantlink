@@ -26,19 +26,13 @@ It enforces the **Reflect** phase of the TARS protocol and generates a structure
 // turbo
 > - `git show --name-only --format="" HEAD` (changed files in last commit)
 // turbo
-> - Formatter check: `cargo fmt --all -- --check` *(or the command from `architecture.md § Toolchain`)*
-// turbo
-> - Linter: `cargo clippy --all-targets --all-features -- -D warnings`
-// turbo
-> - Tests: `cargo test --all-features`
+> - Full Verification: `make verify`
 // turbo
 > - Unwrap scan: covered by `make lint-ast` rule `unwrap-in-production`
 // turbo
 > - Secret scan: `make secrets`
 // turbo
 > - TODO markers: `make todos`
-// turbo
-> - AST lint scan: `make lint-ast`
 >
 > If Narsil MCP is available, also run `scan_security` and `check_cwe_top25`. Use `-Scope full` for compliance mode.
 
@@ -164,11 +158,7 @@ Re-run the project's standard verification pipeline and confirm zero-exit:
 > [!TIP]
 > Run the full verification pipeline (commands from `architecture.md § Toolchain`):
 // turbo
-> - `cargo fmt --all -- --check`
-// turbo
-> - `cargo clippy --all-targets --all-features -- -D warnings`
-// turbo
-> - `cargo test --all-features`
+> - `make verify`
 >
 > All three must exit 0.
 

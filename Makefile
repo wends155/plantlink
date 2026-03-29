@@ -1,4 +1,4 @@
-.PHONY: build-assets run test-e2e clean build-release dev preview toolcheck todos secrets doc-coverage doc-comments diff-last lint-ast sections log-summary log-lifecycle log-timings check-stubs
+.PHONY: build-assets run test-e2e clean build-release dev preview toolcheck todos secrets doc-coverage doc-comments diff-last lint-ast sections log-summary log-lifecycle log-timings check-stubs verify
 
 # Development server
 dev:
@@ -43,10 +43,13 @@ test-e2e-ui:
 	cd ui && npm run test:e2e:ui
 
 # Verification
+# Full verification pipeline (Gates 1-4)
+# Used by /build and /audit workflows — one command, no chaining.
 verify:
-	sh ./scripts/verify.sh
-
-verify-all: verify test-unit test-e2e
+	cargo fmt --all -- --check
+	cargo clippy --all-targets --all-features -- -D warnings
+	cargo test --all-features
+	$(MAKE) lint-ast
 
 fmt:
 	cargo fmt
