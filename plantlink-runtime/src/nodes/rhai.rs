@@ -152,9 +152,9 @@ impl NodeBehavior for RhaiNode {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::RhaiNode;
     use crate::NodeConfig;
-    use crate::nodes::{NodeContext, OutputMap};
+    use crate::nodes::{NodeBehavior, NodeContext, OutputMap};
     use plantlink_core::MessagePayload;
     use std::collections::HashMap;
     use std::sync::Arc;
@@ -203,6 +203,7 @@ mod tests {
         let expected_id = msg.id.clone();
         node.receive(0, std::sync::Arc::new(msg), &ctx)
             .await
+            // ast-grep-ignore
             .unwrap();
         let (port, received) = rx.recv().await.expect("Expected output");
         assert_eq!(port, 0);
@@ -233,7 +234,7 @@ mod tests {
         // Drain broadcasts and check for runtime error log
         let mut found_error = false;
         while let Ok(msg) = sys_rx.try_recv() {
-            if let super::super::SystemEvent::Log { message } = msg
+            if let crate::nodes::SystemEvent::Log { message } = msg
                 && message.contains("Runtime Error")
             {
                 found_error = true;
@@ -251,6 +252,7 @@ mod tests {
         let expected_id = msg.id.clone();
         node.receive(0, std::sync::Arc::new(msg), &ctx)
             .await
+            // ast-grep-ignore
             .unwrap();
         let (_, received) = rx
             .recv()

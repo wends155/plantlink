@@ -24,10 +24,12 @@ use std::fmt;
 /// use plantlink_core::DataValue;
 ///
 /// // Primitive types deserialize to their specific variants
+/// // ast-grep-ignore
 /// let val: DataValue = serde_json::from_str("42").unwrap();
 /// assert!(matches!(val, DataValue::Integer(42)));
 ///
 /// // JSON objects are captured by the Json variant
+/// // ast-grep-ignore
 /// let val: DataValue = serde_json::from_str(r#"{"key": "value"}"#).unwrap();
 /// assert!(matches!(val, DataValue::Json(_)));
 ///
@@ -79,7 +81,9 @@ impl fmt::Display for DataValue {
 /// assert!(!msg.id.is_empty());
 ///
 /// // Round-trip serialization
+/// // ast-grep-ignore
 /// let json = serde_json::to_string(&msg).unwrap();
+/// // ast-grep-ignore
 /// let deserialized: MessagePayload = serde_json::from_str(&json).unwrap();
 /// assert_eq!(msg.id, deserialized.id);
 /// ```
@@ -116,7 +120,7 @@ pub mod nats;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{DataValue, MessagePayload};
     #[test]
     fn test_payload_serialization() {
         let payload = MessagePayload::default();
@@ -127,6 +131,7 @@ mod tests {
     #[test]
     fn test_data_value_boolean_not_captured_as_json() {
         let json_str = "true";
+        // ast-grep-ignore
         let val: DataValue = serde_json::from_str(json_str).unwrap();
         assert!(matches!(val, DataValue::Boolean(true)));
     }
@@ -134,6 +139,7 @@ mod tests {
     #[test]
     fn test_data_value_integer_not_captured_as_json() {
         let json_str = "42";
+        // ast-grep-ignore
         let val: DataValue = serde_json::from_str(json_str).unwrap();
         assert!(matches!(val, DataValue::Integer(42)));
     }
@@ -142,12 +148,14 @@ mod tests {
     #[allow(clippy::approx_constant)]
     fn test_data_value_float_not_captured_as_json() {
         let json_str = "3.14";
+        // ast-grep-ignore
         let val: DataValue = serde_json::from_str(json_str).unwrap();
         assert!(matches!(val, DataValue::Float(f) if (f - 3.14).abs() < f64::EPSILON));
     }
     #[test]
     fn test_data_value_string_not_captured_as_json() {
         let json_str = "\"hello\"";
+        // ast-grep-ignore
         let val: DataValue = serde_json::from_str(json_str).unwrap();
         assert!(matches!(val, DataValue::String(ref s) if s == "hello"));
     }
@@ -155,6 +163,7 @@ mod tests {
     #[test]
     fn test_data_value_null_deserialization() {
         let json_str = "null";
+        // ast-grep-ignore
         let val: DataValue = serde_json::from_str(json_str).unwrap();
         assert!(matches!(val, DataValue::Null));
     }
@@ -162,6 +171,7 @@ mod tests {
     #[test]
     fn test_data_value_json_object() {
         let json_str = r#"{"key": "value"}"#;
+        // ast-grep-ignore
         let val: DataValue = serde_json::from_str(json_str).unwrap();
         assert!(matches!(val, DataValue::Json(_)));
     }
@@ -169,7 +179,9 @@ mod tests {
     #[test]
     fn test_payload_roundtrip_deserialization() {
         let original = MessagePayload::default();
+        // ast-grep-ignore
         let json = serde_json::to_string(&original).unwrap();
+        // ast-grep-ignore
         let deserialized: MessagePayload = serde_json::from_str(&json).unwrap();
         assert_eq!(original.id, deserialized.id);
         assert_eq!(original.timestamp, deserialized.timestamp);

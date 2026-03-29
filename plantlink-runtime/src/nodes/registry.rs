@@ -39,7 +39,7 @@ impl NodeRegistry {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::NodeRegistry;
 
     #[test]
     fn test_instance_registry_unknown_type() {
@@ -67,6 +67,7 @@ mod tests {
             .register("test-node", |cfg| {
                 Box::new(crate::nodes::console::ConsoleNode::new(cfg))
             })
+            // ast-grep-ignore
             .unwrap();
         let result = registry.create("test-node", &config);
         assert!(result.is_ok(), "Expected Ok from known type");
@@ -75,6 +76,7 @@ mod tests {
     #[test]
     fn test_registry_register_defaults() {
         let mut registry = NodeRegistry::new();
+        // ast-grep-ignore
         crate::nodes::register_defaults(&mut registry).unwrap();
         let dummy_cfg = crate::NodeConfig {
             id: "n".into(),

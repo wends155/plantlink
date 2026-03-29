@@ -7,7 +7,7 @@ use crate::PlantLinkError;
 use crate::traits::ModbusClient;
 use std::net::SocketAddr;
 use tokio::sync::Mutex;
-use tokio_modbus::prelude::*;
+use tokio_modbus::prelude::{Reader, tcp};
 
 /// Reads data from Modbus TCP devices.
 ///
@@ -19,6 +19,7 @@ use tokio_modbus::prelude::*;
 /// use std::net::SocketAddr;
 ///
 /// # async fn example() -> Result<(), plantlink_core::PlantLinkError> {
+/// // ast-grep-ignore
 /// let addr: SocketAddr = "192.168.1.100:502".parse().unwrap();
 /// let client = ModbusTcpClient::connect(addr).await?;
 /// let coils = client.read_coils(0, 10).await?;

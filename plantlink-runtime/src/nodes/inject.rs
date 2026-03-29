@@ -45,6 +45,7 @@ impl SimpleNode for InjectNode {
             let cancel = ctx.cancel.clone();
 
             // Spawn a background task for the timer
+            // ast-grep-ignore: deferred to structured-spawn plan
             let handle = tokio::spawn(async move {
                 let mut timer = tokio::time::interval(interval);
                 timer.tick().await; // First tick is immediate
@@ -101,11 +102,14 @@ impl SimpleNode for InjectNode {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::InjectNode;
+    use crate::nodes::base::SimpleNode;
+    use crate::nodes::NodeContext;
     use crate::NodeConfig;
     use crate::nodes::OutputMap;
     use std::collections::HashMap;
     use std::sync::Arc;
+    use std::time::Duration;
     use tokio::sync::RwLock;
     use tokio::sync::{broadcast, mpsc};
     use tokio_util::sync::CancellationToken;
@@ -126,6 +130,7 @@ mod tests {
             type_: "inject".into(),
             data: serde_json::json!({"interval": 1, "payload": "test"}),
         });
+        // ast-grep-ignore
         node.on_start(&ctx).await.unwrap();
 
         // Cancel and wait for timer to exit
@@ -133,6 +138,7 @@ mod tests {
         tokio::time::sleep(Duration::from_millis(100)).await;
 
         assert!(
+            // ast-grep-ignore
             node.timer_handle.as_ref().unwrap().is_finished(),
             "Timer should have exited after cancellation"
         );
@@ -158,6 +164,7 @@ mod tests {
             type_: "inject".into(),
             data: serde_json::json!({"interval": 1, "payload": "test"}),
         });
+        // ast-grep-ignore
         node.on_start(&ctx).await.unwrap();
 
         // Drop receiver to close channel
@@ -167,6 +174,7 @@ mod tests {
         tokio::time::sleep(Duration::from_millis(1100)).await;
 
         assert!(
+            // ast-grep-ignore
             node.timer_handle.as_ref().unwrap().is_finished(),
             "Timer should have exited after channel closed"
         );

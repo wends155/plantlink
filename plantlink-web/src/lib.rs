@@ -107,6 +107,7 @@ impl WebServer {
         // Spawn state sync aggregator
         let mut rx = tx.subscribe();
         let cache_clone = cache.clone();
+        // ast-grep-ignore: deferred to structured-spawn plan
         tokio::spawn(async move {
             tracing::info!("EventCache aggregator started");
             loop {
@@ -320,11 +321,16 @@ async fn static_handler(headers: header::HeaderMap, uri: Uri) -> Response {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{AppState, EventCache, WebServer, deploy_flow, static_handler, stop_flow_handler};
+    use axum::Router;
+    use axum::http::StatusCode;
+    use std::sync::Arc;
+    use tokio::sync::{broadcast, RwLock};
     #[tokio::test]
     async fn test_web_state() {
         let (tx, _) = broadcast::channel(16);
         let runtime: Arc<RwLock<dyn plantlink_runtime::FlowRuntime>> = Arc::new(RwLock::new(
+            // ast-grep-ignore
             plantlink_runtime::RuntimeEngine::new(tx.clone()).unwrap(),
         ));
         let _state = AppState {
@@ -430,10 +436,12 @@ mod tests {
             &mut self,
             _flow: plantlink_runtime::FlowConfig,
         ) -> anyhow::Result<()> {
+            // ast-grep-ignore
             *self.deployed.lock().unwrap() = true;
             Ok(())
         }
         async fn stop_flow(&mut self) -> plantlink_runtime::StopStatus {
+            // ast-grep-ignore
             *self.stopped.lock().unwrap() = true;
             plantlink_runtime::StopStatus { tasks_aborted: 0 }
         }

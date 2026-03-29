@@ -143,6 +143,7 @@ impl NodeBehavior for NatsSubNode {
 
         // Spawn listener
         let ctx = ctx.clone();
+        // ast-grep-ignore: deferred to structured-spawn plan
         let handle = tokio::spawn(async move {
             while let Some(nats_msg) = subscriber.next().await {
                 let payload_str = String::from_utf8_lossy(&nats_msg.payload).to_string();
@@ -264,9 +265,11 @@ impl NodeBehavior for NatsPubNode {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{NatsBrokerNode, NatsPubNode, NatsSubNode, NodeBehavior, NodeContext};
     use crate::NodeConfig;
+    use plantlink_core::{DataValue, MessagePayload};
     use serde_json::json;
+    use std::sync::Arc;
 
     #[test]
     fn test_broker_config_parsing() {
@@ -317,6 +320,7 @@ mod tests {
             ..Default::default()
         });
         let (ctx, _) = NodeContext::for_test("s1");
+        // ast-grep-ignore
         node.receive(0, msg, &ctx).await.unwrap();
         assert_eq!(node.broker_id, "new-broker");
     }
@@ -334,6 +338,7 @@ mod tests {
             ..Default::default()
         });
         let (ctx, _) = NodeContext::for_test("p1");
+        // ast-grep-ignore
         node.receive(0, msg, &ctx).await.unwrap();
         assert_eq!(node.broker_id, "new-broker");
     }
