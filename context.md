@@ -28,6 +28,7 @@
 *This section is updated by the Architect after every successful implementation.*
 
 ### 🛠️ Recent Changes (Last 3 Cycles)
+87. **2026-03-29 (Zero-Exit Concurrency Hardening):** Verified full architectural shift of `InjectNode` to structured concurrency. Purged manual `timer_handle` retention and `on_stop` overrides, replacing them entirely with `TaskTracker` cooperative shutdown blocks. Formalized TDD coverage via `test_inject_node_timer_is_tracked` verifying that task tracking behaves deterministically on cancellation. Remediated `clippy::ignored_unit_patterns` lint violations triggered by `tokio::select!` block racing. Verified 100% Zero-Exit compliance (`make verify`).
 86. **2026-03-29 (Pure Structured Concurrency):** Refactored `InjectNode` to fully embrace the "Pure" structured concurrency model. Eliminated the stateful `timer_handle` field and associated lifecycle logic (`on_stop`, manual `abort()`), delegating all background task management to the `TaskTracker`. Hardened unit tests to verify deterministic behavior via `tracker.wait()`.
 85. **2026-03-29 (Documentation Sync):** Synchronized `spec.md` structured concurrency tracking constraints (`TaskTracker`, `emit_log`, `cancel`) and flow config edge parsing behaviors inside `plantlink-runtime`.
 84. **2026-03-29 (AST Linter Remediation):** Achieving 100% "Zero-Exit" AST linter compliance by adding a targeted `// ast-grep-ignore: raw-tokio-spawn` suppression to the `test_event_cache_survives_lagged` unit test in `plantlink-web`. This addresses a residual violation where standalone test functions (outside `mod tests` blocks) were not captured by automatic semantic exclusion rules. Verified full quality gate pass (`make verify`).
@@ -103,6 +104,7 @@
 * **Resilience:** Implemented exponential backoff for MQTT event loops to prevent event loop crashes and ensure automatic recovery from connection errors.
 * **Trait-Based Mocking:** Transitioned protocol drivers to traits to enable isolated node-level testing. Chose `Arc<dyn Trait>` storage in the resource registry to allow downstream nodes to perform dependency injection via mock implementations during unit tests.
 * **Safe Sharing:** Wrapped the `tokio-modbus` client in a `Mutex` within the `ModbusTcpClient` implementation to maintain `Sync` compliance for the shared resource registry while preserving the required `&mut self` access for Modbus operations.
+* **Zero-Exit Future Polling:** Enforced explicitly matching `() = <future> =>` instead of the generic catch-all `_ = <future> =>` inside `tokio::select!` and `match` blocks resolving strictly to unit type tuples. This prevents `clippy::ignored_unit_patterns` violations and maintains 100% "Zero-Exit" compliance.
 
 ---
 
