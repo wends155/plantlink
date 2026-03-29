@@ -19,7 +19,7 @@ pub struct InjectNode {
 }
 
 impl InjectNode {
-    /// Constructs a new InjectNode from its configuration.
+    /// Constructs a new `InjectNode` from its configuration.
     ///
     /// # Arguments
     ///
