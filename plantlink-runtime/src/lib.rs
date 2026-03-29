@@ -30,8 +30,8 @@ use tokio_stream::StreamExt;
 /// use plantlink_runtime::NodeConfig;
 ///
 /// let json = r#"{"id": "n1", "type": "console", "data": {"label": "My Node"}}"#;
-/// // ast-grep-ignore
-/// let config: NodeConfig = serde_json::from_str(json).unwrap();
+/// let config: NodeConfig = serde_json::from_str(json)
+/// #    .unwrap();
 /// assert_eq!(config.id, "n1");
 /// assert_eq!(config.type_, "console");
 /// ```
@@ -51,8 +51,8 @@ pub struct NodeConfig {
 /// use plantlink_runtime::EdgeConfig;
 ///
 /// let json = r#"{"id": "e1", "source": "n1", "target": "n2"}"#;
-/// // ast-grep-ignore
-/// let edge: EdgeConfig = serde_json::from_str(json).unwrap();
+/// let edge: EdgeConfig = serde_json::from_str(json)
+/// #    .unwrap();
 /// assert_eq!(edge.source, "n1");
 /// assert!(edge.source_handle.is_none());
 /// ```
@@ -78,8 +78,8 @@ pub struct EdgeConfig {
 ///     "nodes": [{"id": "n1", "type": "console", "data": {}}],
 ///     "edges": [{"id": "e1", "source": "n1", "target": "n2"}]
 /// }"#;
-/// // ast-grep-ignore
-/// let flow: FlowConfig = serde_json::from_str(json).unwrap();
+/// let flow: FlowConfig = serde_json::from_str(json)
+/// #    .unwrap();
 /// assert_eq!(flow.nodes.len(), 1);
 /// assert_eq!(flow.edges.len(), 1);
 /// ```
@@ -323,11 +323,12 @@ fn parse_port(_handle: Option<&str>) -> usize {
     0
 }
 
+// ast-grep-ignore
 #[cfg(test)]
 mod tests {
     use super::{
-        build_wiring, create_channels, EdgeConfig, FlowConfig, FlowRuntime, NodeConfig,
-        RuntimeEngine, StopStatus,
+        EdgeConfig, FlowConfig, FlowRuntime, NodeConfig, RuntimeEngine, StopStatus, build_wiring,
+        create_channels,
     };
     use crate::nodes;
     use anyhow::Result;

@@ -24,13 +24,13 @@ use std::fmt;
 /// use plantlink_core::DataValue;
 ///
 /// // Primitive types deserialize to their specific variants
-/// // ast-grep-ignore
-/// let val: DataValue = serde_json::from_str("42").unwrap();
+/// let val: DataValue = serde_json::from_str("42")
+/// #    .unwrap();
 /// assert!(matches!(val, DataValue::Integer(42)));
 ///
 /// // JSON objects are captured by the Json variant
-/// // ast-grep-ignore
-/// let val: DataValue = serde_json::from_str(r#"{"key": "value"}"#).unwrap();
+/// let val: DataValue = serde_json::from_str(r#"{"key": "value"}"#)
+/// #    .unwrap();
 /// assert!(matches!(val, DataValue::Json(_)));
 ///
 /// // Display implementation
@@ -81,10 +81,10 @@ impl fmt::Display for DataValue {
 /// assert!(!msg.id.is_empty());
 ///
 /// // Round-trip serialization
-/// // ast-grep-ignore
-/// let json = serde_json::to_string(&msg).unwrap();
-/// // ast-grep-ignore
-/// let deserialized: MessagePayload = serde_json::from_str(&json).unwrap();
+/// let json = serde_json::to_string(&msg)
+/// #    .unwrap();
+/// let deserialized: MessagePayload = serde_json::from_str(&json)
+/// #    .unwrap();
 /// assert_eq!(msg.id, deserialized.id);
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -118,6 +118,7 @@ pub mod modbus;
 pub mod mqtt;
 pub mod nats;
 
+// ast-grep-ignore
 #[cfg(test)]
 mod tests {
     use super::{DataValue, MessagePayload};
