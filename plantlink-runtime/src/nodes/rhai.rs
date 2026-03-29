@@ -65,11 +65,7 @@ impl RhaiNode {
 impl NodeBehavior for RhaiNode {
     async fn start(&mut self, ctx: NodeContext) -> Result<()> {
         if let Some(err) = &self.compile_error {
-            let log_msg = format!("RhaiNode [{}]: Compilation Error: {}", ctx.id, err);
-            let event = super::SystemEvent::Log { message: log_msg };
-            if let Err(e) = ctx.system_tx.send(event) {
-                tracing::warn!(node_id = %ctx.id, "Failed to broadcast log: {}", e);
-            }
+            ctx.emit_log(format!("RhaiNode [{}]: Compilation Error: {}", ctx.id, err));
             ctx.emit_error(&format!("Compilation Error: {err}"));
             Err(anyhow::anyhow!("Compilation Error: {err}"))
         } else {
@@ -88,14 +84,18 @@ impl NodeBehavior for RhaiNode {
             let mut scope = Scope::new();
 
             // Convert MessagePayload to Rhai Dynamic (Map)
-            let dynamic_msg = match rhai::serde::to_dynamic(&*msg) {
+            // Safety: DataValue::Bytes serializes to O(N) integer arrays in Rhai.
+            // We intercept and convert to a descriptive string to protect the heap.
+            let mut msg_to_serialize = (*msg).clone();
+            if let plantlink_core::DataValue::Bytes(b) = &msg_to_serialize.payload {
+                msg_to_serialize.payload =
+                    plantlink_core::DataValue::String(format!("<binary data: {} bytes>", b.len()));
+            }
+
+            let dynamic_msg = match rhai::serde::to_dynamic(&msg_to_serialize) {
                 Ok(d) => d,
                 Err(e) => {
-                    let log = format!("RhaiNode [{}]: Serialization Error: {}", ctx.id, e);
-                    let event = super::SystemEvent::Log { message: log };
-                    if let Err(e) = ctx.system_tx.send(event) {
-                        tracing::warn!(node_id = %ctx.id, "Failed to broadcast log: {}", e);
-                    }
+                    ctx.emit_log(format!("RhaiNode [{}]: Serialization Error: {}", ctx.id, e));
                     return Ok(());
                 }
             };
@@ -114,25 +114,17 @@ impl NodeBehavior for RhaiNode {
                             }
                         }
                         Err(e) => {
-                            let log_msg = format!(
+                            ctx.emit_log(format!(
                                 "RhaiNode [{}]: Return type mismatch. Script must return MessagePayload msg. Error: {}",
                                 ctx.id, e
-                            );
-                            let event = super::SystemEvent::Log { message: log_msg };
-                            if let Err(e) = ctx.system_tx.send(event) {
-                                tracing::warn!(node_id = %ctx.id, "Failed to broadcast log: {}", e);
-                            }
+                            ));
                             ctx.emit_error(&format!("Return Type Mismatch: {e}"));
                             return Err(anyhow::anyhow!("Type error: {e}"));
                         }
                     }
                 }
                 Err(e) => {
-                    let log_msg = format!("RhaiNode [{}]: Runtime Error: {}", ctx.id, e);
-                    let event = super::SystemEvent::Log { message: log_msg };
-                    if let Err(e) = ctx.system_tx.send(event) {
-                        tracing::warn!(node_id = %ctx.id, "Failed to broadcast log: {}", e);
-                    }
+                    ctx.emit_log(format!("RhaiNode [{}]: Runtime Error: {}", ctx.id, e));
                     ctx.emit_error(&format!("Runtime Error: {e}"));
                     return Err(anyhow::anyhow!("Rhai error: {e}"));
                 }
@@ -140,14 +132,10 @@ impl NodeBehavior for RhaiNode {
         } else {
             // Node is in error state due to compilation failure
             if let Some(err) = &self.compile_error {
-                let log_msg = format!(
+                ctx.emit_log(format!(
                     "RhaiNode [{}]: Cannot process input. Compilation failed: {}",
                     ctx.id, err
-                );
-                let event = super::SystemEvent::Log { message: log_msg };
-                if let Err(e) = ctx.system_tx.send(event) {
-                    tracing::warn!(node_id = %ctx.id, "Failed to broadcast log: {}", e);
-                }
+                ));
             }
         }
         Ok(())
@@ -168,7 +156,7 @@ mod tests {
     type CtxOutputStreams = (
         NodeContext,
         mpsc::Receiver<(usize, std::sync::Arc<MessagePayload>)>,
-        broadcast::Receiver<super::super::SystemEvent>,
+        tokio::sync::broadcast::Receiver<super::super::SystemEvent>,
     );
 
     fn make_node(script: Option<&str>) -> RhaiNode {
@@ -195,6 +183,7 @@ mod tests {
             Arc::new(RwLock::new(HashMap::new())),
             sys_tx,
             CancellationToken::new(),
+            tokio_util::task::TaskTracker::new(),
         );
         (ctx, rx, sys_rx)
     }

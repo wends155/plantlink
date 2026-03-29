@@ -95,13 +95,14 @@ All crates inherit shared lint rules from the root `Cargo.toml` via `[workspace.
 - **Levels**: standard `ERROR`, `WARN`, `INFO`, `DEBUG`, and `TRACE` used per `GEMINI.md` guidelines.
 
 ## 10. Concurrency Model
-- **Actor-per-node**: Each node is spawned as an independent `tokio::spawn` task, implementing the `NodeBehavior` trait.
+- **Structured concurrency**: `RuntimeEngine` uses `tokio_util::task::TaskTracker` to formally track and await all background tasks (actors and timers) during flow shutdown.
+- **Actor-per-node**: Each node is spawned as an independent task within the `TaskTracker`, implementing the `NodeBehavior` trait.
 - **Inter-node channels**: Bounded `mpsc` channels (capacity: 100) carry `(port_idx, Arc<MessagePayload>)` tuples.
-- **Reference-counted payloads**: All messages are wrapped in `Arc` by the `NodeContext::send_output_port` method to eliminate deep clones ($O(N)$ memory duplication) during multi-port fan-out.
-- **Actor Interface**: Nodes implement the `receive` method (accepting `Arc<MessagePayload>`) for high-performance message handling. The legacy `on_input` method is deprecated.
-- **Source nodes**: Nodes with no input receivers are kept alive via `futures::future::pending()`.
+- **Reference-counted payloads**: All messages are wrapped in `Arc` by the `NodeContext::send_output` method to eliminate deep clones ($O(N)$ memory duplication) during multi-port fan-out.
+- **Actor Interface**: Nodes implement the `receive` method (accepting `Arc<MessagePayload>`) for high-performance message handling.
+- **Source nodes**: Nodes with no input receivers are kept alive via cancellation-aware wait loops.
 - **Stream multiplexing**: Nodes with multiple inputs use `tokio_stream::StreamMap` to merge all receivers into a single event stream.
-- **Cooperative shutdown**: `CancellationToken` (from `tokio-util`) is propagated from `RuntimeEngine` to all child tasks for graceful exit.
+- **Cooperative shutdown**: `CancellationToken` and `TaskTracker` work in tandem to ensure graceful, deterministic exit of all asynchronous components.
 
 ## 11. State Management
 - **Shared resource registry**: `Arc<RwLock<HashMap<String, Box<dyn Any + Send + Sync>>>>` scoped per flow execution. Allows nodes to share typed state (e.g., protocol connections).

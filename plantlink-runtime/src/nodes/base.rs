@@ -78,13 +78,7 @@ impl<T: SimpleNode + 'static> NodeBehavior for BaseNodeAdapter<T> {
             ctx.emit_error(&e.to_string());
 
             // Also log
-            let log_msg = format!("Node [{}]: Error: {}", ctx.id, e);
-            if let Err(e) = ctx
-                .system_tx
-                .send(super::SystemEvent::Log { message: log_msg })
-            {
-                tracing::warn!(node_id = %ctx.id, "Failed to broadcast error log: {}", e);
-            }
+            ctx.emit_log(format!("Node [{}]: Error: {}", ctx.id, e));
 
             return Err(e);
         }

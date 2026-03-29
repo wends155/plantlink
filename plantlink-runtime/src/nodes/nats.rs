@@ -142,9 +142,8 @@ impl NodeBehavior for NatsSubNode {
         };
 
         // Spawn listener
-        let ctx = ctx.clone();
-        // ast-grep-ignore: raw-tokio-spawn
-        let handle = tokio::spawn(async move {
+        let ctx_clone = ctx.clone();
+        let handle = ctx.tracker.spawn(async move {
             while let Some(nats_msg) = subscriber.next().await {
                 let payload_str = String::from_utf8_lossy(&nats_msg.payload).to_string();
                 let out_msg = MessagePayload {
@@ -152,7 +151,7 @@ impl NodeBehavior for NatsSubNode {
                     topic: Some(nats_msg.topic.clone()),
                     ..Default::default()
                 };
-                if let Err(e) = ctx.send_output(out_msg).await {
+                if let Err(e) = ctx_clone.send_output(out_msg).await {
                     tracing::warn!("NatsSub: failed to forward message: {}", e);
                 }
             }
@@ -244,6 +243,9 @@ impl NodeBehavior for NatsPubNode {
             let payload_bytes = match &msg.payload {
                 DataValue::String(s) => bytes::Bytes::copy_from_slice(s.as_bytes()),
                 DataValue::Json(v) => bytes::Bytes::from(v.to_string()),
+                DataValue::Bytes(b) => b.clone(),
+                DataValue::Integer(i) => bytes::Bytes::from(i.to_string()),
+                DataValue::Float(f) => bytes::Bytes::from(f.to_string()),
                 _ => bytes::Bytes::new(),
             };
 

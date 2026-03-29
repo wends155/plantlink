@@ -614,6 +614,7 @@ mod tests {
         let cache = EventCache::new();
         let cache_clone = cache.clone();
 
+        // ast-grep-ignore: raw-tokio-spawn
         tokio::spawn(async move {
             loop {
                 match rx.recv().await {

@@ -62,7 +62,7 @@ impl SimpleNode for InjectNode {
             let cancel = ctx.cancel.clone();
 
             // Spawn a background task for the timer
-            let handle = tokio::spawn(async move {
+            let handle = ctx.tracker.spawn(async move {
                 let mut timer = tokio::time::interval(interval);
                 timer.tick().await; // First tick is immediate
                 loop {
@@ -140,6 +140,7 @@ mod tests {
             Arc::new(RwLock::new(HashMap::new())),
             sys_tx,
             cancel.clone(),
+            crate::nodes::TaskTracker::new(),
         );
         let mut node = InjectNode::new(&NodeConfig {
             id: "inject-test".into(),
@@ -173,6 +174,7 @@ mod tests {
             Arc::new(RwLock::new(HashMap::new())),
             sys_tx,
             cancel,
+            crate::nodes::TaskTracker::new(),
         );
         let mut node = InjectNode::new(&NodeConfig {
             id: "inject-test".into(),

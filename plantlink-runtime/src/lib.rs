@@ -12,6 +12,7 @@ use std::time::Duration;
 use tokio::sync::broadcast;
 use tokio::task::JoinSet;
 use tokio_util::sync::CancellationToken;
+use tokio_util::task::TaskTracker;
 
 #[async_trait::async_trait]
 pub trait FlowRuntime: Send + Sync {
@@ -120,6 +121,8 @@ pub struct RuntimeEngine {
     task_set: JoinSet<()>,
     /// Cancellation token for the current flow
     cancel: CancellationToken,
+    /// Task tracker for structured concurrency
+    tracker: TaskTracker,
     registry: nodes::registry::NodeRegistry,
 }
 
@@ -137,6 +140,7 @@ impl RuntimeEngine {
             node_ids: Vec::new(),
             task_set: JoinSet::new(),
             cancel: CancellationToken::new(),
+            tracker: TaskTracker::new(),
             registry,
         })
     }
@@ -157,8 +161,13 @@ impl FlowRuntime for RuntimeEngine {
 
         // 2. Await graceful exit with timeout
         let tasks_to_abort = self.node_ids.len();
+        self.tracker.close();
+
         let _ = tokio::time::timeout(Duration::from_secs(3), async {
-            while self.task_set.join_next().await.is_some() {}
+            tokio::join!(
+                async { while self.task_set.join_next().await.is_some() {} },
+                self.tracker.wait()
+            );
         })
         .await;
 
@@ -169,6 +178,7 @@ impl FlowRuntime for RuntimeEngine {
         // 4. Reset engine state
         self.node_ids.clear();
         self.cancel = CancellationToken::new();
+        self.tracker = TaskTracker::new();
 
         StopStatus {
             tasks_aborted: tasks_to_abort,
@@ -207,6 +217,7 @@ impl FlowRuntime for RuntimeEngine {
                 resources.clone(),
                 self.tx.clone(),
                 self.cancel.child_token(),
+                self.tracker.clone(),
             );
 
             // Create specific node instance dynamically from registry
@@ -338,10 +349,15 @@ fn create_channels(
     (node_senders, node_receivers)
 }
 
-fn parse_port(_handle: Option<&str>) -> usize {
-    // Simple heuristic: try to find a digit in the handle string "payload", "output_1" -> 1
-    // For now, return 0. (Phase 1 simplicity)
-    0
+fn parse_port(handle: Option<&str>) -> usize {
+    match handle {
+        Some(h) => {
+            // Extract contiguous digits from the string (e.g., "output_1" -> 1)
+            let digits: String = h.chars().filter(char::is_ascii_digit).collect();
+            digits.parse::<usize>().unwrap_or(0)
+        }
+        None => 0,
+    }
 }
 
 #[cfg(test)]
@@ -767,5 +783,18 @@ mod tests {
             stop_called.load(Ordering::SeqCst),
             "Node stop() should have been called"
         );
+    }
+
+    #[test]
+    fn test_parse_port_logic() {
+        use super::parse_port;
+        assert_eq!(parse_port(None), 0);
+        assert_eq!(parse_port(Some("output_0")), 0);
+        assert_eq!(parse_port(Some("output_1")), 1);
+        assert_eq!(parse_port(Some("port2")), 2);
+        assert_eq!(parse_port(Some("3")), 3);
+        assert_eq!(parse_port(Some("invalid")), 0);
+        assert_eq!(parse_port(Some("true")), 0);
+        assert_eq!(parse_port(Some("false")), 0);
     }
 }

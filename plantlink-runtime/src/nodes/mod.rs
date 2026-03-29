@@ -23,6 +23,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
+use tokio_util::task::TaskTracker;
 
 pub type NodeSender = mpsc::Sender<(usize, Arc<MessagePayload>)>;
 pub type NodeReceiver = mpsc::Receiver<(usize, Arc<MessagePayload>)>;
@@ -95,6 +96,8 @@ pub struct NodeContext {
     pub system_tx: broadcast::Sender<SystemEvent>,
     /// Cancellation Token for cooperative shutdown
     pub cancel: CancellationToken,
+    /// Task Tracker for structured concurrency
+    pub tracker: TaskTracker,
 }
 
 impl NodeContext {
@@ -104,6 +107,7 @@ impl NodeContext {
         resources: Arc<RwLock<HashMap<String, Box<dyn Any + Send + Sync>>>>,
         system_tx: broadcast::Sender<SystemEvent>,
         cancel: CancellationToken,
+        tracker: TaskTracker,
     ) -> Self {
         Self {
             id,
@@ -111,6 +115,7 @@ impl NodeContext {
             resources,
             system_tx,
             cancel,
+            tracker,
         }
     }
 
@@ -168,6 +173,14 @@ impl NodeContext {
         send_node_status(&self.system_tx, self.id.clone(), state, message);
     }
 
+    /// Emit a log message to the system event bus
+    pub fn emit_log(&self, message: impl Into<String>) {
+        let event = SystemEvent::Log {
+            message: message.into(),
+        };
+        let _ = self.system_tx.send(event);
+    }
+
     /// Convenience constructor for unit tests with minimal boilerplate.
     #[cfg(test)]
     pub fn for_test(id: &str) -> (Self, broadcast::Receiver<SystemEvent>) {
@@ -178,6 +191,7 @@ impl NodeContext {
             Arc::new(RwLock::new(HashMap::new())),
             tx,
             CancellationToken::new(),
+            TaskTracker::new(),
         );
         (ctx, rx)
     }
@@ -272,6 +286,7 @@ mod tests {
             Arc::new(RwLock::new(HashMap::new())),
             sys_tx,
             CancellationToken::new(),
+            tokio_util::task::TaskTracker::new(),
         );
 
         let msg = MessagePayload::default();
@@ -317,6 +332,19 @@ mod tests {
             assert_eq!(data.message, "Something failed");
         } else {
             panic!("Expected SystemEvent::Status, got {msg:?}");
+        }
+    }
+
+    #[test]
+    fn test_emit_log_broadcasts() {
+        let (ctx, mut rx) = NodeContext::for_test("log-node");
+        ctx.emit_log("Diagnostic info");
+
+        let msg = rx.try_recv().unwrap();
+        if let SystemEvent::Log { message } = msg {
+            assert_eq!(message, "Diagnostic info");
+        } else {
+            panic!("Expected SystemEvent::Log, got {msg:?}");
         }
     }
 }
