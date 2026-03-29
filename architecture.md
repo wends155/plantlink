@@ -180,6 +180,7 @@ sequenceDiagram
 - **Modbus Exclusivity**: `ModbusClient` uses `&self` across its API, managing exclusivity via internal `tokio::sync::Mutex` to allow shared access from multiple nodes without requiring mutable ownership.
 - **Channel Error Propagation**: `NodeContext::send_output` and `send_output_port` return `Result<()>`. Callers must handle or propagate downstream channel failures.
 - **WebSocket State-Sync**: Remediated. An `EventCache` aggregator in `plantlink-web` subscribes to the system event bus and maintains the latest `NodeStatus` for all nodes. WebSocket clients receive a full snapshot on connect and are automatically resynchronized on `RecvError::Lagged`. The aggregator task itself handles `Lagged` gracefully by logging and continuing.
+- **Unstructured Spawns (Tech Debt)**: Approximately 8 `tokio::spawn` calls currently exist across the `runtime` and `web` crates. These are tracked for a future structured-spawn migration utilizing `TaskTracker`/`JoinSet` to guarantee deterministic shutdown and improved observability.
 
 ## 17. Environment Configuration
 The system is designed for dynamic discovery and late-binding of connections:
