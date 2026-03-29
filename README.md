@@ -34,8 +34,10 @@ graph TB
     -   Hot-reload development workflow.
     -   Single-binary release capability.
 -   **Zero-Exit Stability**:
-    -   Rigorous CI gates (`fmt`, `clippy`, `test`) ensure code quality.
+    -   Rigorous CI gates (`fmt`, `clippy`, `test`, `lint-ast`) ensure code quality.
+    -   Structural linting via AST-Grep prevents production panics (e.g., bare `.unwrap()`).
     -   Comprehensive unit and doc-test coverage.
+    -   Structured, robust error handling across drivers using `thiserror`.
 
 ## Example: Rhai Function
 
@@ -88,9 +90,10 @@ We enforce a strict "Zero-Exit" policy. All code must pass the following checks 
 make verify
 
 # Individual checks
-cargo fmt -- --check    # Formatting
-cargo clippy -- -D warnings # Linting
-cargo test              # Unit & Doc Tests
+cargo fmt -- --check            # Formatting
+cargo clippy -- -D warnings     # Rust Linting
+make lint-ast                   # Structural AST-grep rules (unwraps, wildcards)
+cargo test                      # Unit & Doc Tests
 ```
 
 ## Architecture
