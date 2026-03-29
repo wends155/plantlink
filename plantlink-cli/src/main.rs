@@ -65,7 +65,7 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-// ast-grep-ignore
+
 #[cfg(test)]
 mod tests {
     // ast-grep-ignore: wildcard-import

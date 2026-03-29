@@ -511,6 +511,7 @@ mod tests {
             .uri("/api/flow/stop")
             .body(Body::empty())
             .unwrap();
+        // ast-grep-ignore: unwrap-in-production
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
         assert!(
@@ -535,6 +536,7 @@ mod tests {
             .body(Body::from("not valid json"))
             .unwrap();
         // ast-grep-ignore
+        // ast-grep-ignore: unwrap-in-production
         let resp = app.oneshot(req).await.unwrap();
         assert_ne!(
             resp.status(),
