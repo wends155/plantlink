@@ -49,7 +49,7 @@ impl MqttDriver {
         let cancel = CancellationToken::new();
         let loop_cancel = cancel.clone();
 
-        // Spawn event loop handler with exponential backoff retry and structured shutdown
+        // ast-grep-ignore: raw-tokio-spawn
         let task_handle = tokio::spawn(async move {
             let mut backoff = Duration::from_secs(1);
             let max_backoff = Duration::from_secs(60);

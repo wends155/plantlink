@@ -45,7 +45,7 @@ impl SimpleNode for InjectNode {
             let cancel = ctx.cancel.clone();
 
             // Spawn a background task for the timer
-            // ast-grep-ignore: deferred to structured-spawn plan
+            // ast-grep-ignore: raw-tokio-spawn
             let handle = tokio::spawn(async move {
                 let mut timer = tokio::time::interval(interval);
                 timer.tick().await; // First tick is immediate

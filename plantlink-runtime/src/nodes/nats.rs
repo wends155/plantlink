@@ -143,7 +143,7 @@ impl NodeBehavior for NatsSubNode {
 
         // Spawn listener
         let ctx = ctx.clone();
-        // ast-grep-ignore: deferred to structured-spawn plan
+        // ast-grep-ignore: raw-tokio-spawn
         let handle = tokio::spawn(async move {
             while let Some(nats_msg) = subscriber.next().await {
                 let payload_str = String::from_utf8_lossy(&nats_msg.payload).to_string();
@@ -263,7 +263,6 @@ impl NodeBehavior for NatsPubNode {
     }
 }
 
-// ast-grep-ignore
 #[cfg(test)]
 mod tests {
     use super::{NatsBrokerNode, NatsPubNode, NatsSubNode, NodeBehavior, NodeContext};

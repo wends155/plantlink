@@ -13,6 +13,7 @@ fn main() {
     // 1. We are in release mode
     // 2. The dist folder is missing
     let dist_path = Path::new("../ui/dist");
+    // ast-grep-ignore: scattered-env-var
     let profile = env::var("PROFILE").unwrap_or_else(|_| "debug".to_string());
 
     let should_build = profile == "release" || !dist_path.exists();

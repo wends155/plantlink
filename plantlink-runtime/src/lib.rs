@@ -215,7 +215,7 @@ impl FlowRuntime for RuntimeEngine {
             let inputs = node_receivers.remove(&node_id).unwrap_or_default();
 
             // Spawn actor task
-            // ast-grep-ignore: deferred to structured-spawn plan
+            // ast-grep-ignore: raw-tokio-spawn
             let task = tokio::spawn(async move {
                 // Initialize node
                 if let Err(e) = node.start(ctx.clone()).await {
@@ -323,7 +323,6 @@ fn parse_port(_handle: Option<&str>) -> usize {
     0
 }
 
-// ast-grep-ignore
 #[cfg(test)]
 mod tests {
     use super::{
@@ -361,7 +360,6 @@ mod tests {
             nodes: vec![],
             edges: vec![],
         };
-        // ast-grep-ignore
         rt.update_flow(flow).await.unwrap();
         rt.stop_flow().await;
         // The mock records state successfully.
@@ -371,7 +369,6 @@ mod tests {
     fn test_status_serialization() {
         let (tx, mut rx) = broadcast::channel(16);
         nodes::send_node_status(&tx, "test-node".to_string(), "running", "Active");
-        // ast-grep-ignore
         let msg = rx.try_recv().expect("Message not received");
         if let nodes::SystemEvent::Status { data } = msg {
             assert_eq!(data.node_id, "test-node");
@@ -387,7 +384,6 @@ mod tests {
             "nodes": [{"id": "n1", "type": "console", "data": {}}],
             "edges": [{"id": "e1", "source": "n1", "target": "n2"}]
         }"#;
-        // ast-grep-ignore
         let config: FlowConfig = serde_json::from_str(json).unwrap();
         assert_eq!(config.nodes.len(), 1);
         assert_eq!(config.nodes[0].type_, "console");
@@ -397,7 +393,6 @@ mod tests {
     #[test]
     fn test_edge_config_optional_handles() {
         let json = r#"{"id": "e1", "source": "n1", "target": "n2"}"#;
-        // ast-grep-ignore
         let edge: EdgeConfig = serde_json::from_str(json).unwrap();
         assert!(edge.source_handle.is_none());
         assert!(edge.target_handle.is_none());
@@ -406,7 +401,6 @@ mod tests {
     #[tokio::test]
     async fn test_stop_flow_emits_stopped() {
         let (tx, mut rx) = broadcast::channel(16);
-        // ast-grep-ignore
         let mut engine = RuntimeEngine::new(tx).unwrap();
         // Deploy a minimal flow with a single console node
         let flow = FlowConfig {
@@ -417,13 +411,11 @@ mod tests {
             }],
             edges: vec![],
         };
-        // ast-grep-ignore
         engine.update_flow(flow).await.unwrap();
         // Drain initial status broadcasts
         while rx.try_recv().is_ok() {}
         engine.stop_flow().await;
         // Should receive at least one "stopped" status
-        // ast-grep-ignore
         let msg = rx.try_recv().expect("Expected stopped status");
         if let nodes::SystemEvent::Status { data } = msg {
             assert_eq!(data.state, "stopped");
@@ -442,7 +434,6 @@ mod tests {
     #[tokio::test]
     async fn test_update_flow_error_on_invalid_node_type() {
         let (tx, _rx) = broadcast::channel(16);
-        // ast-grep-ignore
         let mut engine = RuntimeEngine::new(tx).unwrap();
         let flow = FlowConfig {
             nodes: vec![NodeConfig {
@@ -457,7 +448,6 @@ mod tests {
             result.is_err(),
             "update_flow should fail for unknown node types"
         );
-        // ast-grep-ignore
         let err_msg = result.unwrap_err().to_string();
         assert!(
             err_msg.contains("bad-node"),
@@ -468,7 +458,6 @@ mod tests {
     #[tokio::test]
     async fn test_stop_flow_returns_correct_count() {
         let (tx, _rx) = broadcast::channel(16);
-        // ast-grep-ignore
         let mut engine = RuntimeEngine::new(tx).unwrap();
 
         // Deploy a flow with 2 valid nodes
@@ -487,7 +476,6 @@ mod tests {
             ],
             edges: vec![],
         };
-        // ast-grep-ignore
         engine.update_flow(flow).await.unwrap();
         let status = engine.stop_flow().await;
         assert_eq!(status.tasks_aborted, 2, "Should report 2 aborted tasks");
@@ -507,7 +495,6 @@ mod tests {
         let wiring = build_wiring(&edges);
         assert!(wiring.contains_key("n1"), "Expected n1 in wiring");
         let n1_ports = &wiring["n1"];
-        // ast-grep-ignore
         let targets = n1_ports.get(&0).expect("Expected port 0");
         assert_eq!(targets.len(), 1);
         assert_eq!(targets[0].0, "n2");
@@ -563,7 +550,6 @@ mod tests {
     #[tokio::test]
     async fn test_update_flow_replaces_previous() {
         let (tx, _rx) = broadcast::channel(32);
-        // ast-grep-ignore
         let mut engine = RuntimeEngine::new(tx).unwrap();
 
         // Deploy flow A: 2 nodes
