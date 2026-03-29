@@ -234,15 +234,16 @@ pub trait NodeBehavior: Send + Sync {
     }
 }
 
+// ast-grep-ignore
 #[cfg(test)]
 mod tests {
-    use super::{NodeContext, SystemEvent, OutputMap};
+    use super::{NodeContext, OutputMap, SystemEvent};
     use plantlink_core::MessagePayload;
-    use tokio_util::sync::CancellationToken;
     use std::collections::HashMap;
     use std::sync::Arc;
     use tokio::sync::RwLock;
     use tokio::sync::broadcast;
+    use tokio_util::sync::CancellationToken;
 
     #[test]
     fn test_node_context_emit_stopped() {

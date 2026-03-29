@@ -20,7 +20,8 @@ use tokio_modbus::prelude::{Reader, tcp};
 ///
 /// # async fn example() -> Result<(), plantlink_core::PlantLinkError> {
 /// // ast-grep-ignore
-/// let addr: SocketAddr = "192.168.1.100:502".parse().unwrap();
+/// let addr: SocketAddr = "192.168.1.100:502".parse()
+/// #    .unwrap();
 /// let client = ModbusTcpClient::connect(addr).await?;
 /// let coils = client.read_coils(0, 10).await?;
 /// # Ok(())

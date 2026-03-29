@@ -263,6 +263,7 @@ impl NodeBehavior for NatsPubNode {
     }
 }
 
+// ast-grep-ignore
 #[cfg(test)]
 mod tests {
     use super::{NatsBrokerNode, NatsPubNode, NatsSubNode, NodeBehavior, NodeContext};

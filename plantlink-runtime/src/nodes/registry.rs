@@ -37,6 +37,7 @@ impl NodeRegistry {
     }
 }
 
+// ast-grep-ignore
 #[cfg(test)]
 mod tests {
     use super::NodeRegistry;

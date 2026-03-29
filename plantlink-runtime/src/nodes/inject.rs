@@ -100,13 +100,14 @@ impl SimpleNode for InjectNode {
     }
 }
 
+// ast-grep-ignore
 #[cfg(test)]
 mod tests {
     use super::InjectNode;
-    use crate::nodes::base::SimpleNode;
-    use crate::nodes::NodeContext;
     use crate::NodeConfig;
+    use crate::nodes::NodeContext;
     use crate::nodes::OutputMap;
+    use crate::nodes::base::SimpleNode;
     use std::collections::HashMap;
     use std::sync::Arc;
     use std::time::Duration;

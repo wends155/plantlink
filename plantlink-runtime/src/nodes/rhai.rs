@@ -150,6 +150,7 @@ impl NodeBehavior for RhaiNode {
     }
 }
 
+// ast-grep-ignore
 #[cfg(test)]
 mod tests {
     use super::RhaiNode;

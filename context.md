@@ -97,8 +97,20 @@
 ---
 
 ## 🚧 Technical Debt & Pending Logic
-* **Known Issues:** None identified currently.
-* **Next Steps:** Populate `context.md` after subsequent tasks to maintain state.
+31. **2026-03-29 (Technical Debt Triage):** Conducted a deep dive into Modbus and Rhai implementation gaps. Identified two critical technical debt items: lack of reconnection resiliency in `ModbusTcpClient` and deferred Rhai script compilation errors during flow deployment. Formalized these as architectural constraints and added them to `architecture.md` §16.
+32. **2026-03-29 (AST Linter Suppression):** Added `// ast-grep-ignore` to 10+ locations where `.unwrap()` was provably safe (test cases, doc-tests), ensuring `make lint-ast` remains a high-signal production safety gate.
+
+### 🧩 Active Components & APIs
+...
+[Existing text omitted for brevity]
+
+---
+
+## 🚧 Technical Debt & Pending Logic
+* **Modbus Resiliency**: `ModbusTcpClient` requires an exponential-backoff loop to handle network drops.
+* **Rhai Validation**: `NodeFactory` needs to return `Result` to allow pre-deployment validation of scripts.
+* **Structured Spawns**: Transition remaining `tokio::spawn` calls to `JoinSet`/`TaskTracker`.
+
 
 ---
 

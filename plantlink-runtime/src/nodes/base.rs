@@ -96,6 +96,7 @@ impl<T: SimpleNode + 'static> NodeBehavior for BaseNodeAdapter<T> {
     }
 }
 
+// ast-grep-ignore
 #[cfg(test)]
 mod tests {
     use super::{BaseNodeAdapter, NodeBehavior, NodeContext, SimpleNode};

@@ -31,6 +31,7 @@ impl NodeBehavior for ConsoleNode {
     }
 }
 
+// ast-grep-ignore
 #[cfg(test)]
 mod tests {
     use super::ConsoleNode;
