@@ -154,7 +154,6 @@ impl NodeBehavior for RhaiNode {
     }
 }
 
-// ast-grep-ignore
 #[cfg(test)]
 mod tests {
     use super::RhaiNode;
@@ -208,7 +207,6 @@ mod tests {
         let expected_id = msg.id.clone();
         node.receive(0, std::sync::Arc::new(msg), &ctx)
             .await
-            // ast-grep-ignore
             .unwrap();
         let (port, received) = rx.recv().await.expect("Expected output");
         assert_eq!(port, 0);
@@ -257,7 +255,6 @@ mod tests {
         let expected_id = msg.id.clone();
         node.receive(0, std::sync::Arc::new(msg), &ctx)
             .await
-            // ast-grep-ignore
             .unwrap();
         let (_, received) = rx
             .recv()

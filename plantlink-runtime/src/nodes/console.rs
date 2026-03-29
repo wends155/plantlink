@@ -31,7 +31,6 @@ impl NodeBehavior for ConsoleNode {
     }
 }
 
-// ast-grep-ignore
 #[cfg(test)]
 mod tests {
     use super::ConsoleNode;
@@ -62,9 +61,8 @@ mod tests {
         };
         node.receive(0, std::sync::Arc::new(msg), &ctx)
             .await
-            // ast-grep-ignore
             .unwrap();
-        // ast-grep-ignore
+
         let broadcast = rx.try_recv().expect("Expected broadcast");
         if let crate::nodes::SystemEvent::Log { message } = broadcast {
             assert!(
@@ -86,9 +84,8 @@ mod tests {
         });
         node.receive(0, std::sync::Arc::new(MessagePayload::default()), &ctx)
             .await
-            // ast-grep-ignore
             .unwrap();
-        // ast-grep-ignore
+
         let broadcast = rx.try_recv().expect("Expected broadcast");
         if let crate::nodes::SystemEvent::Log { message } = broadcast {
             assert!(

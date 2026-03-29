@@ -414,7 +414,7 @@ mod tests {
     #[test]
     fn test_edge_config_optional_handles() {
         let json = r#"{"id": "e1", "source": "n1", "target": "n2"}"#;
-        // ast-grep-ignore
+
         let edge: EdgeConfig = serde_json::from_str(json).unwrap();
         assert!(edge.source_handle.is_none());
         assert!(edge.target_handle.is_none());
@@ -423,7 +423,7 @@ mod tests {
     #[tokio::test]
     async fn test_stop_flow_emits_stopped() {
         let (tx, mut rx) = broadcast::channel(16);
-        // ast-grep-ignore
+
         let mut engine = RuntimeEngine::new(tx).unwrap();
         // Deploy a minimal flow with a single console node
         let flow = FlowConfig {
@@ -434,7 +434,7 @@ mod tests {
             }],
             edges: vec![],
         };
-        // ast-grep-ignore
+
         engine.update_flow(flow).await.unwrap();
         // Drain initial status broadcasts
         while rx.try_recv().is_ok() {}
@@ -458,7 +458,7 @@ mod tests {
     #[tokio::test]
     async fn test_update_flow_error_on_invalid_node_type() {
         let (tx, _rx) = broadcast::channel(16);
-        // ast-grep-ignore
+
         let mut engine = RuntimeEngine::new(tx).unwrap();
         let flow = FlowConfig {
             nodes: vec![NodeConfig {
@@ -483,7 +483,7 @@ mod tests {
     #[tokio::test]
     async fn test_stop_flow_returns_correct_count() {
         let (tx, _rx) = broadcast::channel(16);
-        // ast-grep-ignore
+
         let mut engine = RuntimeEngine::new(tx).unwrap();
 
         // Deploy a flow with 2 valid nodes
@@ -502,7 +502,7 @@ mod tests {
             ],
             edges: vec![],
         };
-        // ast-grep-ignore
+
         engine.update_flow(flow).await.unwrap();
         let status = engine.stop_flow().await;
         assert_eq!(status.tasks_aborted, 2, "Should report 2 aborted tasks");
@@ -577,7 +577,7 @@ mod tests {
     #[tokio::test]
     async fn test_update_flow_replaces_previous() {
         let (tx, _rx) = broadcast::channel(32);
-        // ast-grep-ignore
+
         let mut engine = RuntimeEngine::new(tx).unwrap();
 
         // Deploy flow A: 2 nodes
@@ -596,7 +596,7 @@ mod tests {
             ],
             edges: vec![],
         };
-        // ast-grep-ignore
+
         engine.update_flow(flow_a).await.unwrap();
 
         // Replace with flow B: 1 node
@@ -608,7 +608,7 @@ mod tests {
             }],
             edges: vec![],
         };
-        // ast-grep-ignore
+
         engine.update_flow(flow_b).await.unwrap();
 
         // Only flow B's task should be alive
@@ -628,7 +628,6 @@ mod tests {
         assert!(!rt.deployed, "Should start undeployed");
         assert!(!rt.stopped, "Should start unstopped");
 
-        // ast-grep-ignore
         rt.update_flow(FlowConfig {
             nodes: vec![],
             edges: vec![],
@@ -665,7 +664,7 @@ mod tests {
         // Verify n3 has exactly 1 receiver entry for port 0 (FAILS HERE CURRENTLY)
         let n3_receivers = receivers.remove("n3").expect("Expected n3 receivers");
         assert_eq!(n3_receivers.len(), 1, "Expected exactly 1 receiver for n3");
-        // ast-grep-ignore
+
         let (port, mut rx) = n3_receivers.into_iter().next().unwrap();
         assert_eq!(port, 0);
 
@@ -673,7 +672,7 @@ mod tests {
         let n1_outputs = &senders["n1"];
         let msg1 = plantlink_core::MessagePayload::default();
         let id1 = msg1.id.clone();
-        // ast-grep-ignore
+
         n1_outputs.get(&0).unwrap()[0]
             .0
             .send((0, std::sync::Arc::new(msg1)))
@@ -684,7 +683,7 @@ mod tests {
         let n2_outputs = &senders["n2"];
         let msg2 = plantlink_core::MessagePayload::default();
         let id2 = msg2.id.clone();
-        // ast-grep-ignore
+
         n2_outputs.get(&0).unwrap()[0]
             .0
             .send((0, std::sync::Arc::new(msg2)))
@@ -692,9 +691,9 @@ mod tests {
             .unwrap();
 
         // Receive both
-        // ast-grep-ignore
+
         let (_, r1) = rx.recv().await.unwrap();
-        // ast-grep-ignore
+
         let (_, r2) = rx.recv().await.unwrap();
 
         let received_ids = [r1.id.clone(), r2.id.clone()];
@@ -737,7 +736,7 @@ mod tests {
         let stop_called_clone = stop_called.clone();
 
         let (tx, _) = tokio::sync::broadcast::channel(10);
-        // ast-grep-ignore
+
         let mut engine = RuntimeEngine::new(tx).unwrap();
 
         let mut registry = nodes::registry::NodeRegistry::new();
@@ -749,7 +748,6 @@ mod tests {
         // Overwrite registry with our custom one
         engine.registry = registry;
 
-        // ast-grep-ignore
         engine
             .update_flow(FlowConfig {
                 nodes: vec![NodeConfig {

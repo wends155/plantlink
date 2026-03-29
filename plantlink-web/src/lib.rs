@@ -333,7 +333,6 @@ mod tests {
     async fn test_web_state() {
         let (tx, _) = broadcast::channel(16);
         let runtime: Arc<RwLock<dyn plantlink_runtime::FlowRuntime>> = Arc::new(RwLock::new(
-            // ast-grep-ignore
             plantlink_runtime::RuntimeEngine::new(tx.clone()).unwrap(),
         ));
         let _state = AppState {
@@ -364,12 +363,11 @@ mod tests {
             .route("/health", get(|| async { "OK" }))
             .with_state(state);
 
-        // ast-grep-ignore
         let req = Request::builder()
             .uri("/health")
             .body(Body::empty())
             .unwrap();
-        // ast-grep-ignore
+
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
         let body = resp.into_body().collect().await.unwrap().to_bytes();
@@ -393,14 +391,14 @@ mod tests {
             .with_state(state);
 
         let flow_json = r#"{"nodes": [{"id": "n1", "type": "console", "data": {}}], "edges": []}"#;
-        // ast-grep-ignore
+
         let req = Request::builder()
             .method("POST")
             .uri("/api/flow")
             .header("content-type", "application/json")
             .body(Body::from(flow_json))
             .unwrap();
-        // ast-grep-ignore
+
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
     }
@@ -408,7 +406,7 @@ mod tests {
     #[tokio::test]
     async fn test_stop_flow_endpoint() {
         let (tx, _) = broadcast::channel(16);
-        // ast-grep-ignore
+
         let runtime: Arc<RwLock<dyn plantlink_runtime::FlowRuntime>> = Arc::new(RwLock::new(
             plantlink_runtime::RuntimeEngine::new(tx.clone()).unwrap(),
         ));
@@ -422,13 +420,12 @@ mod tests {
             .route("/api/flow/stop", axum::routing::post(stop_flow_handler))
             .with_state(state);
 
-        // ast-grep-ignore
         let req = Request::builder()
             .method("POST")
             .uri("/api/flow/stop")
             .body(Body::empty())
             .unwrap();
-        // ast-grep-ignore
+
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
     }
@@ -446,12 +443,10 @@ mod tests {
             &mut self,
             _flow: plantlink_runtime::FlowConfig,
         ) -> anyhow::Result<()> {
-            // ast-grep-ignore
             *self.deployed.lock().unwrap() = true;
             Ok(())
         }
         async fn stop_flow(&mut self) -> plantlink_runtime::StopStatus {
-            // ast-grep-ignore
             *self.stopped.lock().unwrap() = true;
             plantlink_runtime::StopStatus { tasks_aborted: 0 }
         }
@@ -492,14 +487,14 @@ mod tests {
             .with_state(state);
 
         let flow_json = r#"{"nodes": [{"id": "n1", "type": "console", "data": {}}], "edges": []}"#;
-        // ast-grep-ignore
+
         let req = Request::builder()
             .method("POST")
             .uri("/api/flow")
             .header("content-type", "application/json")
             .body(Body::from(flow_json))
             .unwrap();
-        // ast-grep-ignore
+
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
         assert!(
@@ -517,13 +512,12 @@ mod tests {
             .route("/api/flow/stop", axum::routing::post(stop_flow_handler))
             .with_state(state);
 
-        // ast-grep-ignore
         let req = Request::builder()
             .method("POST")
             .uri("/api/flow/stop")
             .body(Body::empty())
             .unwrap();
-        // ast-grep-ignore
+
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
         assert!(
@@ -541,14 +535,13 @@ mod tests {
             .route("/api/flow", axum::routing::post(deploy_flow))
             .with_state(state);
 
-        // ast-grep-ignore
         let req = Request::builder()
             .method("POST")
             .uri("/api/flow")
             .header("content-type", "application/json")
             .body(Body::from("not valid json"))
             .unwrap();
-        // ast-grep-ignore
+
         let resp = app.oneshot(req).await.unwrap();
         assert_ne!(
             resp.status(),
@@ -570,9 +563,8 @@ mod tests {
             }),
         );
 
-        // ast-grep-ignore
         let req = Request::builder().uri("/").body(Body::empty()).unwrap();
-        // ast-grep-ignore
+
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
     }
@@ -605,7 +597,7 @@ mod tests {
             state: "running".into(),
             message: "All systems go".into(),
         };
-        // ast-grep-ignore
+
         tx.send(plantlink_runtime::SystemEvent::Status { data: status })
             .unwrap();
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -654,13 +646,13 @@ mod tests {
             state: "stopped".into(),
             message: "msg3".into(),
         };
-        // ast-grep-ignore
+
         tx.send(plantlink_runtime::SystemEvent::Status { data: s1 })
             .unwrap();
-        // ast-grep-ignore
+
         tx.send(plantlink_runtime::SystemEvent::Status { data: s2 })
             .unwrap();
-        // ast-grep-ignore
+
         tx.send(plantlink_runtime::SystemEvent::Status { data: s3 })
             .unwrap();
 

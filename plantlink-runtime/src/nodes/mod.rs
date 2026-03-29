@@ -276,9 +276,9 @@ mod tests {
 
         let msg = MessagePayload::default();
         let msg_id = msg.id.clone();
-        // ast-grep-ignore
+
         ctx.send_output(msg).await.unwrap();
-        // ast-grep-ignore
+
         let (port, received) = rx.recv().await.unwrap();
         assert_eq!(port, 0);
         assert_eq!(received.id, msg_id);
@@ -296,7 +296,7 @@ mod tests {
     fn test_emit_running_broadcasts() {
         let (ctx, mut rx) = NodeContext::for_test("run-node");
         ctx.emit_running("All good");
-        // ast-grep-ignore
+
         let msg = rx.try_recv().unwrap();
         if let SystemEvent::Status { data } = msg {
             assert_eq!(data.state, "running");
@@ -310,7 +310,7 @@ mod tests {
     fn test_emit_error_broadcasts() {
         let (ctx, mut rx) = NodeContext::for_test("err-node");
         ctx.emit_error("Something failed");
-        // ast-grep-ignore
+
         let msg = rx.try_recv().unwrap();
         if let SystemEvent::Status { data } = msg {
             assert_eq!(data.state, "error");

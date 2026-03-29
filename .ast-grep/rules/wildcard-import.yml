@@ -2,9 +2,17 @@ id: wildcard-import
 language: rust
 severity: warning
 rule:
-  pattern: "use $MOD::*;"
+  all:
+    - pattern: "use $MOD::*;"
+    - not:
+        inside:
+          kind: mod_item
+          has:
+            kind: identifier
+            regex: "^tests$"
+          stopBy: end
 ignores:
   - "tests/**"
   - "**/*test*"
 message: "Wildcard imports make dependencies unclear — use explicit imports (coding-standard §4.7.4)"
-note: "Exception: `use crate::prelude::*` and `use super::*` in test modules are allowed. Use // ast-grep-ignore for valid prelude imports."
+note: "Exception: `use crate::prelude::*` and `use super::*` in test modules are automatically excluded."

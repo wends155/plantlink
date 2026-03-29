@@ -320,7 +320,7 @@ mod tests {
             ..Default::default()
         });
         let (ctx, _) = NodeContext::for_test("s1");
-        // ast-grep-ignore
+
         node.receive(0, msg, &ctx).await.unwrap();
         assert_eq!(node.broker_id, "new-broker");
     }
@@ -338,7 +338,7 @@ mod tests {
             ..Default::default()
         });
         let (ctx, _) = NodeContext::for_test("p1");
-        // ast-grep-ignore
+
         node.receive(0, msg, &ctx).await.unwrap();
         assert_eq!(node.broker_id, "new-broker");
     }

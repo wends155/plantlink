@@ -19,7 +19,6 @@ use tokio_modbus::prelude::{Reader, tcp};
 /// use std::net::SocketAddr;
 ///
 /// # async fn example() -> Result<(), plantlink_core::PlantLinkError> {
-/// // ast-grep-ignore
 /// let addr: SocketAddr = "192.168.1.100:502".parse()
 /// #    .unwrap();
 /// let client = ModbusTcpClient::connect(addr).await?;
