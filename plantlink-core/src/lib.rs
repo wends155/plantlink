@@ -9,6 +9,7 @@
 //! - Protocol traits: [`traits::PubSubClient`], [`traits::ModbusClient`].
 //! - Protocol drivers: [`mqtt::MqttDriver`], [`nats::NatsDriver`], [`modbus::ModbusTcpClient`].
 
+use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
@@ -46,7 +47,7 @@ pub enum DataValue {
     Float(f64),
     String(String),
     /// Raw binary data for non-JSON protocols or files.
-    Bytes(Vec<u8>),
+    Bytes(Bytes),
     Null,
     // Json must be last to avoid aggressively capturing other types
     Json(serde_json::Value),
@@ -185,6 +186,15 @@ mod tests {
         let deserialized: MessagePayload = serde_json::from_str(&json).unwrap();
         assert_eq!(original.id, deserialized.id);
         assert_eq!(original.timestamp, deserialized.timestamp);
+    }
+
+    #[test]
+    fn test_data_value_bytes() {
+        let data = vec![1, 2, 3, 4];
+        let val = DataValue::Bytes(data.into());
+        let json = serde_json::to_string(&val).unwrap();
+        let deserialized: DataValue = serde_json::from_str(&json).unwrap();
+        assert_eq!(val, deserialized);
     }
 
     #[test]

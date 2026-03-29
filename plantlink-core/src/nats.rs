@@ -7,6 +7,7 @@ use crate::PlantLinkError;
 use crate::traits::{PubSubClient, PubSubMessage};
 use async_nats::Client;
 use futures::{StreamExt, stream::BoxStream};
+use std::sync::Arc;
 
 /// Manages a NATS client connection with publish/subscribe capabilities.
 ///
@@ -37,7 +38,7 @@ impl NatsDriver {
     pub async fn connect(url: &str) -> Result<Self, PlantLinkError> {
         let client = async_nats::connect(url)
             .await
-            .map_err(|e| PlantLinkError::Connection(e.to_string()))?;
+            .map_err(|e| PlantLinkError::Connection(Arc::new(e)))?;
         Ok(Self { client })
     }
 }
@@ -49,7 +50,7 @@ impl PubSubClient for NatsDriver {
         self.client
             .publish(subject.to_string(), payload)
             .await
-            .map_err(|e| PlantLinkError::Publish(e.to_string()))?;
+            .map_err(|e| PlantLinkError::Publish(Arc::new(e)))?;
         Ok(())
     }
 
@@ -62,7 +63,7 @@ impl PubSubClient for NatsDriver {
             .client
             .subscribe(subject.to_string())
             .await
-            .map_err(|e| PlantLinkError::Subscribe(e.to_string()))?;
+            .map_err(|e| PlantLinkError::Subscribe(Arc::new(e)))?;
 
         let stream = subscriber.map(|nats_msg| PubSubMessage {
             topic: nats_msg.subject.to_string(),

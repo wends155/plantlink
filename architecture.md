@@ -179,7 +179,6 @@ sequenceDiagram
 - **ISP Violation (Tech Debt)**: The `PubSubClient` trait combines `publish` and `subscribe`. Drivers like `MqttDriver` are forced to implement stubs for unsupported capabilities. Refactoring this into separate `Publisher`/`Subscriber` traits is planned for post-v1 stabilization.
 - **Modbus Exclusivity**: `ModbusClient` uses `&self` across its API, managing exclusivity via internal `tokio::sync::Mutex` to allow shared access from multiple nodes without requiring mutable ownership.
 - **Channel Error Propagation**: `NodeContext::send_output` and `send_output_port` return `Result<()>`. Callers must handle or propagate downstream channel failures.
-- **Modbus Resiliency (Tech Debt)**: `ModbusTcpClient` lacks an exponential-backoff automatic reconnection loop, unlike `MqttDriver`. Network drops currently cause unrecoverable read errors.
 - **Rhai Script Validation (Tech Debt)**: Rhai scripts are compiled during node instantiation rather than validated at flow ingestion. This permits structurally invalid flows to be deployed and fail only at runtime. It requires modifying `NodeFactory` to return `Result<Box<dyn NodeBehavior>>` to shift compilation left.
 
 ## 17. Environment Configuration

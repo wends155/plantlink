@@ -1,12 +1,12 @@
-//! # MQTT Driver
-//!
 //! This module provides the [`MqttDriver`] implementation of the [`PubSubClient`] trait.
 //! It handles connection lifecycle, automatic reconnection, and message publishing.
 
 use crate::PlantLinkError;
+use crate::error::SimpleError;
 use crate::traits::{PubSubClient, PubSubMessage};
-use futures::stream::BoxStream;
+use futures::{pin_mut, stream::BoxStream};
 use rumqttc::{AsyncClient, MqttOptions, QoS};
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
@@ -54,13 +54,22 @@ impl MqttDriver {
             let mut backoff = Duration::from_secs(1);
             let max_backoff = Duration::from_secs(60);
 
+            // Reconnection delay future
+            let delay = tokio::time::sleep(Duration::ZERO);
+            pin_mut!(delay);
+            let mut is_backing_off = false;
+
             loop {
                 tokio::select! {
                     () = loop_cancel.cancelled() => {
                         tracing::info!("MQTT event loop shutting down");
                         break;
                     }
-                    poll_res = eventloop.poll() => {
+                    () = &mut delay, if is_backing_off => {
+                        is_backing_off = false;
+                        tracing::debug!("MQTT backoff complete, retrying...");
+                    }
+                    poll_res = eventloop.poll(), if !is_backing_off => {
                         match poll_res {
                             Ok(_event) => {
                                 backoff = Duration::from_secs(1);
@@ -71,7 +80,8 @@ impl MqttDriver {
                                     e,
                                     backoff
                                 );
-                                tokio::time::sleep(backoff).await;
+                                delay.as_mut().reset(tokio::time::Instant::now() + backoff);
+                                is_backing_off = true;
                                 backoff = (backoff * 2).min(max_backoff);
                             }
                         }
@@ -106,7 +116,7 @@ impl PubSubClient for MqttDriver {
         self.client
             .publish(topic, QoS::AtLeastOnce, false, payload.to_vec())
             .await
-            .map_err(|e| PlantLinkError::Publish(e.to_string()))?;
+            .map_err(|e| PlantLinkError::Publish(Arc::new(e)))?;
         Ok(())
     }
 
@@ -115,6 +125,8 @@ impl PubSubClient for MqttDriver {
         &self,
         _topic: &str,
     ) -> Result<BoxStream<'static, PubSubMessage>, PlantLinkError> {
-        Err(PlantLinkError::NotImplemented("MQTT subscribe".into()))
+        Err(PlantLinkError::NotImplemented(Arc::new(SimpleError(
+            "MQTT subscribe".into(),
+        ))))
     }
 }
