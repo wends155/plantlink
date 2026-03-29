@@ -5,7 +5,7 @@
 >
 > **Maintenance Rule**: The Architect must update this file whenever a public API changes.
 >
-> Last verified against: 81d510d
+> Last verified against: 2ed9554
 
 ---
 
@@ -103,8 +103,8 @@ The standard message envelope passed between nodes.
 | Method | Signature | Errors | Invariants |
 |--------|-----------|--------|------------|
 | `new` | `fn new(tx: broadcast::Sender<SystemEvent>) -> Result<Self>` | Registry lock poisoning. | Calls `register_defaults()` to populate the node registry. |
-| `update_flow` | `async fn update_flow(&mut self, flow: FlowConfig) -> Result<()>` | Returns `Err` if any nodes fail to create. | Stops existing flow first, then spawns new nodes inside a `JoinSet`. |
-| `stop_flow` | `async fn stop_flow(&mut self) -> StopStatus` | Never fails. | Signals cancel with `CancellationToken`, aborts active tasks in `JoinSet`, returns count of aborted tasks. |
+| `update_flow` | `async fn update_flow(&mut self, flow: FlowConfig) -> Result<()>` | Returns `Err` if any nodes fail to create. | Stops existing flow first, then spawns new nodes inside a `JoinSet` and tracks them via `TaskTracker`. |
+| `stop_flow` | `async fn stop_flow(&mut self) -> StopStatus` | Never fails. | Signals cancel with `CancellationToken`, closes the `TaskTracker`, waits for cooperative shutdown, aborts any hung tasks in `JoinSet`, returns count of aborted tasks. |
 
 #### `NodeBehavior` (trait)
 **Purpose**: The contract every node type must implement.
@@ -128,6 +128,9 @@ The standard message envelope passed between nodes.
 | `emit_running` | `fn emit_running(&self, message: &str)` | Broadcasts `"running"` status via JSON. |
 | `emit_error` | `fn emit_error(&self, message: &str)` | Broadcasts `"error"` status via JSON. |
 | `emit_stopped` | `fn emit_stopped(&self, message: &str)` | Broadcasts `"stopped"` status via JSON. |
+| `emit_log` | `fn emit_log(&self, message: impl Into<String>)` | Emits a free-form `SystemEvent::Log` diagnostic message. |
+| **`cancel`** | `CancellationToken` | Signal from runtime for the node to shut down structured backgrounds tasks. |
+| **`tracker`** | `TaskTracker` | Tracks spawned background tasks for deterministic cooperative shutdown. |
 
 #### `send_node_status` (utility)
 **Purpose**: Constructs and broadcasts a standardized status JSON message.
@@ -181,13 +184,13 @@ fn send_node_status(tx: &broadcast::Sender<SystemEvent>, node_id: String, state:
 | `data` | `serde_json::Value` | — | Node-specific configuration. |
 
 #### `EdgeConfig` (struct)
-| Field | Type | Required | Default |
-|-------|------|----------|---------|
-| `id` | `String` | Yes | — |
-| `source` | `String` | Yes | — |
-| `target` | `String` | Yes | — |
-| `source_handle` | `Option<String>` | No | `None` |
-| `target_handle` | `Option<String>` | No | `None` |
+| Field | Type | Required | Default | Notes |
+|-------|------|----------|---------|-------|
+| `id` | `String` | Yes | — | — |
+| `source` | `String` | Yes | — | — |
+| `target` | `String` | Yes | — | — |
+| `source_handle` | `Option<String>` | No | `None` | Parsed for numeric digits to determine port (e.g., `"output_1" -> 1`). |
+| `target_handle` | `Option<String>` | No | `None` | Parsed for numeric digits to determine port (e.g., `"input_0" -> 0`). |
 
 | Field | Type | Values |
 |-------|------|--------|
