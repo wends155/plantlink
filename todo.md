@@ -18,6 +18,6 @@
     - [ ] `NatsBrokerNode` (driver handle tracking, if applicable)
 
 ## 🛠️ Technical Debt
-- [ ] Implement robust error recovery for Modbus TCP reconnections
+- [x] Implement robust error recovery for Modbus TCP reconnections
 - [ ] Add Rhai script validation during flow deployment
 - [ ] Add E2E Playwright test for Event Cache lag recovery

@@ -178,7 +178,7 @@ sequenceDiagram
 - **Status Reporting**: Centrally managed via `plantlink_runtime::nodes::send_node_status`.
 - **Structured Shutdown**: `MqttDriver` uses a `CancellationToken` and `tokio::task::JoinHandle` to ensure the background event loop exits cleanly when the driver is dropped.
 - **ISP Violation (Tech Debt)**: The `PubSubClient` trait combines `publish` and `subscribe`. Drivers like `MqttDriver` are forced to implement stubs for unsupported capabilities. Refactoring this into separate `Publisher`/`Subscriber` traits is planned for post-v1 stabilization.
-- **Modbus Exclusivity**: `ModbusClient` uses `&self` across its API, managing exclusivity via internal `tokio::sync::Mutex` to allow shared access from multiple nodes without requiring mutable ownership.
+- **Modbus Exclusivity**: `ModbusClient` uses `&self` across its API, managing exclusivity via an MPSC Actor model to allow safe shared access from multiple nodes. The background actor also handles automatic on-demand connection recovery, eliminating the need for blocking `tokio::sync::Mutex` contention.
 - **Channel Error Propagation**: `NodeContext::send_output` and `send_output_port` return `Result<()>`. Callers must handle or propagate downstream channel failures.
 - **Rhai Script Validation (Tech Debt)**: Rhai scripts are compiled during node instantiation rather than validated at flow ingestion. This permits structurally invalid flows to be deployed and fail only at runtime. It requires modifying `NodeFactory` to return `Result<Box<dyn NodeBehavior>>` to shift compilation left.
 
