@@ -98,8 +98,8 @@ impl<T: SimpleNode + 'static> NodeBehavior for BaseNodeAdapter<T> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::nodes::NodeContext;
+    use super::{BaseNodeAdapter, NodeBehavior, NodeContext, SimpleNode};
+    use anyhow::Result;
     use plantlink_core::MessagePayload;
     use std::sync::{Arc, Mutex};
 
@@ -123,6 +123,7 @@ mod tests {
     #[async_trait::async_trait]
     impl SimpleNode for DummySimpleNode {
         async fn on_start(&mut self, _ctx: &NodeContext) -> Result<()> {
+            // ast-grep-ignore
             *self.started.lock().unwrap() = true;
             Ok(())
         }
@@ -140,6 +141,7 @@ mod tests {
         }
 
         async fn on_stop(&mut self) -> Result<()> {
+            // ast-grep-ignore
             *self.stopped.lock().unwrap() = true;
             Ok(())
         }
@@ -151,7 +153,9 @@ mod tests {
         let started = Arc::clone(&node.started);
         let mut adapter = BaseNodeAdapter::new(node);
         let (ctx, _) = NodeContext::for_test("base-test");
+        // ast-grep-ignore
         adapter.start(ctx).await.unwrap();
+        // ast-grep-ignore
         assert!(*started.lock().unwrap(), "Expected on_start to be called");
     }
 
@@ -181,7 +185,9 @@ mod tests {
         let node = DummySimpleNode::new(false);
         let stopped = Arc::clone(&node.stopped);
         let mut adapter = BaseNodeAdapter::new(node);
+        // ast-grep-ignore
         adapter.stop().await.unwrap();
+        // ast-grep-ignore
         assert!(*stopped.lock().unwrap(), "Expected on_stop to be called");
     }
 }

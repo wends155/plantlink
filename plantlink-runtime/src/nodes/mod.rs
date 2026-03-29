@@ -236,13 +236,19 @@ pub trait NodeBehavior: Send + Sync {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{NodeContext, SystemEvent, OutputMap};
+    use plantlink_core::MessagePayload;
+    use tokio_util::sync::CancellationToken;
+    use std::collections::HashMap;
+    use std::sync::Arc;
+    use tokio::sync::RwLock;
     use tokio::sync::broadcast;
 
     #[test]
     fn test_node_context_emit_stopped() {
         let (ctx, mut rx) = NodeContext::for_test("test-node");
         ctx.emit_stopped("Manual stop");
+        // ast-grep-ignore
         let msg = rx.try_recv().expect("Message not received");
         if let SystemEvent::Status { data } = msg {
             assert_eq!(data.node_id, "test-node");
@@ -271,7 +277,9 @@ mod tests {
 
         let msg = MessagePayload::default();
         let msg_id = msg.id.clone();
+        // ast-grep-ignore
         ctx.send_output(msg).await.unwrap();
+        // ast-grep-ignore
         let (port, received) = rx.recv().await.unwrap();
         assert_eq!(port, 0);
         assert_eq!(received.id, msg_id);
@@ -289,6 +297,7 @@ mod tests {
     fn test_emit_running_broadcasts() {
         let (ctx, mut rx) = NodeContext::for_test("run-node");
         ctx.emit_running("All good");
+        // ast-grep-ignore
         let msg = rx.try_recv().unwrap();
         if let SystemEvent::Status { data } = msg {
             assert_eq!(data.state, "running");
@@ -302,6 +311,7 @@ mod tests {
     fn test_emit_error_broadcasts() {
         let (ctx, mut rx) = NodeContext::for_test("err-node");
         ctx.emit_error("Something failed");
+        // ast-grep-ignore
         let msg = rx.try_recv().unwrap();
         if let SystemEvent::Status { data } = msg {
             assert_eq!(data.state, "error");
