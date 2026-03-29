@@ -1,10 +1,27 @@
+//! # Console Node
+//!
+//! Output sink that routes its received data to the system-wide logging bus.
+
 use super::{NodeBehavior, NodeContext, SystemEvent};
 use anyhow::Result;
 use plantlink_core::MessagePayload;
 
+/// A simple termination node that logs any matching flow data.
+///
+/// The node takes input payloads, converts them to strings, and broadcasts them
+/// as a `SystemEvent::Log` indicating which node witnessed the payload.
 pub struct ConsoleNode;
 
 impl ConsoleNode {
+    /// Constructs a clear, un-configured console node handler.
+    ///
+    /// # Arguments
+    ///
+    /// * `config` - Reference to node config (unused).
+    ///
+    /// # Returns
+    ///
+    /// A completely initialized `ConsoleNode`.
     pub fn new(_config: &crate::NodeConfig) -> Self {
         Self
     }

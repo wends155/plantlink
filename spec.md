@@ -5,7 +5,7 @@
 >
 > **Maintenance Rule**: The Architect must update this file whenever a public API changes.
 >
-> Last verified against: `fc58e8a`
+> Last verified against: fa5da56
 
 ---
 
@@ -103,8 +103,8 @@ The standard message envelope passed between nodes.
 | Method | Signature | Errors | Invariants |
 |--------|-----------|--------|------------|
 | `new` | `fn new(tx: broadcast::Sender<SystemEvent>) -> Result<Self>` | Registry lock poisoning. | Calls `register_defaults()` to populate the node registry. |
-| `update_flow` | `async fn update_flow(&mut self, flow: FlowConfig) -> Result<()>` | Returns `Err` if any nodes fail to create. | Stops existing flow first, then spawns new nodes. |
-| `stop_flow` | `async fn stop_flow(&mut self) -> StopStatus` | Never fails. | Returns count of aborted tasks. |
+| `update_flow` | `async fn update_flow(&mut self, flow: FlowConfig) -> Result<()>` | Returns `Err` if any nodes fail to create. | Stops existing flow first, then spawns new nodes inside a `JoinSet`. |
+| `stop_flow` | `async fn stop_flow(&mut self) -> StopStatus` | Never fails. | Signals cancel with `CancellationToken`, aborts active tasks in `JoinSet`, returns count of aborted tasks. |
 
 #### `NodeBehavior` (trait)
 **Purpose**: The contract every node type must implement.
@@ -153,7 +153,7 @@ fn send_node_status(tx: &broadcast::Sender<SystemEvent>, node_id: String, state:
 |---------|-------------|-------------------------|
 | **Shared Resources** | Nodes sharing driver instances (e.g. NATS) | `nats-broker` registers a `PubSubClient` in `ctx.resources`. `nats-sub` and `nats-pub` look up the driver by the broker's ID. |
 | **Dynamic Wiring** | Changing node relationships at runtime | `nats-sub` and `nats-pub` accept a new `broker_id` string on port 0 to re-target their connection. |
-| **Scripting** | Arbitrary JSON logic | `RhaiNode` converts `MessagePayload` to a Rhai `Dynamic` (Map) for the `process(msg)` user script. |
+| **Scripting** | Arbitrary JSON logic | `RhaiNode` converts `MessagePayload` to a Rhai `Dynamic` (Map). Guardrails prevent infinite loops (max 5,000 operations). |
 
 ### Data Models
 

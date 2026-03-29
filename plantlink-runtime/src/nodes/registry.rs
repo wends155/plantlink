@@ -6,18 +6,37 @@ use std::collections::HashMap;
 /// Type definition for a node factory function
 pub type NodeFactory = Box<dyn Fn(&NodeConfig) -> Box<dyn NodeBehavior> + Send + Sync>;
 
+/// A registry that dynamically maps string identifiers to node instantiation functions.
+///
+/// The registry allows the runtime engine to dynamically deserialize node types from JSON
+/// configurations and instantiate the concrete structs that implement `NodeBehavior`.
 #[derive(Default)]
 pub struct NodeRegistry {
     factories: HashMap<String, NodeFactory>,
 }
 
 impl NodeRegistry {
+    /// Creates a new, empty node registry.
+    ///
+    /// # Returns
+    ///
+    /// A clean `NodeRegistry` instance with no recorded factories.
     pub fn new() -> Self {
         Self {
             factories: HashMap::new(),
         }
     }
 
+    /// Registers a new node factory function.
+    ///
+    /// # Arguments
+    ///
+    /// * `type_name` - The string identifier used in the flow configuration JSON.
+    /// * `factory` - A closure or function that takes a `NodeConfig` and returns a boxed `NodeBehavior`.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` upon successful insertion.
     #[allow(clippy::unnecessary_wraps)] // callers use `?` in register_defaults; keep Result for API flexibility
     pub fn register<F>(&mut self, type_name: &str, factory: F) -> Result<()>
     where
@@ -29,6 +48,20 @@ impl NodeRegistry {
         Ok(())
     }
 
+    /// Dynamically instantiates a node using the registered factory.
+    ///
+    /// # Arguments
+    /// 
+    /// * `type_name` - The identifier of the node type to create.
+    /// * `config` - The configuration containing instance-specific data.
+    ///
+    /// # Returns
+    ///
+    /// The completely initialized node implementing `NodeBehavior`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the `type_name` doesn't exist in the registry.
     pub fn create(&self, type_name: &str, config: &NodeConfig) -> Result<Box<dyn NodeBehavior>> {
         match self.factories.get(type_name) {
             Some(factory) => Ok(factory(config)),

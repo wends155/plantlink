@@ -1,9 +1,17 @@
+//! # Inject Node
+//!
+//! Provides the primary mechanism for triggering flows manually or on an interval.
+
 use super::NodeContext;
 use anyhow::Result;
 use plantlink_core::MessagePayload;
 use std::time::Duration;
 use tokio::task::JoinHandle;
 
+/// A node that emits predefined messages into the flow.
+///
+/// Can operate in two modes: manual trigger (outputs once, or when told)
+/// and interval mode (spawns a background timer to output repeatedly).
 pub struct InjectNode {
     payload: String,
     interval_secs: u64,
@@ -11,6 +19,15 @@ pub struct InjectNode {
 }
 
 impl InjectNode {
+    /// Constructs a new InjectNode from its configuration.
+    ///
+    /// # Arguments
+    ///
+    /// * `config` - Node configuration extracting the `payload` and `interval` fields.
+    ///
+    /// # Returns
+    ///
+    /// A new `InjectNode` initialized with the provided arguments.
     pub fn new(config: &crate::NodeConfig) -> Self {
         let payload = config
             .data
