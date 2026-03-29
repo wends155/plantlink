@@ -25,7 +25,7 @@ graph TB
 
 -   **High-Performance Runtime**: Powered by Rust and Tokio for efficient, asynchronous message processing.
 -   **Modern Flow Editor**: A beautiful, dark-mode enabled visual editor built with Svelte Flow.
--   **Scripting Support**: Integrated **Rhai** scripting engine for custom logic with a familiar syntax.
+-   **Scripting Support**: Integrated **Rhai** scripting engine for custom logic with a familiar syntax. Includes execution guardrails (e.g., 5,000-operation limit) to prevent resource exhaustion.
 -   **Industrial Protocols**:
     -   **MQTT**: Publish and Subscribe support.
     -   **Modbus TCP**: Read Holding Registers.
@@ -36,8 +36,9 @@ graph TB
 -   **Zero-Exit Stability**:
     -   Rigorous CI gates (`fmt`, `clippy`, `test`, `lint-ast`) ensure code quality.
     -   Structural linting via AST-Grep prevents production panics (e.g., bare `.unwrap()`).
-    -   Comprehensive unit and doc-test coverage.
+    -   Comprehensive unit, doc-test, and E2E coverage.
     -   Structured, robust error handling across drivers using `thiserror`.
+    -   **Structured Concurrency**: Safe shutdown and actor lifecycle management using `JoinSet` and `CancellationToken` (no unstructured `tokio::spawn` calls).
 
 ## Example: Rhai Function
 
