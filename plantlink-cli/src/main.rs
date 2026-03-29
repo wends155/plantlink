@@ -62,7 +62,14 @@ async fn main() -> anyhow::Result<()> {
         tracing::info!("Runtime stopped. {} tasks aborted.", status.tasks_aborted);
     };
 
-    WebServer::run(args.port, tx, runtime, shutdown).await?;
+    let auth_token = std::env::var("PLANTLINK_AUTH_TOKEN").ok();
+    if auth_token.is_some() {
+        tracing::info!("Authentication enabled (Bearer token)");
+    } else {
+        tracing::warn!("Authentication disabled (PLANTLINK_AUTH_TOKEN not set)");
+    }
+
+    WebServer::run(args.port, tx, runtime, auth_token, shutdown).await?;
 
     Ok(())
 }

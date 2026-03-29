@@ -10,7 +10,7 @@ build-assets:
 
 # Run full stack (dev)
 run: build-assets
-	cargo run -p plantlink-cli
+	PLANTLINK_AUTH_TOKEN="local-dev-token" cargo run -p plantlink-cli
 
 # Production build
 build-release: build-assets

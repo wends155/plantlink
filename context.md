@@ -28,6 +28,8 @@
 *This section is updated by the Architect after every successful implementation.*
 
 ### 🛠️ Recent Changes (Last 3 Cycles)
+90. **2026-03-30 (Local Dev Ergonomics):** Injected a default `local-dev-token` inside the `make run` target to ensure the local development server initializes correctly with expected `PLANTLINK_AUTH_TOKEN` authentication without manual developer intervention.
+89. **2026-03-29 (Web Server Hardening):** Achieved "Zero-Exit" structured concurrency status for `plantlink-web`. Migrated all unstructured `tokio::spawn` calls to `TaskTracker` and `CancellationToken`, ensuring deterministic server shutdown. Implemented Bearer token authentication middleware for all `/api/flow/*` endpoints, injected via `PLANTLINK_AUTH_TOKEN`. Hardened WebSocket reliability with active 15s Ping/Pong heartbeats and optimized broadcast performance by pre-serializing events into `Arc<String>` at the aggregator level ($O(1)$ serialization overhead). Verified 11 passing unit tests and created a new Playwright E2E recovery test.
 88. **2026-03-29 (Architecture Compliance Sync):** Synchronized `architecture.md` §16 to accurately reflect that `ModbusClient` manages state exclusivity and recovery via an MPSC Actor model rather than a blocking `tokio::sync::Mutex`. Cleaned up stale technical debt entry in `todo.md`. Verified full zero-exit pipe pass.
 87. **2026-03-29 (Zero-Exit Concurrency Hardening):** Verified full architectural shift of `InjectNode` to structured concurrency. Purged manual `timer_handle` retention and `on_stop` overrides, replacing them entirely with `TaskTracker` cooperative shutdown blocks. Formalized TDD coverage via `test_inject_node_timer_is_tracked` verifying that task tracking behaves deterministically on cancellation. Remediated `clippy::ignored_unit_patterns` lint violations triggered by `tokio::select!` block racing. Verified 100% Zero-Exit compliance (`make verify`).
 86. **2026-03-29 (Pure Structured Concurrency):** Refactored `InjectNode` to fully embrace the "Pure" structured concurrency model. Eliminated the stateful `timer_handle` field and associated lifecycle logic (`on_stop`, manual `abort()`), delegating all background task management to the `TaskTracker`. Hardened unit tests to verify deterministic behavior via `tracker.wait()`.
@@ -106,6 +108,8 @@
 * **Trait-Based Mocking:** Transitioned protocol drivers to traits to enable isolated node-level testing. Chose `Arc<dyn Trait>` storage in the resource registry to allow downstream nodes to perform dependency injection via mock implementations during unit tests.
 * **Safe Sharing:** Wrapped the `tokio-modbus` client in a `Mutex` within the `ModbusTcpClient` implementation to maintain `Sync` compliance for the shared resource registry while preserving the required `&mut self` access for Modbus operations.
 * **Zero-Exit Future Polling:** Enforced explicitly matching `() = <future> =>` instead of the generic catch-all `_ = <future> =>` inside `tokio::select!` and `match` blocks resolving strictly to unit type tuples. This prevents `clippy::ignored_unit_patterns` violations and maintains 100% "Zero-Exit" compliance.
+* **Web Security:** Mandated Bearer token authentication for all remote flow deployment endpoints to mitigate RCE risks during remote deployment.
+* **WebSocket Heartbeats:** Adopted active server-side Pings to ensure connection persistence across stateful network boundaries (proxies/NAT).
 
 ---
 

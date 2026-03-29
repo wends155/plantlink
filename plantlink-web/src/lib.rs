@@ -10,7 +10,8 @@ use axum::{
         State,
         ws::{Message, WebSocket, WebSocketUpgrade},
     },
-    http::{StatusCode, Uri, header},
+    http::{Request, StatusCode, Uri, header},
+    middleware::{self, Next},
     response::{IntoResponse, Response},
     routing::get,
 };
@@ -19,6 +20,8 @@ use rust_embed::Embed;
 use std::net::SocketAddr;
 use tokio::net::TcpListener;
 use tokio::sync::broadcast;
+use tokio_util::sync::CancellationToken;
+use tokio_util::task::TaskTracker;
 
 #[derive(Embed)]
 #[folder = "../ui/dist"]
@@ -49,7 +52,7 @@ struct Asset;
 /// let (tx, _) = broadcast::channel(100);
 /// let tx_clone = tx.clone();
 /// let runtime = Arc::new(RwLock::new(RuntimeEngine::new(tx_clone)?));
-/// WebServer::run(3000, tx, runtime, std::future::pending()).await?;
+/// WebServer::run(3000, tx, runtime, None, std::future::pending()).await?;
 /// # Ok(())
 /// # }
 /// ```
@@ -82,9 +85,41 @@ impl EventCache {
 
 #[derive(Clone)]
 struct AppState {
-    tx: broadcast::Sender<plantlink_runtime::SystemEvent>,
     runtime: Arc<RwLock<dyn plantlink_runtime::FlowRuntime>>,
     cache: EventCache,
+    tracker: TaskTracker,
+    token: CancellationToken,
+    ws_tx: broadcast::Sender<Arc<String>>,
+    auth_token: Option<String>,
+}
+
+/// Middleware to verify Bearer token if `auth_token` is configured.
+async fn auth_middleware(
+    State(state): State<AppState>,
+    req: Request<axum::body::Body>,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    if let Some(ref required_token) = state.auth_token {
+        let auth_header = req
+            .headers()
+            .get(header::AUTHORIZATION)
+            .and_then(|h| h.to_str().ok());
+
+        let authenticated = match auth_header {
+            Some(auth) if auth.starts_with("Bearer ") => {
+                let token = auth.trim_start_matches("Bearer ");
+                token == required_token
+            }
+            _ => false,
+        };
+
+        if !authenticated {
+            tracing::warn!("Unauthorized request blocked");
+            return Err(StatusCode::UNAUTHORIZED);
+        }
+    }
+
+    Ok(next.run(req).await)
 }
 
 impl WebServer {
@@ -100,49 +135,80 @@ impl WebServer {
         port: u16,
         tx: broadcast::Sender<plantlink_runtime::SystemEvent>,
         runtime: Arc<RwLock<dyn plantlink_runtime::FlowRuntime>>,
+        auth_token: Option<String>,
         shutdown_signal: impl std::future::Future<Output = ()> + Send + 'static,
     ) -> anyhow::Result<()> {
         let cache = EventCache::new();
+        let tracker = TaskTracker::new();
+        let token = CancellationToken::new();
+        let (ws_tx, _) = broadcast::channel(100);
 
-        // Spawn state sync aggregator
+        // Spawn state sync aggregator (tracked and cancelable)
         let mut rx = tx.subscribe();
         let cache_clone = cache.clone();
-        // ast-grep-ignore: raw-tokio-spawn
-        tokio::spawn(async move {
+        let ws_tx_clone = ws_tx.clone();
+        let aggregator_token = token.clone();
+
+        tracker.spawn(async move {
             tracing::info!("EventCache aggregator started");
             loop {
-                match rx.recv().await {
-                    Ok(msg) => {
-                        if let plantlink_runtime::SystemEvent::Status { data } = msg {
-                            cache_clone
-                                .statuses
-                                .write()
-                                .await
-                                .insert(data.node_id.clone(), data);
-                        }
-                    }
-                    Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
-                        tracing::warn!(dropped = n, "EventCache aggregator lagged, resuming");
-                    }
-                    Err(tokio::sync::broadcast::error::RecvError::Closed) => {
-                        tracing::info!("EventCache aggregator stopped: channel closed");
+                tokio::select! {
+                    () = aggregator_token.cancelled() => {
+                        tracing::info!("EventCache aggregator cancellation received");
                         break;
+                    }
+                    recv_res = rx.recv() => {
+                        match recv_res {
+                            Ok(msg) => {
+                                // 1. Update internal state cache
+                                if let plantlink_runtime::SystemEvent::Status { data } = &msg {
+                                    cache_clone
+                                        .statuses
+                                        .write()
+                                        .await
+                                        .insert(data.node_id.clone(), data.clone());
+                                }
+
+                                // 2. Pre-serialize for WebSocket multiplexing
+                                if let Ok(json) = serde_json::to_string(&msg) {
+                                    let _ = ws_tx_clone.send(Arc::new(json));
+                                }
+                            }
+                            Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
+                                tracing::warn!(dropped = n, "EventCache aggregator lagged, resuming");
+                            }
+                            Err(tokio::sync::broadcast::error::RecvError::Closed) => {
+                                tracing::info!("EventCache aggregator stopped: channel closed");
+                                break;
+                            }
+                        }
                     }
                 }
             }
         });
 
         let app_state = AppState {
-            tx,
             runtime: runtime.clone(),
             cache,
+            tracker: tracker.clone(),
+            token: token.clone(),
+            ws_tx,
+            auth_token,
         };
+
+        // Nest API routes to apply auth middleware once
+        let api_routes = Router::new()
+            .route("/flow", axum::routing::post(deploy_flow))
+            .route("/flow/stop", axum::routing::post(stop_flow_handler))
+            .layer(middleware::from_fn_with_state(
+                app_state.clone(),
+                auth_middleware,
+            ));
 
         let app = Router::new()
             .route("/health", get(|| async { "OK" }))
             .route("/ws", get(ws_handler))
-            .route("/api/flow", axum::routing::post(deploy_flow))
-            .route("/api/flow/stop", axum::routing::post(stop_flow_handler))
+            .nest("/api", api_routes)
             .fallback(static_handler)
             .layer(tower_http::trace::TraceLayer::new_for_http())
             .with_state(app_state);
@@ -155,6 +221,13 @@ impl WebServer {
         axum::serve(listener, app)
             .with_graceful_shutdown(shutdown_signal)
             .await?;
+
+        // Signal background tasks to stop
+        tracing::info!("Shutting down web server tasks...");
+        token.cancel();
+        tracker.close();
+        tracker.wait().await;
+        tracing::info!("Web server shutdown complete.");
 
         Ok(())
     }
@@ -200,58 +273,75 @@ async fn ws_handler(ws: WebSocketUpgrade, State(state): State<AppState>) -> Resp
 
 #[allow(clippy::unused_async)]
 async fn handle_socket(socket: WebSocket, state: AppState) {
-    let (mut sender, _) = socket.split();
-    let mut rx = state.tx.subscribe();
+    let (mut sender, mut receiver) = socket.split();
+    let mut rx = state.ws_tx.subscribe();
+    let tracker = state.tracker.clone();
+    let token = state.token.clone();
     let cache = state.cache;
 
-    // Send initial snapshot
-    let statuses = cache.statuses.read().await;
-    for status in statuses.values() {
-        let event = plantlink_runtime::SystemEvent::Status {
-            data: status.clone(),
-        };
-        if let Ok(json) = serde_json::to_string(&event) {
-            let _ = sender.send(Message::Text(json)).await;
-        }
-    }
-    drop(statuses);
-
-    // ast-grep-ignore: raw-tokio-spawn
-    tokio::spawn(async move {
-        loop {
-            match rx.recv().await {
-                Ok(msg) =>
-                {
-                    #[allow(clippy::collapsible_if)]
-                    if let Ok(json) = serde_json::to_string(&msg) {
-                        if sender.send(Message::Text(json)).await.is_err() {
-                            break;
-                        }
-                    }
-                }
-                Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
-                    tracing::warn!(
-                        "WebSocket client lagged, dropped {} messages. Resyncing.",
-                        n
-                    );
-                    let rx_statuses = cache.statuses.read().await;
-                    for status in rx_statuses.values() {
-                        let event = plantlink_runtime::SystemEvent::Status {
-                            data: status.clone(),
-                        };
-                        #[allow(clippy::collapsible_if)]
-                        if let Ok(json) = serde_json::to_string(&event) {
-                            if sender.send(Message::Text(json)).await.is_err() {
-                                break;
-                            }
-                        }
-                    }
-                }
-                Err(tokio::sync::broadcast::error::RecvError::Closed) => {
-                    break;
+    tracker.spawn(async move {
+        // Send initial snapshot
+        let statuses = cache.statuses.read().await;
+        for status in statuses.values() {
+            let event = plantlink_runtime::SystemEvent::Status {
+                data: status.clone(),
+            };
+            #[allow(clippy::collapsible_if)]
+            if let Ok(json) = serde_json::to_string(&event) {
+                if sender.send(Message::Text(json)).await.is_err() {
+                    return;
                 }
             }
         }
+        drop(statuses);
+
+        let mut ping_interval = tokio::time::interval(std::time::Duration::from_secs(15));
+
+        loop {
+            tokio::select! {
+                () = token.cancelled() => {
+                    tracing::debug!("WebSocket handler shutting down via token");
+                    break;
+                }
+                _tick = ping_interval.tick() => {
+                    if sender.send(Message::Ping(Vec::new())).await.is_err() {
+                        break;
+                    }
+                }
+                msg = rx.recv() => {
+                    match msg {
+                        Ok(json_ptr) => {
+                            if sender.send(Message::Text((*json_ptr).clone())).await.is_err() {
+                                break;
+                            }
+                        }
+                        Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {
+                            // On lag, broad-resync from cache
+                            let rx_statuses = cache.statuses.read().await;
+                            for status in rx_statuses.values() {
+                                let event = plantlink_runtime::SystemEvent::Status {
+                                    data: status.clone(),
+                                };
+                                #[allow(clippy::collapsible_if)]
+                                if let Ok(json) = serde_json::to_string(&event) {
+                                    if sender.send(Message::Text(json)).await.is_err() {
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
+                    }
+                }
+                client_msg = receiver.next() => {
+                    match client_msg {
+                        Some(Ok(Message::Close(_))) | None => break,
+                        _ => {} // Handle Pongs and other messages implicitly
+                    }
+                }
+            }
+        }
+        tracing::debug!("WebSocket handler finished");
     });
 }
 
@@ -329,16 +419,22 @@ mod tests {
     use axum::routing::get;
     use std::sync::Arc;
     use tokio::sync::{RwLock, broadcast};
+    use tokio_util::sync::CancellationToken;
+    use tokio_util::task::TaskTracker;
     #[tokio::test]
     async fn test_web_state() {
-        let (tx, _) = broadcast::channel(16);
+        let (tx, _) = broadcast::channel::<plantlink_runtime::SystemEvent>(16);
+        let (ws_tx, _) = broadcast::channel::<Arc<String>>(16);
         let runtime: Arc<RwLock<dyn plantlink_runtime::FlowRuntime>> = Arc::new(RwLock::new(
             plantlink_runtime::RuntimeEngine::new(tx.clone()).unwrap(),
         ));
         let _state = AppState {
-            tx,
             runtime,
             cache: EventCache::new(),
+            tracker: TaskTracker::new(),
+            token: CancellationToken::new(),
+            ws_tx,
+            auth_token: None,
         };
     }
 
@@ -349,14 +445,18 @@ mod tests {
 
     #[tokio::test]
     async fn test_health_endpoint_returns_ok() {
-        let (tx, _) = broadcast::channel(16);
+        let (tx, _) = broadcast::channel::<plantlink_runtime::SystemEvent>(16);
+        let (ws_tx, _) = broadcast::channel::<Arc<String>>(16);
         let runtime: Arc<RwLock<dyn plantlink_runtime::FlowRuntime>> = Arc::new(RwLock::new(
             plantlink_runtime::RuntimeEngine::new(tx.clone()).unwrap(),
         ));
         let state = AppState {
-            tx,
             runtime,
             cache: EventCache::new(),
+            tracker: TaskTracker::new(),
+            token: CancellationToken::new(),
+            ws_tx,
+            auth_token: None,
         };
 
         let app = Router::new()
@@ -375,15 +475,67 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_deploy_flow_endpoint() {
-        let (tx, _) = broadcast::channel(16);
+    async fn test_auth_middleware_blocks_unauthorized() {
+        let (tx, _) = broadcast::channel::<plantlink_runtime::SystemEvent>(16);
+        let (ws_tx, _) = broadcast::channel::<Arc<String>>(16);
         let runtime: Arc<RwLock<dyn plantlink_runtime::FlowRuntime>> = Arc::new(RwLock::new(
             plantlink_runtime::RuntimeEngine::new(tx.clone()).unwrap(),
         ));
         let state = AppState {
-            tx,
             runtime,
             cache: EventCache::new(),
+            tracker: TaskTracker::new(),
+            token: CancellationToken::new(),
+            ws_tx,
+            auth_token: Some("secret-key".to_string()),
+        };
+
+        let app = Router::new()
+            .route("/test", axum::routing::get(|| async { "Secret Content" }))
+            .layer(axum::middleware::from_fn_with_state(
+                state.clone(),
+                super::auth_middleware,
+            ))
+            .with_state(state);
+
+        // 1. No token -> 401
+        let req = Request::builder().uri("/test").body(Body::empty()).unwrap();
+        let resp = app.clone().oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+
+        // 2. Wrong token -> 401
+        let req = Request::builder()
+            .uri("/test")
+            .header("Authorization", "Bearer wrong-key")
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.clone().oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+
+        // 3. Correct token -> 200
+        let req = Request::builder()
+            .uri("/test")
+            .header("Authorization", "Bearer secret-key")
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn test_deploy_flow_endpoint() {
+        let (tx, _) = broadcast::channel::<plantlink_runtime::SystemEvent>(16);
+        let (ws_tx, _) = broadcast::channel::<Arc<String>>(16);
+        let runtime: Arc<RwLock<dyn plantlink_runtime::FlowRuntime>> = Arc::new(RwLock::new(
+            plantlink_runtime::RuntimeEngine::new(tx.clone()).unwrap(),
+        ));
+        let state = AppState {
+            runtime,
+            cache: EventCache::new(),
+            tracker: TaskTracker::new(),
+            token: CancellationToken::new(),
+            ws_tx,
+            auth_token: None,
         };
 
         let app = Router::new()
@@ -405,15 +557,19 @@ mod tests {
 
     #[tokio::test]
     async fn test_stop_flow_endpoint() {
-        let (tx, _) = broadcast::channel(16);
+        let (tx, _) = broadcast::channel::<plantlink_runtime::SystemEvent>(16);
+        let (ws_tx, _) = broadcast::channel::<Arc<String>>(16);
 
         let runtime: Arc<RwLock<dyn plantlink_runtime::FlowRuntime>> = Arc::new(RwLock::new(
             plantlink_runtime::RuntimeEngine::new(tx.clone()).unwrap(),
         ));
         let state = AppState {
-            tx,
             runtime,
             cache: EventCache::new(),
+            tracker: TaskTracker::new(),
+            token: CancellationToken::new(),
+            ws_tx,
+            auth_token: None,
         };
 
         let app = Router::new()
@@ -453,12 +609,13 @@ mod tests {
     }
 
     fn make_mock_state(
-        tx: broadcast::Sender<plantlink_runtime::SystemEvent>,
+        _tx: broadcast::Sender<plantlink_runtime::SystemEvent>,
     ) -> (
         AppState,
         std::sync::Arc<std::sync::Mutex<bool>>,
         std::sync::Arc<std::sync::Mutex<bool>>,
     ) {
+        let (ws_tx, _) = broadcast::channel::<Arc<String>>(16);
         let deployed = std::sync::Arc::new(std::sync::Mutex::new(false));
         let stopped = std::sync::Arc::new(std::sync::Mutex::new(false));
         let mock = MockRuntime {
@@ -468,9 +625,12 @@ mod tests {
         let runtime: Arc<RwLock<dyn plantlink_runtime::FlowRuntime>> = Arc::new(RwLock::new(mock));
         (
             AppState {
-                tx,
                 runtime,
                 cache: EventCache::new(),
+                tracker: TaskTracker::new(),
+                token: CancellationToken::new(),
+                ws_tx,
+                auth_token: None,
             },
             deployed,
             stopped,
@@ -570,7 +730,8 @@ mod tests {
     }
     #[tokio::test]
     async fn test_event_cache_aggregator_populates() {
-        let (tx, mut rx) = broadcast::channel(16);
+        let (tx, mut rx) = broadcast::channel::<plantlink_runtime::SystemEvent>(16);
+        let (_ws_tx, _) = broadcast::channel::<Arc<String>>(16);
         let cache = EventCache::new();
         let cache_clone = cache.clone();
 
@@ -610,7 +771,7 @@ mod tests {
     #[tokio::test]
     async fn test_event_cache_survives_lagged() {
         // Capacity of 1 forces Lagged errors on overflow
-        let (tx, mut rx) = broadcast::channel(1);
+        let (tx, mut rx) = broadcast::channel::<plantlink_runtime::SystemEvent>(1);
         let cache = EventCache::new();
         let cache_clone = cache.clone();
 

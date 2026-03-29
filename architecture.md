@@ -187,3 +187,10 @@ The system is designed for dynamic discovery and late-binding of connections:
 - **Broker Discovery**: Endpoints for NATS and MQTT brokers are provided at runtime via the `FlowConfig` JSON payload, not static environment variables.
 - **Secrets Management**: While the current MVP uses plaintext passwords in the `FlowConfig`, the architecture supports future integration with platform-native secrets managers by swapping the `PubSubClient` implementation.
 - **Crate Environment**: `plantlink-web` looks for frontend assets in `../ui/dist` during development, or embedded within the binary in production mode.
+
+## 18. Web Server Security & Concurrency
+The `plantlink-web` component follows strict hardening patterns for remote deployment:
+- **Authentication**: REST API endpoints (`/api/flow/*`) are protected by a Bearer token middleware. The secret is provided via the `PLANTLINK_AUTH_TOKEN` environment variable. If unset, authentication is disabled (development mode).
+- **Structured Concurrency**: All background tasks, including the `EventCache` aggregator and individual WebSocket handlers, are managed by a `tokio_util::task::TaskTracker`. Deterministic shutdown is triggered via a `CancellationToken`.
+- **WebSocket Heartbeats**: Active `Ping/Pong` heartbeats every 15 seconds prevent silent connection drops behind reverse proxies or stateful firewalls.
+- **Broadcast Efficiency**: System events are pre-serialized into `Arc<String>` once by the server-side aggregator and broadcast to all WebSocket clients to eliminate redundant JSON overhead ($O(1)$ serialization).

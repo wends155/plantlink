@@ -20,4 +20,5 @@
 ## 🛠️ Technical Debt
 - [x] Implement robust error recovery for Modbus TCP reconnections
 - [ ] Add Rhai script validation during flow deployment
-- [ ] Add E2E Playwright test for Event Cache lag recovery
+- [x] Add E2E Playwright test for Event Cache lag recovery
+- [x] Harden Web Server (Auth, Heartbeats, Structured Concurrency)
