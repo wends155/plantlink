@@ -6,7 +6,6 @@ use super::NodeContext;
 use anyhow::Result;
 use plantlink_core::MessagePayload;
 use std::time::Duration;
-use tokio::task::JoinHandle;
 
 /// A node that emits predefined messages into the flow.
 ///
@@ -15,7 +14,6 @@ use tokio::task::JoinHandle;
 pub struct InjectNode {
     payload: String,
     interval_secs: u64,
-    timer_handle: Option<JoinHandle<()>>,
 }
 
 impl InjectNode {
@@ -44,7 +42,6 @@ impl InjectNode {
         Self {
             payload,
             interval_secs,
-            timer_handle: None,
         }
     }
 }
@@ -62,7 +59,7 @@ impl SimpleNode for InjectNode {
             let cancel = ctx.cancel.clone();
 
             // Spawn a background task for the timer
-            let handle = ctx.tracker.spawn(async move {
+            ctx.tracker.spawn(async move {
                 let mut timer = tokio::time::interval(interval);
                 timer.tick().await; // First tick is immediate
                 loop {
@@ -85,7 +82,6 @@ impl SimpleNode for InjectNode {
                     }
                 }
             });
-            self.timer_handle = Some(handle);
             ctx.emit_running(&format!("Timer started ({}s interval)", self.interval_secs));
         } else {
             ctx.emit_running("Trigger mode ready");
@@ -109,9 +105,6 @@ impl SimpleNode for InjectNode {
     }
 
     async fn on_stop(&mut self) -> Result<()> {
-        if let Some(handle) = self.timer_handle.take() {
-            handle.abort();
-        }
         Ok(())
     }
 }
@@ -134,13 +127,14 @@ mod tests {
     async fn test_inject_timer_stops_on_cancellation() {
         let (sys_tx, _) = broadcast::channel(16);
         let cancel = CancellationToken::new();
+        let tracker = crate::nodes::TaskTracker::new();
         let ctx = NodeContext::new(
             "inject-test".into(),
             HashMap::new(),
             Arc::new(RwLock::new(HashMap::new())),
             sys_tx,
             cancel.clone(),
-            crate::nodes::TaskTracker::new(),
+            tracker.clone(),
         );
         let mut node = InjectNode::new(&NodeConfig {
             id: "inject-test".into(),
@@ -150,14 +144,14 @@ mod tests {
 
         node.on_start(&ctx).await.unwrap();
 
-        // Cancel and wait for timer to exit
+        // Close tracker and cancel
+        tracker.close();
         cancel.cancel();
-        tokio::time::sleep(Duration::from_millis(100)).await;
 
-        assert!(
-            node.timer_handle.as_ref().unwrap().is_finished(),
-            "Timer should have exited after cancellation"
-        );
+        // Wait for timer to exit via tracker
+        tokio::time::timeout(Duration::from_millis(100), tracker.wait())
+            .await
+            .expect("Timer should have exited after cancellation");
     }
 
     #[tokio::test]
@@ -165,6 +159,7 @@ mod tests {
         let (tx, rx) = mpsc::channel(16);
         let (sys_tx, _) = broadcast::channel(16);
         let cancel = CancellationToken::new();
+        let tracker = crate::nodes::TaskTracker::new();
         let mut outputs: OutputMap = HashMap::new();
         outputs.insert(0, vec![(tx, 0)]);
 
@@ -174,7 +169,7 @@ mod tests {
             Arc::new(RwLock::new(HashMap::new())),
             sys_tx,
             cancel,
-            crate::nodes::TaskTracker::new(),
+            tracker.clone(),
         );
         let mut node = InjectNode::new(&NodeConfig {
             id: "inject-test".into(),
@@ -184,15 +179,64 @@ mod tests {
 
         node.on_start(&ctx).await.unwrap();
 
+        // Close tracker
+        tracker.close();
+
         // Drop receiver to close channel
         drop(rx);
 
-        // Wait for next tick (interval 1s)
-        tokio::time::sleep(Duration::from_millis(1100)).await;
+        // Wait for next tick (interval 1s) and check exit via tracker
+        tokio::time::timeout(Duration::from_millis(1100), tracker.wait())
+            .await
+            .expect("Timer should have exited after channel closed");
+    }
 
-        assert!(
-            node.timer_handle.as_ref().unwrap().is_finished(),
-            "Timer should have exited after channel closed"
+    #[tokio::test]
+    async fn test_inject_node_timer_is_tracked() {
+        let (sys_tx, _) = broadcast::channel(16);
+        let cancel = CancellationToken::new();
+        let tracker = tokio_util::task::TaskTracker::new();
+        let ctx = NodeContext::new(
+            "inject-test".into(),
+            HashMap::new(),
+            Arc::new(RwLock::new(HashMap::new())),
+            sys_tx,
+            cancel.clone(),
+            tracker.clone(),
         );
+        let mut node = InjectNode::new(&NodeConfig {
+            id: "inject-test".into(),
+            type_: "inject".into(),
+            data: serde_json::json!({"interval": 1, "payload": "test"}),
+        });
+
+        node.on_start(&ctx).await.unwrap();
+
+        // Close tracker to signal we are waiting for existing tasks
+        tracker.close();
+
+        // If tracked correctly, tracker.wait() will block until timer task exits.
+        // Since timer task is currently running (interval 1s), we expect a timeout to fail the assertion
+        // if we were in the Red phase (but here it should block).
+        // Actually, the plan says: "If tracked correctly, tracker.wait() will block until timer task exits."
+        // Let's prove it blocks.
+        let wait_fut = tracker.wait();
+        tokio::pin!(wait_fut);
+
+        tokio::select! {
+            () = &mut wait_fut => {
+                panic!("Tracker should be blocking because the timer task is still running!");
+            }
+            () = tokio::time::sleep(Duration::from_millis(50)) => {
+                // Success: tracker is correctly tracking the task and blocking
+                tracing::info!("Tracker correctly blocked; task is tracked.");
+            }
+        }
+
+        // Now cancel and verify it finishes
+        cancel.cancel();
+        tokio::time::timeout(Duration::from_millis(100), wait_fut)
+            .await
+            .expect("Tracker should have finished waiting after cancellation");
     }
 }
