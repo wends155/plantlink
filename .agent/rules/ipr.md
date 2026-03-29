@@ -271,10 +271,10 @@ When a plan presents options and the user decides:
 2. **State the chosen option as fact** — No "we chose X over Y"; just state X.
 3. **Log the rationale** — Record what was decided and why in the plan's Problem Statement
    or in `context.md` so the reasoning isn't lost.
-4. **Sweep for strays** — After resolving, use `rg` to catch lingering references:
-   ```powershell
-   rg "Option A|Option B|Alternative|vs\." <plan-file>
-   ```
+4. **Sweep for strays** — After resolving, use the native `grep_search` tool to catch lingering references (do NOT use shell `rg`):
+   - **SearchPath**: `<plan-file>`
+   - **IsRegex**: `true`
+   - **Query**: `"(Option A|Option B|Alternative|vs\.)"`
 
 ## 5. Handoff-Ready Requirements
 

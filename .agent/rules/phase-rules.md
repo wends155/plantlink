@@ -97,7 +97,7 @@ impl EmailSender for MockEmailSender {
 1. **Format**: `// STUB(Phase N): description` — the phase number and description are mandatory.
 2. **Contract comment**: Every stub MUST have a contract line specifying the trait/interface the real implementation must satisfy.
 3. **Functional code**: Stubs must be functional — return `Ok(())`, log a warning, or provide a no-op implementation. Never use `todo!()`, `unimplemented!()`, or `panic!()`.
-4. **Auditable**: All stubs are discoverable via `rg "STUB\(Phase"`. This is used by `/audit` for stale stub detection.
+4. **Auditable**: All stubs are discoverable via `make check-stubs`. This is used by `/audit` for stale stub detection.
 5. **Registered**: Every stub must also appear in the Phase Manifest's Deferred table.
 6. **`todo!()` remains prohibited** — per `coding-standard.md §10`. STUB markers are the sanctioned replacement for multi-phase deferred work.
 
@@ -132,7 +132,7 @@ Before starting Phase N+1, the Architect must perform a **phase gate review**. T
 - [ ] All plan items from Phase N are `[x]` in `task.md`
 - [ ] Phase N's audit verdict is ✅ Pass or ⚠️ Pass with notes (accepted)
 - [ ] No **Blocking** tech debt remains from Phase N
-- [ ] All **Scheduled(Phase N)** stubs were replaced — verify with `rg "STUB\(Phase N\)"`
+- [ ] All **Scheduled(Phase N)** stubs were replaced — verify with `make check-stubs`
 - [ ] Prior phase test suites still pass (`ALL` exits 0)
 - [ ] Phase Manifest from Phase N is recorded in `context.md`
 - [ ] Stubs scheduled for Phase N+1 are identified and ready for plan inclusion

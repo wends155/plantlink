@@ -76,7 +76,7 @@ Systematically verify the code against project standards.
 - [ ] No unapproved changes were introduced (check for Additions per Fidelity Matrix)
 - [ ] If deviations occurred, they are documented with justification
 - [ ] Builder Notes section of `task.md` reviewed and processed (see §2a-bis)
-- [ ] No stale stubs remain: `STUB(Phase N)` where N ≤ current phase are all addressed *(multi-phase only — verify with `rg "STUB\(Phase"`)*
+- [ ] No stale stubs remain: `STUB(Phase N)` where N ≤ current phase are all addressed *(multi-phase only — verify with `make check-stubs`)**
 
 #### 2a-bis. Builder Notes Processing *(if Builder Notes exist in task.md)*
 

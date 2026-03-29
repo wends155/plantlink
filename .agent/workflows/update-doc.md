@@ -62,7 +62,7 @@ If **Narsil MCP** is available, use it to extract code-level data:
 | `get_symbol_definition` | Read signatures of undocumented public items |
 
 If Narsil is **not available**, fall back to manual investigation:
-- `rg "pub (fn|struct|enum|trait|type)"` for public API surface *(⚠️ contains `|` — use `grep_search` instead)*
+- `make doc-coverage` for public API surface
 - Read key files directly
 
 #### Sequential Thinking MCP
