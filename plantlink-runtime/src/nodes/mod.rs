@@ -234,7 +234,6 @@ pub trait NodeBehavior: Send + Sync {
     }
 }
 
-// ast-grep-ignore
 #[cfg(test)]
 mod tests {
     use super::{NodeContext, OutputMap, SystemEvent};
@@ -249,7 +248,6 @@ mod tests {
     fn test_node_context_emit_stopped() {
         let (ctx, mut rx) = NodeContext::for_test("test-node");
         ctx.emit_stopped("Manual stop");
-        // ast-grep-ignore
         let msg = rx.try_recv().expect("Message not received");
         if let SystemEvent::Status { data } = msg {
             assert_eq!(data.node_id, "test-node");

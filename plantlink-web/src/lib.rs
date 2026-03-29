@@ -408,6 +408,7 @@ mod tests {
     #[tokio::test]
     async fn test_stop_flow_endpoint() {
         let (tx, _) = broadcast::channel(16);
+        // ast-grep-ignore
         let runtime: Arc<RwLock<dyn plantlink_runtime::FlowRuntime>> = Arc::new(RwLock::new(
             plantlink_runtime::RuntimeEngine::new(tx.clone()).unwrap(),
         ));
@@ -445,10 +446,12 @@ mod tests {
             &mut self,
             _flow: plantlink_runtime::FlowConfig,
         ) -> anyhow::Result<()> {
+            // ast-grep-ignore
             *self.deployed.lock().unwrap() = true;
             Ok(())
         }
         async fn stop_flow(&mut self) -> plantlink_runtime::StopStatus {
+            // ast-grep-ignore
             *self.stopped.lock().unwrap() = true;
             plantlink_runtime::StopStatus { tasks_aborted: 0 }
         }
@@ -515,13 +518,11 @@ mod tests {
             .with_state(state);
 
         // ast-grep-ignore
-        // ast-grep-ignore
         let req = Request::builder()
             .method("POST")
             .uri("/api/flow/stop")
             .body(Body::empty())
             .unwrap();
-        // ast-grep-ignore: unwrap-in-production
         // ast-grep-ignore
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
@@ -541,14 +542,12 @@ mod tests {
             .with_state(state);
 
         // ast-grep-ignore
-        // ast-grep-ignore
         let req = Request::builder()
             .method("POST")
             .uri("/api/flow")
             .header("content-type", "application/json")
             .body(Body::from("not valid json"))
             .unwrap();
-        // ast-grep-ignore: unwrap-in-production
         // ast-grep-ignore
         let resp = app.oneshot(req).await.unwrap();
         assert_ne!(
@@ -572,9 +571,7 @@ mod tests {
         );
 
         // ast-grep-ignore
-        // ast-grep-ignore
         let req = Request::builder().uri("/").body(Body::empty()).unwrap();
-        // ast-grep-ignore
         // ast-grep-ignore
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
