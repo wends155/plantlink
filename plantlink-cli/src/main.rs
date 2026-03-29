@@ -59,12 +59,10 @@ async fn main() -> anyhow::Result<()> {
         tracing::info!("Runtime stopped. {} tasks aborted.", status.tasks_aborted);
     };
 
-    // Spawn Web Server with the shutdown signal
     WebServer::run(args.port, tx, runtime, shutdown).await?;
 
     Ok(())
 }
-
 
 #[cfg(test)]
 mod tests {
