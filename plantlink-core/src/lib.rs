@@ -10,8 +10,7 @@
 //! - Protocol drivers: [`mqtt::MqttDriver`], [`nats::NatsDriver`], [`modbus::ModbusTcpClient`].
 
 use serde::{Deserialize, Serialize};
-
-// ... (existing imports)
+use std::collections::HashMap;
 use std::fmt;
 
 /// Universal value type for all node payloads.
@@ -36,13 +35,15 @@ use std::fmt;
 /// assert_eq!(DataValue::Boolean(true).to_string(), "true");
 /// assert_eq!(DataValue::Null.to_string(), "null");
 /// ```
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[non_exhaustive]
 #[serde(untagged)]
 pub enum DataValue {
     Boolean(bool),
     Integer(i64),
     Float(f64),
     String(String),
+    /// Raw binary data for non-JSON protocols or files.
     Bytes(Vec<u8>),
     Null,
     // Json must be last to avoid aggressively capturing other types
@@ -88,7 +89,8 @@ pub struct MessagePayload {
     pub topic: Option<String>,
     pub payload: DataValue,
     pub timestamp: u64,
-    pub meta: serde_json::Value,
+    /// Optional metadata for the payload (context-specific).
+    pub meta: HashMap<String, DataValue>,
 }
 
 impl Default for MessagePayload {
@@ -98,15 +100,19 @@ impl Default for MessagePayload {
             topic: None,
             payload: DataValue::Null,
             timestamp: chrono::Utc::now().timestamp_millis().cast_unsigned(),
-            meta: serde_json::json!({}),
+            meta: HashMap::new(),
         }
     }
 }
 
-pub mod modbus;
+pub mod traits;
+
+pub mod error;
+pub use error::PlantLinkError;
+
 pub mod mqtt;
 pub mod nats;
-pub mod traits;
+pub mod modbus;
 
 #[cfg(test)]
 mod tests {
