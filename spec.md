@@ -5,7 +5,7 @@
 >
 > **Maintenance Rule**: The Architect must update this file whenever a public API changes.
 >
-> Last verified against: fa5da56
+> Last verified against: 81d510d
 
 ---
 
@@ -35,19 +35,19 @@
 
 | Method | Signature | Errors | Invariants |
 |--------|-----------|--------|------------|
-| `connect` | `async fn connect(addr: SocketAddr) -> Result<Self, PlantLinkError>` | TCP connection failure. | — |
-| `read_coils` | `async fn read_coils(&self, addr: u16, cnt: u16) -> Result<Vec<bool>, PlantLinkError>` | Modbus protocol error, timeout. | Uses interior mutability via `tokio::sync::Mutex` for thread-safe shared access. |
+| `connect` | `async fn connect(addr: SocketAddr) -> Result<Self, PlantLinkError>` | TCP connection failure. | Spawns a background actor task with MPSC and Oneshot channels for on-demand connection recovery. |
+| `read_coils` | `async fn read_coils(&self, addr: u16, cnt: u16) -> Result<Vec<bool>, PlantLinkError>` | Modbus protocol error, timeout. | Communicates thread-safely with the background actor via message passing. |
 
 #### `PlantLinkError` (enum)
 **Purpose**: Primary error type consolidating protocol and operational failures.
 
 | Variant | Contained Data | Notes |
 |---------|----------------|-------|
-| `Connection` | `String` | Broker/device connection failure context. |
-| `Publish` | `String` | Publish failure context. |
-| `Subscribe` | `String` | Subscribe failure context. |
-| `Modbus` | `String` | Modbus operation failure context. |
-| `NotImplemented` | `String` | Feature not implemented context. |
+| `Connection` | `Arc<dyn Error + Send + Sync>` | Broker/device connection failure context. |
+| `Publish` | `Arc<dyn Error + Send + Sync>` | Publish failure context. |
+| `Subscribe` | `Arc<dyn Error + Send + Sync>` | Subscribe failure context. |
+| `Modbus` | `Arc<dyn Error + Send + Sync>` | Modbus operation failure context. |
+| `NotImplemented` | `Arc<dyn Error + Send + Sync>` | Feature not implemented context. |
 
 - Implements `Debug`, `thiserror::Error`.
 - **Constraint**: Marked `#[non_exhaustive]` to allow future protocol additions.
@@ -63,7 +63,7 @@ Universal value type for all node payloads.
 | `Integer` | `i64` | — |
 | `Float` | `f64` | — |
 | `String` | `String` | — |
-| `Bytes` | `Vec<u8>` | — |
+| `Bytes` | `bytes::Bytes` | — |
 | `Json` | `serde_json::Value` | Must be last variant (`#[serde(untagged)]` ordering). |
 | `Null` | — | — |
 
