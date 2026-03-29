@@ -66,6 +66,7 @@
 69. **2026-03-29 (AST Linter Remediation):** Achieved 100% workspace compliance with `coding-standard.md §4.7.4` by replacing wildcard-imports with explicit imports in `plantlink-core`, `plantlink-runtime`, and `plantlink-web`.
 70. **2026-03-29 (Linter Ergonomics):** Integrated `// ast-grep-ignore` suppressions for provably infallible `.unwrap()` calls in test modules and doc-examples, ensuring `make lint-ast` remains a high-signal production safety gate.
 71. **2026-03-29 (Doc & README Sync):** Synchronized `spec.md` behavioral contracts and reached drift-detection hash `fc58e8a`. Updated `README.md` to feature structural linting as a core architectural pillar.
+72. **2026-03-29 (Workflow Execution Safety):** Eradicated IDE-banned raw `rg` commands containing shell operators from all agent workflows and rules. Abstracted complex log analysis regexes and stub-discovery into robust `Makefile` targets (`make log-summary`, `make log-lifecycle`, `make check-stubs`). Explicitly mandated the use of native JSON `grep_search` tool for impromptu sweeps inside `.agent/rules/ipr.md`. Verified full execution safety and "Zero-Exit" compliance across the test suite.
 
 ### 🧩 Active Components & APIs
 * `plantlink-core`: Shared data types (MessagePayload, DataValue) and protocol traits.
