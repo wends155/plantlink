@@ -85,11 +85,9 @@ All crates inherit shared lint rules from the root `Cargo.toml` via `[workspace.
 | `plantlink-core` | (external crates only) | `cli`, `web`, `runtime` |
 
 ## 8. Error Handling Strategy
-- **Library/Domain Errors**: `plantlink-core` declares `thiserror` as a dependency
-  but does not currently define structured error types. All error handling uses
-  `anyhow::Result`. Structured errors are a future improvement.
-- **Application Errors**: `anyhow` is used in the binary crates (`cli`, `web`, `runtime`) for flexible error propagation and context wrapping.
-- **Pattern**: Functions return `Result<T, anyhow::Error>` for broad compatibility across the workspace.
+- **Library/Domain Errors**: `plantlink-core` defines the `PlantLinkError` enum using `thiserror`. All core traits ([`PubSubClient`], [`ModbusClient`][modbus-trait]) and drivers return `Result<T, PlantLinkError>`. This allows consumers to match on specific failure variants (e.g., `Connection`, `Publish`, `Subscribe`).
+- **Application Errors**: `anyhow` is used in the binary crates (`cli`, `web`, `runtime`) for flexible error propagation and context wrapping. Since `PlantLinkError` implements `std::error::Error`, it is automatically converted to `anyhow::Error` via the `?` operator.
+- **Invariants**: Every error must carry human-readable context. Variants are `#[non_exhaustive]` to support future protocol expansion.
 
 ## 9. Observability & Logging
 - **Framework**: `tracing` is used throughout the backend for structured logging and instrumentation.
@@ -177,7 +175,9 @@ sequenceDiagram
 - **Environment**: Must run in Windows non-admin space using BusyBox/PowerShell.
 - **Deployment**: Single-binary release capability with embedded assets requires `rust-embed` in `plantlink-web`.
 - **Status Reporting**: Centrally managed via `plantlink_runtime::nodes::send_node_status`.
-- **MQTT Reconnection**: `MqttDriver` event loop uses exponential backoff (1s–60s) on connection errors. Reconnection is handled by `rumqttc` internally; the driver logs warnings but never panics.
+- **Structured Shutdown**: `MqttDriver` uses a `CancellationToken` and `tokio::task::JoinHandle` to ensure the background event loop exits cleanly when the driver is dropped.
+- **ISP Violation (Tech Debt)**: The `PubSubClient` trait combines `publish` and `subscribe`. Drivers like `MqttDriver` are forced to implement stubs for unsupported capabilities. Refactoring this into separate `Publisher`/`Subscriber` traits is planned for post-v1 stabilization.
+- **Modbus Exclusivity**: `ModbusClient` uses `&self` across its API, managing exclusivity via internal `tokio::sync::Mutex` to allow shared access from multiple nodes without requiring mutable ownership.
 - **Channel Error Propagation**: `NodeContext::send_output` and `send_output_port` return `Result<()>`. Callers must handle or propagate downstream channel failures.
 - **WebSocket State-Sync**: Remediated. An `EventCache` aggregator in `plantlink-web` subscribes to the system event bus and maintains the latest `NodeStatus` for all nodes. WebSocket clients receive a full snapshot on connect and are automatically resynchronized on `RecvError::Lagged`. The aggregator task itself handles `Lagged` gracefully by logging and continuing.
 

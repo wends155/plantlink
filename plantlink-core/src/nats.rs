@@ -3,10 +3,10 @@
 //! This module provides the [`NatsDriver`] implementation of the [`PubSubClient`] trait.
 //! It uses the `async-nats` crate for asynchronous communication with NATS servers.
 
-use crate::traits::{PubSubClient, PubSubMessage};
 use crate::PlantLinkError;
-use futures::{StreamExt, stream::BoxStream};
+use crate::traits::{PubSubClient, PubSubMessage};
 use async_nats::Client;
+use futures::{StreamExt, stream::BoxStream};
 
 /// Manages a NATS client connection with publish/subscribe capabilities.
 ///
@@ -54,7 +54,10 @@ impl PubSubClient for NatsDriver {
     }
 
     #[tracing::instrument(skip(self), err)]
-    async fn subscribe(&self, subject: &str) -> Result<BoxStream<'static, PubSubMessage>, PlantLinkError> {
+    async fn subscribe(
+        &self,
+        subject: &str,
+    ) -> Result<BoxStream<'static, PubSubMessage>, PlantLinkError> {
         let subscriber = self
             .client
             .subscribe(subject.to_string())

@@ -5,7 +5,7 @@
 >
 > **Maintenance Rule**: The Architect must update this file whenever a public API changes.
 >
-> Last verified against: `94c47ec`
+> Last verified against: `fc58e8a`
 
 ---
 
@@ -18,25 +18,39 @@
 
 | Method | Signature | Errors | Invariants |
 |--------|-----------|--------|------------|
-| `connect` | `async fn connect(id: &str, host: &str, port: u16) -> Result<Self>` | Connection failure (network, auth) | Spawns a background event loop task with exponential backoff retry (1s–60s). Never panics on disconnection. |
-| `publish` | `async fn publish(&self, topic: &str, payload: Vec<u8>) -> Result<()>` | Publish failure (disconnected, QoS rejection) | Uses `QoS::AtLeastOnce`. |
+| `connect` | `async fn connect(id: &str, host: &str, port: u16) -> Result<Self, PlantLinkError>` | Connection failure (network, auth) | Spawns a background event loop task with exponential backoff retry (1s–60s). Never panics on disconnection. |
+| `publish` | `async fn publish(&self, topic: &str, payload: Vec<u8>) -> Result<(), PlantLinkError>` | Publish failure (disconnected, QoS rejection) | Uses `QoS::AtLeastOnce`. |
 
 #### `NatsDriver`
 **Purpose**: Manages a NATS client connection with publish/subscribe capabilities.
 
 | Method | Signature | Errors | Invariants |
 |--------|-----------|--------|------------|
-| `connect` | `async fn connect(url: &str) -> Result<Self>` | Connection failure — wrapped with `"Failed to connect to NATS"` context. | Driver is `Clone`. |
-| `publish` | `async fn publish(&self, subject: &str, payload: Bytes) -> Result<()>` | Publish failure — wrapped with `"Failed to publish"` context. | — |
-| `subscribe` | `async fn subscribe(&self, subject: &str) -> Result<async_nats::Subscriber>` | Subscribe failure — wrapped with `"Failed to subscribe"` context. | Returns an async stream of messages. |
+| `connect` | `async fn connect(url: &str) -> Result<Self, PlantLinkError>` | Connection failure — mapped to `PlantLinkError::Connection`. | Driver is `Clone`. |
+| `publish` | `async fn publish(&self, subject: &str, payload: Bytes) -> Result<(), PlantLinkError>` | Publish failure — mapped to `PlantLinkError::Publish`. | — |
+| `subscribe` | `async fn subscribe(&self, subject: &str) -> Result<BoxStream<'static, PubSubMessage>, PlantLinkError>` | Subscribe failure — mapped to `PlantLinkError::Subscribe`. | Returns an async stream of messages via the `PubSubClient` trait. |
 
 #### `ModbusTcpClient`
 **Purpose**: Reads data from Modbus TCP devices.
 
 | Method | Signature | Errors | Invariants |
 |--------|-----------|--------|------------|
-| `connect` | `async fn connect(addr: SocketAddr) -> Result<Self>` | TCP connection failure. | — |
-| `read_coils` | `async fn read_coils(&mut self, addr: u16, cnt: u16) -> Result<Vec<bool>>` | Modbus protocol error, timeout. | Requires `&mut self` (not thread-safe without external locking). |
+| `connect` | `async fn connect(addr: SocketAddr) -> Result<Self, PlantLinkError>` | TCP connection failure. | — |
+| `read_coils` | `async fn read_coils(&self, addr: u16, cnt: u16) -> Result<Vec<bool>, PlantLinkError>` | Modbus protocol error, timeout. | Uses interior mutability via `tokio::sync::Mutex` for thread-safe shared access. |
+
+#### `PlantLinkError` (enum)
+**Purpose**: Primary error type consolidating protocol and operational failures.
+
+| Variant | Contained Data | Notes |
+|---------|----------------|-------|
+| `Connection` | `String` | Broker/device connection failure context. |
+| `Publish` | `String` | Publish failure context. |
+| `Subscribe` | `String` | Subscribe failure context. |
+| `Modbus` | `String` | Modbus operation failure context. |
+| `NotImplemented` | `String` | Feature not implemented context. |
+
+- Implements `Debug`, `thiserror::Error`.
+- **Constraint**: Marked `#[non_exhaustive]` to allow future protocol additions.
 
 ### Data Models
 
@@ -55,6 +69,7 @@ Universal value type for all node payloads.
 
 - Implements `Display`, `Clone`, `Serialize`, `Deserialize`.
 - **Constraint**: `Json` must remain the last variant to prevent `serde(untagged)` from aggressively capturing other types.
+- **Constraint**: Marked `#[non_exhaustive]` to allow future data additions.
 
 #### `MessagePayload` (struct)
 The standard message envelope passed between nodes.
@@ -65,7 +80,7 @@ The standard message envelope passed between nodes.
 | `topic` | `Option<String>` | No | `None` | — |
 | `payload` | `DataValue` | Yes | `DataValue::Null` | — |
 | `timestamp` | `u64` | Yes | `Utc::now().timestamp_millis()` | Milliseconds since epoch. |
-| `meta` | `serde_json::Value` | Yes | `{}` | Arbitrary JSON metadata. |
+| `meta` | `HashMap<String, DataValue>` | Yes | `{}` | Arbitrary structured metadata. |
 
 - Implements `Default`, `Clone`, `Serialize`, `Deserialize`.
 

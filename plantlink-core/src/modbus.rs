@@ -3,8 +3,8 @@
 //! This module provides the [`ModbusTcpClient`] implementation of the [`ModbusClient`] trait.
 //! It handles industrial communication with devices over Modbus TCP.
 
-use crate::traits::ModbusClient;
 use crate::PlantLinkError;
+use crate::traits::ModbusClient;
 use std::net::SocketAddr;
 use tokio::sync::Mutex;
 use tokio_modbus::prelude::*;

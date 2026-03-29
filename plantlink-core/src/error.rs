@@ -1,4 +1,4 @@
-//! Structured error types for the PlantLink core library.
+//! Structured error types for the `PlantLink` core library.
 //!
 //! This module defines the [`PlantLinkError`] enum, which consolidates all
 //! protocol and operational failures into a single, matchable type.
@@ -28,7 +28,43 @@ pub enum PlantLinkError {
     #[error("modbus operation failed: {0}")]
     Modbus(String),
 
-    /// The requested feature or protocol capability is not yet implemented.
     #[error("not implemented: {0}")]
     NotImplemented(String),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::PlantLinkError;
+
+    #[test]
+    fn test_error_display() {
+        let err = PlantLinkError::Connection("timeout".into());
+        assert_eq!(err.to_string(), "connection failed: timeout");
+
+        let err = PlantLinkError::Publish("disconnected".into());
+        assert_eq!(err.to_string(), "publish failed: disconnected");
+
+        let err = PlantLinkError::Subscribe("no access".into());
+        assert_eq!(err.to_string(), "subscribe failed: no access");
+
+        let err = PlantLinkError::Modbus("crc error".into());
+        assert_eq!(err.to_string(), "modbus operation failed: crc error");
+
+        let err = PlantLinkError::NotImplemented("MQTT subscribe".into());
+        assert_eq!(err.to_string(), "not implemented: MQTT subscribe");
+    }
+
+    #[test]
+    fn test_error_converts_to_anyhow() {
+        let err = PlantLinkError::Connection("failed".into());
+        let anyhow_err: anyhow::Error = err.into();
+        assert_eq!(anyhow_err.to_string(), "connection failed: failed");
+    }
+
+    #[test]
+    fn test_error_is_std_error() {
+        fn is_std_error<T: std::error::Error>(_: &T) {}
+        let err = PlantLinkError::Connection("failed".into());
+        is_std_error(&err);
+    }
 }

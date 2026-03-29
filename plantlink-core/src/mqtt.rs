@@ -3,8 +3,8 @@
 //! This module provides the [`MqttDriver`] implementation of the [`PubSubClient`] trait.
 //! It handles connection lifecycle, automatic reconnection, and message publishing.
 
-use crate::traits::{PubSubClient, PubSubMessage};
 use crate::PlantLinkError;
+use crate::traits::{PubSubClient, PubSubMessage};
 use futures::stream::BoxStream;
 use rumqttc::{AsyncClient, MqttOptions, QoS};
 use std::time::Duration;
@@ -30,7 +30,8 @@ use tokio_util::sync::CancellationToken;
 pub struct MqttDriver {
     client: AsyncClient,
     cancel: CancellationToken,
-    _task: JoinHandle<()>,
+    #[allow(dead_code)]
+    task_handle: JoinHandle<()>,
 }
 
 impl MqttDriver {
@@ -49,13 +50,13 @@ impl MqttDriver {
         let loop_cancel = cancel.clone();
 
         // Spawn event loop handler with exponential backoff retry and structured shutdown
-        let _task = tokio::spawn(async move {
+        let task_handle = tokio::spawn(async move {
             let mut backoff = Duration::from_secs(1);
             let max_backoff = Duration::from_secs(60);
 
             loop {
                 tokio::select! {
-                    _ = loop_cancel.cancelled() => {
+                    () = loop_cancel.cancelled() => {
                         tracing::info!("MQTT event loop shutting down");
                         break;
                     }
@@ -79,7 +80,11 @@ impl MqttDriver {
             }
         });
 
-        Ok(Self { client, cancel, _task })
+        Ok(Self {
+            client,
+            cancel,
+            task_handle,
+        })
     }
 
     /// Signals the background event loop to shut down.
@@ -106,7 +111,10 @@ impl PubSubClient for MqttDriver {
     }
 
     #[tracing::instrument(skip(self), err)]
-    async fn subscribe(&self, _topic: &str) -> Result<BoxStream<'static, PubSubMessage>, PlantLinkError> {
+    async fn subscribe(
+        &self,
+        _topic: &str,
+    ) -> Result<BoxStream<'static, PubSubMessage>, PlantLinkError> {
         Err(PlantLinkError::NotImplemented("MQTT subscribe".into()))
     }
 }

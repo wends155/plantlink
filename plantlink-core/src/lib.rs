@@ -110,9 +110,9 @@ pub mod traits;
 pub mod error;
 pub use error::PlantLinkError;
 
+pub mod modbus;
 pub mod mqtt;
 pub mod nats;
-pub mod modbus;
 
 #[cfg(test)]
 mod tests {
