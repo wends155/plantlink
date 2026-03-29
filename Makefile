@@ -1,4 +1,4 @@
-.PHONY: build-assets run test-e2e clean build-release dev preview toolcheck todos secrets doc-coverage doc-comments diff-last lint-ast sections
+.PHONY: build-assets run test-e2e clean build-release dev preview toolcheck todos secrets doc-coverage doc-comments diff-last lint-ast sections log-summary log-lifecycle log-timings check-stubs
 
 # Development server
 dev:
@@ -98,3 +98,22 @@ diff-last:
 # List markdown section headings (for architecture audit)
 sections:
 	rg -n "## " $(FILE)
+
+# Log analysis targets
+log-summary:
+	rg -c "TRACE|DEBUG|INFO|WARN|ERROR" logs/ || true
+	rg -n "WARN|ERROR" logs/ --max-count 50 || true
+
+log-lifecycle:
+	rg -n "thread spawned|thread started|thread exiting|initialized|shutting down|dropping" logs/ || true
+	rg -n "connection established|connection closed|reconnect|evict|cache hit|cache miss" logs/ || true
+
+log-timings:
+	rg -n "elapsed_ms=|duration_ms=|took [0-9]+ms|latency_ms=" logs/ || true
+	rg -c "elapsed_ms=[0-9]+|duration_ms=[0-9]+|took [0-9]+ms" logs/ || true
+	rg -o "elapsed_ms=[0-9]+" logs/ --no-filename || true
+
+# Stub checking target
+check-stubs:
+	rg -n "STUB\(Phase" || true
+
