@@ -188,6 +188,7 @@ impl NodeBehavior for NatsSubNode {
 pub struct NatsPubNode {
     subject: String,
     broker_id: String,
+    driver_cache: Option<Arc<dyn PubSubClient>>,
 }
 
 impl NatsPubNode {
@@ -204,7 +205,11 @@ impl NatsPubNode {
             .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string();
-        Self { subject, broker_id }
+        Self {
+            subject,
+            broker_id,
+            driver_cache: None,
+        }
     }
 }
 
@@ -219,7 +224,11 @@ impl NodeBehavior for NatsPubNode {
         if port_idx == 0 {
             // Unpack Connection ID
             if let DataValue::String(id) = &msg.payload {
-                self.broker_id.clone_from(id);
+                // Clear cache if the broker ID is changing to ensure we reload the new driver
+                if &self.broker_id != id {
+                    self.broker_id.clone_from(id);
+                    self.driver_cache = None;
+                }
             }
             return Ok(());
         }
@@ -227,16 +236,22 @@ impl NodeBehavior for NatsPubNode {
         if self.broker_id.is_empty() {
             tracing::warn!("NatsPub: No active connection");
         } else {
-            // Get Driver
-            let driver = {
-                let resources = ctx.resources.read().await;
-                match resources
-                    .get(&self.broker_id)
-                    .and_then(|a| a.downcast_ref::<Arc<dyn PubSubClient>>())
-                {
-                    Some(d) => d.clone(),
-                    None => return Ok(()),
-                }
+            // Get Driver from cache or from shared resources
+            let driver = if let Some(d) = &self.driver_cache {
+                d.clone()
+            } else {
+                let d = {
+                    let resources = ctx.resources.read().await;
+                    match resources
+                        .get(&self.broker_id)
+                        .and_then(|a| a.downcast_ref::<Arc<dyn PubSubClient>>())
+                    {
+                        Some(driver) => driver.clone(),
+                        None => return Ok(()),
+                    }
+                };
+                self.driver_cache = Some(d.clone());
+                d
             };
 
             // Publish

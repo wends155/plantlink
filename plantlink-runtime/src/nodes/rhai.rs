@@ -9,6 +9,7 @@ use super::{NodeBehavior, NodeContext};
 use anyhow::Result;
 use plantlink_core::MessagePayload;
 use rhai::{AST, Dynamic, Engine, Scope};
+use std::sync::Arc;
 
 /// A node that executes a Rhai script.
 ///
@@ -26,8 +27,8 @@ use rhai::{AST, Dynamic, Engine, Scope};
 /// }
 /// ```
 pub struct RhaiNode {
-    engine: Engine,
-    ast: Option<AST>,
+    engine: Arc<Engine>,
+    ast: Option<Arc<AST>>,
     compile_error: Option<String>,
 }
 
@@ -49,12 +50,12 @@ impl RhaiNode {
         engine.set_max_map_size(100);
 
         let (ast, compile_error) = match engine.compile(&wrapped_script) {
-            Ok(ast) => (Some(ast), None),
+            Ok(ast) => (Some(Arc::new(ast)), None),
             Err(e) => (None, Some(e.to_string())),
         };
 
         Self {
-            engine,
+            engine: Arc::new(engine),
             ast,
             compile_error,
         }
@@ -81,15 +82,18 @@ impl NodeBehavior for RhaiNode {
         ctx: &NodeContext,
     ) -> Result<()> {
         if let Some(ast) = &self.ast {
-            let mut scope = Scope::new();
-
             // Convert MessagePayload to Rhai Dynamic (Map)
             // Safety: DataValue::Bytes serializes to O(N) integer arrays in Rhai.
             // We intercept and convert to a descriptive string to protect the heap.
             let mut msg_to_serialize = (*msg).clone();
+            let mut original_bytes = None;
+            let mut placeholder_str = String::new();
+
             if let plantlink_core::DataValue::Bytes(b) = &msg_to_serialize.payload {
+                placeholder_str = format!("<binary data: {} bytes>", b.len());
+                original_bytes = Some(b.clone());
                 msg_to_serialize.payload =
-                    plantlink_core::DataValue::String(format!("<binary data: {} bytes>", b.len()));
+                    plantlink_core::DataValue::String(placeholder_str.clone());
             }
 
             let dynamic_msg = match rhai::serde::to_dynamic(&msg_to_serialize) {
@@ -100,15 +104,30 @@ impl NodeBehavior for RhaiNode {
                 }
             };
 
-            // Call the 'process' function
-            match self
-                .engine
-                .call_fn::<Dynamic>(&mut scope, ast, "process", (dynamic_msg,))
-            {
+            // Offload synchronous Rhai execution to a blocking task to avoid stalling the async runner.
+            let engine = self.engine.clone();
+            let ast = ast.clone();
+
+            let result_dynamic = tokio::task::spawn_blocking(move || {
+                let mut scope = Scope::new();
+                engine.call_fn::<Dynamic>(&mut scope, &ast, "process", (dynamic_msg,))
+            })
+            .await
+            .map_err(|e| anyhow::anyhow!("Task join error: {e}"))?;
+
+            match result_dynamic {
                 Ok(result_dynamic) => {
                     // Check if result is what we expect (MessagePayload or Map)
                     match rhai::serde::from_dynamic::<MessagePayload>(&result_dynamic) {
-                        Ok(result_msg) => {
+                        Ok(mut result_msg) => {
+                            // Restore original bytes if the script hasn't modified the placeholder string.
+                            if let Some(bytes) = original_bytes
+                                && let plantlink_core::DataValue::String(s) = &result_msg.payload
+                                && s == &placeholder_str
+                            {
+                                result_msg.payload = plantlink_core::DataValue::Bytes(bytes);
+                            }
+
                             if let Err(e) = ctx.send_output(result_msg).await {
                                 tracing::warn!(node_id = %ctx.id, "Failed to send output: {}", e);
                             }
@@ -267,5 +286,29 @@ mod tests {
             err_msg.contains("Too many operations"),
             "Error should mention operation limit. Got: {err_msg}"
         );
+    }
+
+    #[tokio::test]
+    async fn test_rhai_binary_passthrough() {
+        let mut node = make_node(Some("return msg;"));
+        let (ctx, mut rx, _sys_rx) = make_ctx_with_output("r1");
+
+        let mut msg = MessagePayload::default();
+        let raw_data = vec![1, 2, 3, 4, 5];
+        msg.payload = plantlink_core::DataValue::Bytes(raw_data.clone().into());
+
+        node.receive(0, std::sync::Arc::new(msg), &ctx)
+            .await
+            .unwrap();
+
+        let (_, received) = rx.recv().await.expect("Expected output");
+
+        // This assertion will FAIL in the current implementation because
+        // the binary data is replaced by a string "<binary data: 5 bytes>".
+        if let plantlink_core::DataValue::Bytes(received_bytes) = &received.payload {
+            assert_eq!(received_bytes.as_ref(), &raw_data);
+        } else {
+            panic!("Expected Bytes payload, got: {:?}", received.payload);
+        }
     }
 }
