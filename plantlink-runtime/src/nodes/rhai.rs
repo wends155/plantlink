@@ -193,7 +193,7 @@ mod tests {
         let mut node = make_node(Some("return msg;"));
         let (ctx, mut rx, _sys_rx) = make_ctx_with_output("r1");
         let msg = MessagePayload::default();
-        let expected_id = msg.id.clone();
+        let expected_id = msg.id;
         node.receive(0, std::sync::Arc::new(msg), &ctx)
             .await
             .unwrap();
@@ -241,7 +241,7 @@ mod tests {
         let mut node = make_node(None);
         let (ctx, mut rx, _sys_rx) = make_ctx_with_output("r1");
         let msg = MessagePayload::default();
-        let expected_id = msg.id.clone();
+        let expected_id = msg.id;
         node.receive(0, std::sync::Arc::new(msg), &ctx)
             .await
             .unwrap();

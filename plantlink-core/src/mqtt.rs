@@ -114,7 +114,7 @@ impl PubSubClient for MqttDriver {
     #[tracing::instrument(skip(self, payload), err)]
     async fn publish(&self, topic: &str, payload: bytes::Bytes) -> Result<(), PlantLinkError> {
         self.client
-            .publish(topic, QoS::AtLeastOnce, false, payload.to_vec())
+            .publish_bytes(topic, QoS::AtLeastOnce, false, payload)
             .await
             .map_err(|e| PlantLinkError::Publish(Arc::new(e)))?;
         Ok(())

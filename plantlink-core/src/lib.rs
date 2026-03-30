@@ -79,7 +79,7 @@ impl fmt::Display for DataValue {
 ///
 /// let msg = MessagePayload::default();
 /// assert!(matches!(msg.payload, DataValue::Null));
-/// assert!(!msg.id.is_empty());
+/// assert!(!msg.id.is_nil());
 ///
 /// // Round-trip serialization
 /// let json = serde_json::to_string(&msg)
@@ -90,7 +90,7 @@ impl fmt::Display for DataValue {
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MessagePayload {
-    pub id: String,
+    pub id: uuid::Uuid,
     pub topic: Option<String>,
     pub payload: DataValue,
     pub timestamp: u64,
@@ -101,7 +101,7 @@ pub struct MessagePayload {
 impl Default for MessagePayload {
     fn default() -> Self {
         Self {
-            id: uuid::Uuid::new_v4().to_string(),
+            id: uuid::Uuid::new_v4(),
             topic: None,
             payload: DataValue::Null,
             timestamp: chrono::Utc::now().timestamp_millis().cast_unsigned(),
@@ -126,7 +126,7 @@ mod tests {
     fn test_payload_serialization() {
         let payload = MessagePayload::default();
         let json = serde_json::to_string(&payload).expect("Serialization failed");
-        assert!(json.contains(&payload.id));
+        assert!(json.contains(&payload.id.to_string()));
     }
 
     #[test]

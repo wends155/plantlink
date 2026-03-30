@@ -687,7 +687,7 @@ mod tests {
         // Send from n1
         let n1_outputs = &senders["n1"];
         let msg1 = plantlink_core::MessagePayload::default();
-        let id1 = msg1.id.clone();
+        let id1 = msg1.id;
 
         n1_outputs.get(&0).unwrap()[0]
             .0
@@ -698,7 +698,7 @@ mod tests {
         // Send from n2
         let n2_outputs = &senders["n2"];
         let msg2 = plantlink_core::MessagePayload::default();
-        let id2 = msg2.id.clone();
+        let id2 = msg2.id;
 
         n2_outputs.get(&0).unwrap()[0]
             .0
@@ -711,8 +711,7 @@ mod tests {
         let (_, r1) = rx.recv().await.unwrap();
 
         let (_, r2) = rx.recv().await.unwrap();
-
-        let received_ids = [r1.id.clone(), r2.id.clone()];
+        let received_ids = [r1.id, r2.id];
         assert!(received_ids.contains(&id1));
         assert!(received_ids.contains(&id2));
     }

@@ -19,7 +19,7 @@
 | Method | Signature | Errors | Invariants |
 |--------|-----------|--------|------------|
 | `connect` | `async fn connect(id: &str, host: &str, port: u16) -> Result<Self, PlantLinkError>` | Connection failure (network, auth) | Spawns a background event loop task with exponential backoff retry (1s–60s). Never panics on disconnection. |
-| `publish` | `async fn publish(&self, topic: &str, payload: Vec<u8>) -> Result<(), PlantLinkError>` | Publish failure (disconnected, QoS rejection) | Uses `QoS::AtLeastOnce`. |
+| `publish` | `async fn publish(&self, topic: &str, payload: bytes::Bytes) -> Result<(), PlantLinkError>` | Publish failure (disconnected, QoS rejection) | Uses `QoS::AtLeastOnce`. |
 
 #### `NatsDriver`
 **Purpose**: Manages a NATS client connection with publish/subscribe capabilities.
@@ -76,7 +76,7 @@ The standard message envelope passed between nodes.
 
 | Field | Type | Required | Default | Constraints |
 |-------|------|----------|---------|-------------|
-| `id` | `String` | Yes | `Uuid::new_v4()` | Unique per message. |
+| `id` | `uuid::Uuid` | Yes | `Uuid::new_v4()` | Unique per message. |
 | `topic` | `Option<String>` | No | `None` | — |
 | `payload` | `DataValue` | Yes | `DataValue::Null` | — |
 | `timestamp` | `u64` | Yes | `Utc::now().timestamp_millis()` | Milliseconds since epoch. |

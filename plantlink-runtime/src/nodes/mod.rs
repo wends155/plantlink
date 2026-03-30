@@ -290,7 +290,7 @@ mod tests {
         );
 
         let msg = MessagePayload::default();
-        let msg_id = msg.id.clone();
+        let msg_id = msg.id;
 
         ctx.send_output(msg).await.unwrap();
 
