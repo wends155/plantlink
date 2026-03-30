@@ -7,7 +7,7 @@ dev:
 # Build UI assets
 build-assets:
 	cd ui && npm install
-	pwsh -ExecutionPolicy Bypass -Command "$$env:VITE_AUTH_TOKEN='local-dev-token'; cd ui; npm run build"
+	pwsh -ExecutionPolicy Bypass -Command '$$env:VITE_AUTH_TOKEN="local-dev-token"; cd ui; npm run build'
 
 # Run full stack (dev)
 run: build-assets
