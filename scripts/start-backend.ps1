@@ -10,9 +10,11 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-Write-Host "Starting plantlink-cli backend in background..."
+Write-Host "Starting plantlink-cli backend in background (auth token: test-secret)..."
+# Inject auth token for integration testing
+$env:PLANTLINK_AUTH_TOKEN = "test-secret"
 # Start the process and capture the object
-$process = Start-Process -FilePath ".\target\debug\plantlink-cli.exe" -PassThru -NoNewWindow
+$process = Start-Process -FilePath ".\target\debug\plantlink-cli.exe" -ArgumentList "--auth-token", "test-secret" -PassThru -NoNewWindow
 $pidFile = ".\.backend.pid"
 $process.Id | Out-File -FilePath $pidFile
 

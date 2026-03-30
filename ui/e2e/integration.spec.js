@@ -51,8 +51,12 @@ test.describe('UI ↔ Backend Integration', () => {
         });
 
         // 4. Trigger REST API deploy
+        console.log('Using token:', process.env.PLANTLINK_AUTH_TOKEN);
         const response = await request.post('/api/flow', {
-            data: flowPayload
+            data: flowPayload,
+            headers: {
+                'Authorization': `Bearer ${process.env.PLANTLINK_AUTH_TOKEN}`
+            }
         });
         expect(response.status()).toBe(200);
 
@@ -62,7 +66,11 @@ test.describe('UI ↔ Backend Integration', () => {
         expect(payloadText).toContain('Hello Integration');
 
         // 6. Cleanup: Stop the flow
-        const stopResponse = await request.post('/api/flow/stop');
+        const stopResponse = await request.post('/api/flow/stop', {
+            headers: {
+                'Authorization': `Bearer ${process.env.PLANTLINK_AUTH_TOKEN}`
+            }
+        });
         expect(stopResponse.status()).toBe(200);
         const stopData = await stopResponse.json();
         expect(stopData.tasks_aborted).toBeGreaterThanOrEqual(0);

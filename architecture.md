@@ -38,12 +38,12 @@ All workflows are orchestrated via the root `Makefile`:
 - **AST Linter**: `make lint-ast` (Runs `sg scan` for AST-aware structural rules)
 - **Unit Tests**: `cargo test --all-features`
 - **Build Check**: `cargo check`
-- **UI E2E Tests**: `cd ui && npm run test:e2e` (Playwright)
+- **UI E2E Tests**: `make test-integration` (Executes via `scripts/run-integration.ps1`)
 - **Doc Coverage**: `make doc-coverage` (Checks public item doc coverage)
 - **Doc Comments**: `make doc-comments` (Counts doc comment lines)
 - **Git Diff**: `make diff-last` (Safe patch viewing without banned IDE characters)
 - **MD Sections**: `make sections FILE=<file>` (Lists Markdown section headings safely)
-- **Full Quality Gate**: `make verify` (Runs `./scripts/verify.sh`)
+- **Full Quality Gate**: `make verify` (Unified 4-gate pipeline wrapper)
 
 ### Workspace Linting
 All crates inherit shared lint rules from the root `Cargo.toml` via `[workspace.lints]` + per-crate `[lints] workspace = true`. Key rules:
@@ -110,8 +110,8 @@ All crates inherit shared lint rules from the root `Cargo.toml` via `[workspace.
 
 ## 12. Testing Strategy
 - **Unit Testing**: Rust unit tests are co-located in `src/` modules.
-- **E2E Testing**: Playwright is used in the `ui/` directory to validate full-stack flows via Chromium.
-- **Continuous Verification**: `scripts/verify.sh` ensures all code passes formatting, linting, and testing before commit.
+- **E2E Testing**: Playwright is used to validate full-stack flows via Chromium. Tests are proxied through `scripts/run-integration.ps1` with `-ExecutionPolicy Bypass` to securely inject `PLANTLINK_AUTH_TOKEN` past Makefile variable dropping.
+- **Continuous Verification**: `make verify` ensures all code passes formatting, clippy linting, testing, and AST structural rules before commit.
 
 ## 13. Documentation Conventions
 - **Rustdoc**: Triple-slash (`///`) comments for public types, traits, and functions.

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 // These tests focus on Web Server authentication and WebSocket resilience.
-// They require the backend to be running with PLANTLINK_AUTH_TOKEN=test-secret
+// They REQUIRE the backend to be running with PLANTLINK_AUTH_TOKEN injected into the process.
 
 test.describe('Web Server Hardening & Resilience', () => {
 
@@ -14,16 +14,14 @@ test.describe('Web Server Hardening & Resilience', () => {
     test('should reject unauthorized /api/flow requests', async ({ request }) => {
         const flowPayload = { nodes: [], edges: [] };
         
-        // No header
+        // No header — must be rejected
         const response = await request.post('/api/flow', {
             data: flowPayload
         });
         
-        // If the backend has no token set, this might succeed or fail depending on env.
-        // For the sake of this test, we assume the backend IS hardened.
-        if (process.env.PLANTLINK_AUTH_TOKEN) {
-            expect(response.status()).toBe(401);
-        }
+        // Assert that the request is rejected with 401 Unauthorized.
+        // This is now unconditional; the test will fail if the environment is misconfigured.
+        expect(response.status()).toBe(401);
     });
 
     test('should accept authorized /api/flow requests with Bearer token', async ({ request }) => {
@@ -32,7 +30,7 @@ test.describe('Web Server Hardening & Resilience', () => {
             edges: []
         };
         
-        const token = process.env.PLANTLINK_AUTH_TOKEN || "test-secret";
+        const token = process.env.PLANTLINK_AUTH_TOKEN;
         
         const response = await request.post('/api/flow', {
             data: flowPayload,
@@ -62,7 +60,7 @@ test.describe('Web Server Hardening & Resilience', () => {
         });
 
         // 1. Deploy a flow that generates status updates
-        const token = process.env.PLANTLINK_AUTH_TOKEN || "test-secret";
+        const token = process.env.PLANTLINK_AUTH_TOKEN;
         const flowPayload = {
             nodes: [{ id: "n1", type: "inject", data: { name: "inject", payload: "ws-test", interval: 0.1 } }],
             edges: []

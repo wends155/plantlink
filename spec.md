@@ -5,7 +5,7 @@
 >
 > **Maintenance Rule**: The Architect must update this file whenever a public API changes.
 >
-> Last verified against: 3b3e8b8
+> Last verified against: 7e934e4
 
 ---
 
@@ -266,7 +266,7 @@ stateDiagram-v2
 
 - Static assets support gzip (`Content-Encoding: gzip`) when client sends `Accept-Encoding: gzip`.
 - SPA fallback: unknown paths return `index.html`.
-- Authentication: Mutating endpoints under `/api/flow/*` require an `Authorization: Bearer <token>` header if configured to prevent RCE.
+- Authentication: Mutating endpoints under `/api/flow/*` require an `Authorization: Bearer <token>` header if configured (via `PLANTLINK_AUTH_TOKEN`) to prevent RCE.
 
 #### WebSocket
 
@@ -283,6 +283,7 @@ stateDiagram-v2
 - [x] `/api/flow` accepts valid `FlowConfig` JSON.
 - [x] `/api/flow` returns 500 on partial failure.
 - [x] `/api/flow/stop` stops runtime and returns JSON status.
+- [x] `/api/flow` strictly enforces `401 Unauthorized` without a valid Bearer token.
 - [x] WebSocket receives status broadcasts.
 - [x] SPA fallback serves `index.html` for unknown routes.
 
@@ -297,23 +298,26 @@ stateDiagram-v2
 | Flag | Short | Type | Default | Description |
 |------|-------|------|---------|-------------|
 | `--port` | `-p` | `u16` | `3000` | HTTP server listen port. |
+| `--auth-token` | — | `String` | — | Bearer token for authentication. Can also be set via `PLANTLINK_AUTH_TOKEN` environment variable. |
 
 ### Exit Codes
 
 | Code | Meaning |
 |------|---------|
 | `0` | Clean shutdown. |
-| `1` | Runtime error (e.g., port bind failure). |
+| `1` | Startup/Runtime error (e.g., port bind failure, invalid arg). |
 
 ### Startup Sequence
 1. Initialize `tracing_subscriber`.
-2. Parse CLI args.
+2. Parse CLI args (including environment variables via `clap`).
 3. Print version banner.
-4. Create broadcast channel (capacity 100).
-5. Create `RuntimeEngine`.
-6. Call `WebServer::run()`.
+4. Log authentication status (`Enabled` if token set, `Disabled` otherwise).
+5. Create broadcast channel (capacity 100).
+6. Create `RuntimeEngine`.
+7. Call `WebServer::run()`.
 
 ### Required Test Coverage
 - [x] `--port` flag parsing.
+- [x] `PLANTLINK_AUTH_TOKEN` environment variable parsing via `clap`.
 - [x] Default port is 3000.
 - [ ] Version banner prints correct version.

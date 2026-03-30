@@ -129,7 +129,10 @@
         try {
             const response = await fetch("/api/flow", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { 
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${import.meta.env.VITE_AUTH_TOKEN || "local-dev-token"}`
+                },
                 body: JSON.stringify(flow),
             });
             if (response.ok) {
@@ -150,6 +153,9 @@
         try {
             const response = await fetch("/api/flow/stop", {
                 method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${import.meta.env.VITE_AUTH_TOKEN || "local-dev-token"}`
+                }
             });
             if (response.ok) {
                 console.log("Flow stopped successfully");

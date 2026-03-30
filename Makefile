@@ -6,7 +6,8 @@ dev:
 
 # Build UI assets
 build-assets:
-	cd ui && npm install && npm run build
+	cd ui && npm install
+	pwsh -ExecutionPolicy Bypass -Command "$$env:VITE_AUTH_TOKEN='local-dev-token'; cd ui; npm run build"
 
 # Run full stack (dev)
 run: build-assets
@@ -31,10 +32,10 @@ test-unit:
 	cd ui && npm run test:unit
 
 test-integration:
-	cd ui && npm run build
-	pwsh -File scripts/start-backend.ps1
-	cd ui && npm run test:integration
-	pwsh -File scripts/stop-backend.ps1
+	pwsh -ExecutionPolicy Bypass -File scripts/build-ui.ps1
+	pwsh -ExecutionPolicy Bypass -File scripts/start-backend.ps1
+	pwsh -ExecutionPolicy Bypass -File scripts/run-integration.ps1
+	pwsh -ExecutionPolicy Bypass -File scripts/stop-backend.ps1
 
 test-e2e:
 	cd ui && npm run test:e2e
