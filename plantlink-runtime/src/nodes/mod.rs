@@ -64,17 +64,32 @@ pub fn send_node_status(
 
 pub fn register_defaults(registry: &mut registry::NodeRegistry) -> anyhow::Result<()> {
     registry.register("inject", |cfg| {
-        Box::new(base::BaseNodeAdapter::new(inject::InjectNode::new(cfg)))
+        Ok(
+            Box::new(base::BaseNodeAdapter::new(inject::InjectNode::new(cfg)))
+                as Box<dyn NodeBehavior>,
+        )
     })?;
-    registry.register("console", |cfg| Box::new(console::ConsoleNode::new(cfg)))?;
+    registry.register("console", |cfg| {
+        Ok(Box::new(console::ConsoleNode::new(cfg)) as Box<dyn NodeBehavior>)
+    })?;
     registry.register("nats-broker", |cfg| {
-        Box::new(nats::NatsBrokerNode::new(cfg))
+        Ok(Box::new(nats::NatsBrokerNode::new(cfg)) as Box<dyn NodeBehavior>)
     })?;
-    registry.register("nats-sub", |cfg| Box::new(nats::NatsSubNode::new(cfg)))?;
-    registry.register("nats-pub", |cfg| Box::new(nats::NatsPubNode::new(cfg)))?;
-    registry.register("rhai", |cfg| Box::new(rhai::RhaiNode::new(cfg)))?;
-    registry.register("function", |cfg| Box::new(rhai::RhaiNode::new(cfg)))?;
-    registry.register("rhai-function", |cfg| Box::new(rhai::RhaiNode::new(cfg)))?;
+    registry.register("nats-sub", |cfg| {
+        Ok(Box::new(nats::NatsSubNode::new(cfg)) as Box<dyn NodeBehavior>)
+    })?;
+    registry.register("nats-pub", |cfg| {
+        Ok(Box::new(nats::NatsPubNode::new(cfg)) as Box<dyn NodeBehavior>)
+    })?;
+    registry.register("rhai", |cfg| {
+        rhai::RhaiNode::new(cfg).map(|n| Box::new(n) as Box<dyn NodeBehavior>)
+    })?;
+    registry.register("function", |cfg| {
+        rhai::RhaiNode::new(cfg).map(|n| Box::new(n) as Box<dyn NodeBehavior>)
+    })?;
+    registry.register("rhai-function", |cfg| {
+        rhai::RhaiNode::new(cfg).map(|n| Box::new(n) as Box<dyn NodeBehavior>)
+    })?;
     Ok(())
 }
 

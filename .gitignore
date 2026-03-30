@@ -28,3 +28,7 @@ Thumbs.db
 GEMINI.md
 ui/playwright-report/
 ui/test-results/
+
+# Temporary Tool Artifacts
+tmp.diff
+tmp.lint

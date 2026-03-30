@@ -756,9 +756,9 @@ mod tests {
 
         let mut registry = nodes::registry::NodeRegistry::new();
         let _ = registry.register("shutdown_mock", move |_| {
-            Box::new(ShutdownMock {
+            Ok(Box::new(ShutdownMock {
                 stop_called: stop_called_clone.clone(),
-            }) as Box<dyn NodeBehavior>
+            }) as Box<dyn NodeBehavior>)
         });
         // Overwrite registry with our custom one
         engine.registry = registry;

@@ -4,7 +4,8 @@ use anyhow::{Result, bail};
 use std::collections::HashMap;
 
 /// Type definition for a node factory function
-pub type NodeFactory = Box<dyn Fn(&NodeConfig) -> Box<dyn NodeBehavior> + Send + Sync>;
+pub type NodeFactory =
+    Box<dyn Fn(&NodeConfig) -> anyhow::Result<Box<dyn NodeBehavior>> + Send + Sync>;
 
 /// A registry that dynamically maps string identifiers to node instantiation functions.
 ///
@@ -40,7 +41,7 @@ impl NodeRegistry {
     #[allow(clippy::unnecessary_wraps)] // callers use `?` in register_defaults; keep Result for API flexibility
     pub fn register<F>(&mut self, type_name: &str, factory: F) -> Result<()>
     where
-        F: Fn(&NodeConfig) -> Box<dyn NodeBehavior> + Send + Sync + 'static,
+        F: Fn(&NodeConfig) -> anyhow::Result<Box<dyn NodeBehavior>> + Send + Sync + 'static,
     {
         self.factories
             .insert(type_name.to_string(), Box::new(factory));
@@ -64,7 +65,7 @@ impl NodeRegistry {
     /// Returns an error if the `type_name` doesn't exist in the registry.
     pub fn create(&self, type_name: &str, config: &NodeConfig) -> Result<Box<dyn NodeBehavior>> {
         match self.factories.get(type_name) {
-            Some(factory) => Ok(factory(config)),
+            Some(factory) => factory(config),
             None => bail!("Unknown node type: {type_name}"),
         }
     }
@@ -73,6 +74,7 @@ impl NodeRegistry {
 #[cfg(test)]
 mod tests {
     use super::NodeRegistry;
+    use crate::nodes::NodeBehavior;
 
     #[test]
     fn test_instance_registry_unknown_type() {
@@ -98,7 +100,7 @@ mod tests {
         };
         registry
             .register("test-node", |cfg| {
-                Box::new(crate::nodes::console::ConsoleNode::new(cfg))
+                Ok(Box::new(crate::nodes::console::ConsoleNode::new(cfg)) as Box<dyn NodeBehavior>)
             })
             .unwrap();
         let result = registry.create("test-node", &config);

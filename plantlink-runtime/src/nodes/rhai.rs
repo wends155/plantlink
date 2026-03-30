@@ -28,12 +28,11 @@ use std::sync::Arc;
 /// ```
 pub struct RhaiNode {
     engine: Arc<Engine>,
-    ast: Option<Arc<AST>>,
-    compile_error: Option<String>,
+    ast: Arc<AST>,
 }
 
 impl RhaiNode {
-    pub fn new(config: &crate::NodeConfig) -> Self {
+    pub fn new(config: &crate::NodeConfig) -> anyhow::Result<Self> {
         let user_script = config
             .data
             .get("code")
@@ -49,30 +48,22 @@ impl RhaiNode {
         engine.set_max_array_size(100);
         engine.set_max_map_size(100);
 
-        let (ast, compile_error) = match engine.compile(&wrapped_script) {
-            Ok(ast) => (Some(Arc::new(ast)), None),
-            Err(e) => (None, Some(e.to_string())),
-        };
+        let ast = engine
+            .compile(&wrapped_script)
+            .map_err(|e| anyhow::anyhow!("Rhai module compilation failed: {e}"))?;
 
-        Self {
+        Ok(Self {
             engine: Arc::new(engine),
-            ast,
-            compile_error,
-        }
+            ast: Arc::new(ast),
+        })
     }
 }
 
 #[async_trait::async_trait]
 impl NodeBehavior for RhaiNode {
     async fn start(&mut self, ctx: NodeContext) -> Result<()> {
-        if let Some(err) = &self.compile_error {
-            ctx.emit_log(format!("RhaiNode [{}]: Compilation Error: {}", ctx.id, err));
-            ctx.emit_error(&format!("Compilation Error: {err}"));
-            Err(anyhow::anyhow!("Compilation Error: {err}"))
-        } else {
-            ctx.emit_running("Script compiled successfully");
-            Ok(())
-        }
+        ctx.emit_running("Script compiled successfully");
+        Ok(())
     }
 
     async fn receive(
@@ -81,80 +72,69 @@ impl NodeBehavior for RhaiNode {
         msg: std::sync::Arc<MessagePayload>,
         ctx: &NodeContext,
     ) -> Result<()> {
-        if let Some(ast) = &self.ast {
-            // Convert MessagePayload to Rhai Dynamic (Map)
-            // Safety: DataValue::Bytes serializes to O(N) integer arrays in Rhai.
-            // We intercept and convert to a descriptive string to protect the heap.
-            let mut msg_to_serialize = (*msg).clone();
-            let mut original_bytes = None;
-            let mut placeholder_str = String::new();
+        // Convert MessagePayload to Rhai Dynamic (Map)
+        // Safety: DataValue::Bytes serializes to O(N) integer arrays in Rhai.
+        // We intercept and convert to a descriptive string to protect the heap.
+        let mut msg_to_serialize = (*msg).clone();
+        let mut original_bytes = None;
+        let mut placeholder_str = String::new();
 
-            if let plantlink_core::DataValue::Bytes(b) = &msg_to_serialize.payload {
-                placeholder_str = format!("<binary data: {} bytes>", b.len());
-                original_bytes = Some(b.clone());
-                msg_to_serialize.payload =
-                    plantlink_core::DataValue::String(placeholder_str.clone());
+        if let plantlink_core::DataValue::Bytes(b) = &msg_to_serialize.payload {
+            placeholder_str = format!("<binary data: {} bytes>", b.len());
+            original_bytes = Some(b.clone());
+            msg_to_serialize.payload = plantlink_core::DataValue::String(placeholder_str.clone());
+        }
+
+        let dynamic_msg = match rhai::serde::to_dynamic(&msg_to_serialize) {
+            Ok(d) => d,
+            Err(e) => {
+                ctx.emit_log(format!("RhaiNode [{}]: Serialization Error: {}", ctx.id, e));
+                return Ok(());
             }
+        };
 
-            let dynamic_msg = match rhai::serde::to_dynamic(&msg_to_serialize) {
-                Ok(d) => d,
-                Err(e) => {
-                    ctx.emit_log(format!("RhaiNode [{}]: Serialization Error: {}", ctx.id, e));
-                    return Ok(());
-                }
-            };
+        // Offload synchronous Rhai execution to a blocking task to avoid stalling the async runner.
+        let engine = self.engine.clone();
+        let ast = self.ast.clone();
 
-            // Offload synchronous Rhai execution to a blocking task to avoid stalling the async runner.
-            let engine = self.engine.clone();
-            let ast = ast.clone();
+        let result_dynamic = tokio::task::spawn_blocking(move || {
+            let mut scope = Scope::new();
+            engine.call_fn::<Dynamic>(&mut scope, &ast, "process", (dynamic_msg,))
+        })
+        .await
+        .map_err(|e| anyhow::anyhow!("Task join error: {e}"))?;
 
-            let result_dynamic = tokio::task::spawn_blocking(move || {
-                let mut scope = Scope::new();
-                engine.call_fn::<Dynamic>(&mut scope, &ast, "process", (dynamic_msg,))
-            })
-            .await
-            .map_err(|e| anyhow::anyhow!("Task join error: {e}"))?;
-
-            match result_dynamic {
-                Ok(result_dynamic) => {
-                    // Check if result is what we expect (MessagePayload or Map)
-                    match rhai::serde::from_dynamic::<MessagePayload>(&result_dynamic) {
-                        Ok(mut result_msg) => {
-                            // Restore original bytes if the script hasn't modified the placeholder string.
-                            if let Some(bytes) = original_bytes
-                                && let plantlink_core::DataValue::String(s) = &result_msg.payload
-                                && s == &placeholder_str
-                            {
-                                result_msg.payload = plantlink_core::DataValue::Bytes(bytes);
-                            }
-
-                            if let Err(e) = ctx.send_output(result_msg).await {
-                                tracing::warn!(node_id = %ctx.id, "Failed to send output: {}", e);
-                            }
+        match result_dynamic {
+            Ok(result_dynamic) => {
+                // Check if result is what we expect (MessagePayload or Map)
+                match rhai::serde::from_dynamic::<MessagePayload>(&result_dynamic) {
+                    Ok(mut result_msg) => {
+                        // Restore original bytes if the script hasn't modified the placeholder string.
+                        if let Some(bytes) = original_bytes
+                            && let plantlink_core::DataValue::String(s) = &result_msg.payload
+                            && s == &placeholder_str
+                        {
+                            result_msg.payload = plantlink_core::DataValue::Bytes(bytes);
                         }
-                        Err(e) => {
-                            ctx.emit_log(format!(
-                                "RhaiNode [{}]: Return type mismatch. Script must return MessagePayload msg. Error: {}",
-                                ctx.id, e
-                            ));
-                            ctx.emit_error(&format!("Return Type Mismatch: {e}"));
-                            return Err(anyhow::anyhow!("Type error: {e}"));
+
+                        if let Err(e) = ctx.send_output(result_msg).await {
+                            tracing::warn!(node_id = %ctx.id, "Failed to send output: {}", e);
                         }
                     }
-                }
-                Err(e) => {
-                    ctx.emit_log(format!("RhaiNode [{}]: Runtime Error: {}", ctx.id, e));
-                    ctx.emit_error(&format!("Runtime Error: {e}"));
-                    return Err(anyhow::anyhow!("Rhai error: {e}"));
+                    Err(e) => {
+                        ctx.emit_log(format!(
+                            "RhaiNode [{}]: Return type mismatch. Script must return MessagePayload msg. Error: {}",
+                            ctx.id, e
+                        ));
+                        ctx.emit_error(&format!("Return Type Mismatch: {e}"));
+                        return Err(anyhow::anyhow!("Type error: {e}"));
+                    }
                 }
             }
-        } else {
-            // Node is in error state due to compilation failure
-            if let Some(err) = &self.compile_error {
-                ctx.emit_log(format!(
-                    "RhaiNode [{}]: Cannot process input. Compilation failed: {}",
-                    ctx.id, err
-                ));
+            Err(e) => {
+                ctx.emit_log(format!("RhaiNode [{}]: Runtime Error: {}", ctx.id, e));
+                ctx.emit_error(&format!("Runtime Error: {e}"));
+                return Err(anyhow::anyhow!("Rhai error: {e}"));
             }
         }
         Ok(())
@@ -189,6 +169,7 @@ mod tests {
             type_: "rhai".into(),
             data,
         })
+        .expect("Failed to create RhaiNode in test")
     }
 
     fn make_ctx_with_output(id: &str) -> CtxOutputStreams {
@@ -221,17 +202,21 @@ mod tests {
         assert_eq!(received.id, expected_id);
     }
 
-    #[tokio::test]
-    async fn test_rhai_compile_error_on_start() {
-        let mut node = make_node(Some("{{{{ invalid syntax"));
-        let (ctx, _sys_rx) = NodeContext::for_test("r1");
-        let result = node.start(ctx).await;
-        assert!(result.is_err(), "Expected Err on compile error");
-        let err_msg = result.unwrap_err().to_string();
-        assert!(
-            err_msg.contains("Compilation Error"),
-            "Expected compile error message, got: {err_msg}"
-        );
+    #[test]
+    fn test_rhai_compile_error_on_new() {
+        let config = crate::NodeConfig {
+            id: "r1".into(),
+            type_: "rhai".into(),
+            data: serde_json::json!({ "code": "{{{{ invalid syntax" }),
+        };
+        let result = RhaiNode::new(&config);
+        assert!(result.is_err(), "Expected Err at instantiation");
+        if let Err(e) = result {
+            assert!(
+                e.to_string().contains("Rhai module compilation failed"),
+                "Expected compile error message"
+            );
+        }
     }
 
     #[tokio::test]
