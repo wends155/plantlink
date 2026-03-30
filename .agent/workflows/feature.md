@@ -142,3 +142,4 @@ End the report with:
 5. **Ask early** — if the feature is ambiguous, ask questions in Step 1, not Step 4.
 6. **Leverage the ecosystem** — check for existing libraries before proposing custom code.
 7. **Stay focused** — research just enough to inform a decision; avoid deep prototyping.
+8. **Artifact Link:** After any workflow that produces an artifact, the agent MUST include a clickable `[artifact name](file:///path)` link in the chat response. The user must never have to ask where an artifact was saved.

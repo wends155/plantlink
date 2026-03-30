@@ -219,3 +219,7 @@ Do NOT proceed to implementation until the user explicitly approves.
 
 Once approved, follow **GEMINI.md §6 Handoff Protocol** for the full Act cycle.
 After `/audit` passes, run `/update-doc` scoped to affected files, then summarize in `context.md` per GEMINI.md §8.
+
+## Rules
+
+1. **Artifact Link:** After any workflow that produces an artifact, the agent MUST include a clickable `[artifact name](file:///path)` link in the chat response. The user must never have to ask where an artifact was saved.

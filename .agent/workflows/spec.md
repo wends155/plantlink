@@ -203,3 +203,4 @@ Output a **Spec Coverage Report** — do NOT edit `spec.md` directly.
 - `architecture.md` is a **hard prerequisite** — defer if it doesn't exist.
 - If drift is found during Audit, **document it** — do not fix. Fixes go through `/plan-making`.
 - Drift detection mechanics (hash-based tracking) are owned by `doc-rules.md §5` and `/update-doc`, not this workflow.
+- **Artifact Link:** After any workflow that produces an artifact, the agent MUST include a clickable `[artifact name](file:///path)` link in the chat response. The user must never have to ask where an artifact was saved.

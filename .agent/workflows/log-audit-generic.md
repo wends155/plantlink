@@ -200,3 +200,4 @@ Present the report to the user.
 4. **Always pause** — the user must explicitly invoke `/issue` to proceed.
 5. **Strip ANSI** — log files may contain escape codes; always strip before analysis.
 6. **Check for project override** — if the project has its own `log-audit.md`, use that instead.
+7. **Artifact Link:** After any workflow that produces an artifact, the agent MUST include a clickable `[artifact name](file:///path)` link in the chat response. The user must never have to ask where an artifact was saved.

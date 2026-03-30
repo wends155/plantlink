@@ -190,3 +190,4 @@ End the report with:
 4. **Use MCP tools** when available for deeper analysis.
 5. **Stay scoped** — review only what was asked. Don't expand to unrelated code.
 6. **Be constructive** — every finding should include a suggestion, not just a complaint.
+7. **Artifact Link:** After any workflow that produces an artifact, the agent MUST include a clickable `[artifact name](file:///path)` link in the chat response. The user must never have to ask where an artifact was saved.

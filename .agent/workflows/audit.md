@@ -223,3 +223,4 @@ The task is now considered fully closed under the TARS protocol.
 4. **Preserve passing items** — document compliant items too, not just failures.
 5. **Respect the Planning Gate** — never tell the Builder to fix without routing through `/plan-making`.
 6. **Command Execution** — **NEVER** use shell operators (`&&`, `||`, `;`, `>`, `2>&1`, `|`). The IDE captures stderr automatically; redirects are unnecessary and blocked. One command per `run_command` call. See `builder-rules.md §7`.
+7. **Artifact Link:** After any workflow that produces an artifact, the agent MUST include a clickable `[artifact name](file:///path)` link in the chat response. The user must never have to ask where an artifact was saved.

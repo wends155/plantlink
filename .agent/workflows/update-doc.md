@@ -169,3 +169,4 @@ After committing, compress the interaction per TARS protocol:
 6. **Preserve existing content** — when updating docs, preserve user-written sections and only update stale data.
 7. **Always pause** — the user must approve before committing.
 8. **Record hash** — always write the verification hash to spec.md after doc generation.
+9. **Artifact Link:** After any workflow that produces an artifact, the agent MUST include a clickable `[artifact name](file:///path)` link in the chat response. The user must never have to ask where an artifact was saved.

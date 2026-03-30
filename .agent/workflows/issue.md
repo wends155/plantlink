@@ -128,3 +128,4 @@ End the report with:
 4. **Ask early** — if the issue is ambiguous, ask questions in Step 1, not Step 4.
 5. **Stay focused** — investigate just enough to produce a clear report; avoid rabbit holes.
 6. **Use MCP tools** — when Narsil or Sequential Thinking are available, prefer them over manual grep/search for higher accuracy.
+7. **Artifact Link:** After any workflow that produces an artifact, the agent MUST include a clickable `[artifact name](file:///path)` link in the chat response. The user must never have to ask where an artifact was saved.

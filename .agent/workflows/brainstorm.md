@@ -95,3 +95,4 @@ When the idea feels solid enough, the user chooses how to proceed:
 4. **Use Sequential Thinking internally** — reason before responding, but show only conclusions.
 5. **Validate claims** — use Context7 MCP to verify library status, API surfaces, and ecosystem facts.
 6. **Respect the exit** — when the user transitions to `/architecture`, carry context forward seamlessly.
+7. **Artifact Link:** After any workflow that produces an artifact, the agent MUST include a clickable `[artifact name](file:///path)` link in the chat response. The user must never have to ask where an artifact was saved.

@@ -188,3 +188,4 @@ or:
 5. **Don't block** — unfixable issues are warnings, not blockers. Other workflows fall back to manual investigation.
 6. **Report everything** — even passing items go in the report for the session record.
 7. **Auto-run** — see `GEMINI.md` §6 Auto-Run table. All commands in this workflow are read-only; set `SafeToAutoRun: true` for every `run_command` call.
+8. **Artifact Link:** After any workflow that produces an artifact, the agent MUST include a clickable `[artifact name](file:///path)` link in the chat response. The user must never have to ask where an artifact was saved.

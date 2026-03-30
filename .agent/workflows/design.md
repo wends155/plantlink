@@ -152,3 +152,4 @@ End with:
 6. **Per-screen approval** — "Approve" applies to individual screens, not the entire spec.
 7. **Re-entry is scoped** — revision mode targets specific screens, not full redesign (per §5).
 8. `/design` can be re-entered from `/plan-making`, `/audit`, or `/issue` per `design-rules.md` §5.
+9. **Artifact Link:** After any workflow that produces an artifact, the agent MUST include a clickable `[artifact name](file:///path)` link in the chat response. The user must never have to ask where an artifact was saved.

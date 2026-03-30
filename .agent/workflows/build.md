@@ -139,3 +139,4 @@ Do NOT proceed to audit yourself — the Architect role handles Reflect.
 7. **Git checkpoint at 🔒** — every checkpoint is a commit. No skipping.
 8. **Wait for user instruction** before pushing to remote repositories.
 9. **Command Execution** — **NEVER** use shell operators (`&&`, `||`, `;`, `>`, `2>&1`, `|`). The IDE captures stderr automatically; redirects are unnecessary and blocked. One command per `run_command` call. See `builder-rules.md §7`.
+10. **Artifact Link:** After any workflow that produces an artifact, the agent MUST include a clickable `[artifact name](file:///path)` link in the chat response. The user must never have to ask where an artifact was saved.

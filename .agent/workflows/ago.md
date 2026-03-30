@@ -175,3 +175,4 @@ End with:
 5. **Use MCP tools** — Sequential Thinking for analysis, Context7 for library research, web search for papers.
 6. **Challenge assumptions** — probe the user's constraints. "Do you really need exact solutions?"
 7. **Carry context forward** — when transitioning to `/architecture`, reference algorithm.md conclusions.
+8. **Artifact Link:** After any workflow that produces an artifact, the agent MUST include a clickable `[artifact name](file:///path)` link in the chat response. The user must never have to ask where an artifact was saved.

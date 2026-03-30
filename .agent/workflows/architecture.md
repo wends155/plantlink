@@ -200,3 +200,4 @@ Output an **Architecture Recommendations Report** — do NOT edit architecture.m
 - Output: `architecture.md` (New/Discover) or Recommendations Report (Audit).
 - If violations are found, **document them** — do not fix. Fixes go through `/plan-making`.
 - The Architect may reference `architecture-rules.md` §7 Best Practices for recommendations, but those are advisory — the project decides.
+- **Artifact Link:** After any workflow that produces an artifact, the agent MUST include a clickable `[artifact name](file:///path)` link in the chat response. The user must never have to ask where an artifact was saved.
