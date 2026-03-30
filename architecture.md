@@ -30,7 +30,30 @@ The project is structured as a Rust multi-crate workspace:
 | `scripts/` | Tooling | Maintenance and verification scripts (e.g., `verify.sh`). |
 | `docs/` | Documentation | Feature-specific guides and reference material. |
 
-## 5. Toolchain
+## 5. Module Boundaries
+- **plantlink-core**: Owns shared types (`DataValue`, `MessagePayload`), protocol driver structs. Does NOT own node logic or HTTP.
+  - **Trait Interfaces**: `PubSubClient`, `ModbusClient`.
+  - **Mock Availability**: Mockable via `MockPubSubClient` and `MockModbusClient`.
+- **plantlink-runtime**: Owns flow execution (`RuntimeEngine`), node lifecycle, node registry. Does NOT own HTTP endpoints or CLI parsing.
+  - **Trait Interfaces**: `FlowRuntime`, `NodeBehavior`, `SimpleNode`, `BaseNodeAdapter` (adapter).
+  - **Mock Availability**: `dyn FlowRuntime` allows mocking the entire engine. Testable via concrete node instances.
+  - **Key patterns**: Instance-scoped `NodeRegistry` (not global), `BaseNodeAdapter` (adapter), `CancellationToken` (cooperative shutdown).
+- **plantlink-web**: Owns REST API, WebSocket handler, embedded UI assets. Does NOT own flow logic or protocol drivers.
+  - **Trait Interfaces**: None — thin HTTP layer.
+  - **Mock Availability**: Consumes `dyn FlowRuntime` for isolated endpoint testing.
+- **plantlink-cli**: Owns bootstrapping (tracing, tokio runtime, CLI args). Does NOT own any business logic.
+  - **Trait Interfaces**: None.
+  - **Mock Availability**: N/A.
+
+## 6. Dependency Direction Rules
+| Module | May Import | Must NOT Import |
+|--------|-----------|-----------------|
+| `plantlink-cli` | `web`, `runtime`, `core` | — (top-level entry) |
+| `plantlink-web` | `runtime`, `core` | `cli` |
+| `plantlink-runtime` | `core` | `cli`, `web` |
+| `plantlink-core` | (external crates only) | `cli`, `web`, `runtime` |
+
+## 7. Toolchain
 All workflows are orchestrated via the root `Makefile`:
 
 - **Formatter**: `cargo fmt` (Checked via `cargo fmt --all -- --check`)
@@ -43,7 +66,13 @@ All workflows are orchestrated via the root `Makefile`:
 - **Doc Comments**: `make doc-comments` (Counts doc comment lines)
 - **Git Diff**: `make diff-last` (Safe patch viewing without banned IDE characters)
 - **MD Sections**: `make sections FILE=<file>` (Lists Markdown section headings safely)
-- **Full Quality Gate**: `make verify` (Unified 4-gate pipeline wrapper)
+- **Quality Gates**:
+  - `make verify` (Standard 4-gate verification pipeline wrapper)
+  - `make verify-full` (Extended pipeline integrating Playwright UI tests via `scripts/run-integration.ps1`)
+- **Maintenance**:
+  - `make check-stubs` (Detects unresolved stub assertions across the workspace)
+  - `make todos` (Lists lingering TODO markers)
+  - `make secrets` (Scans git index for leaked secrets)
 
 ### Workspace Linting
 All crates inherit shared lint rules from the root `Cargo.toml` via `[workspace.lints]` + per-crate `[lints] workspace = true`. Key rules:
@@ -61,29 +90,6 @@ All crates inherit shared lint rules from the root `Cargo.toml` via `[workspace.
 | `clippy::must_use_candidate` | **allow** | Reduces noise on builder-pattern APIs |
 | `rust::unsafe_code` | **warn** | Discourage but don't block `unsafe` |
 
-## 6. Module Boundaries
-- **plantlink-core**: Owns shared types (`DataValue`, `MessagePayload`), protocol driver structs. Does NOT own node logic or HTTP.
-  - **Trait Interfaces**: `PubSubClient`, `ModbusClient`.
-  - **Mock Availability**: Mockable via `MockPubSubClient` and `MockModbusClient`.
-- **plantlink-runtime**: Owns flow execution (`RuntimeEngine`), node lifecycle, node registry. Does NOT own HTTP endpoints or CLI parsing.
-  - **Trait Interfaces**: `FlowRuntime`, `NodeBehavior`, `SimpleNode`, `BaseNodeAdapter` (adapter).
-  - **Mock Availability**: `dyn FlowRuntime` allows mocking the entire engine. Testable via concrete node instances.
-  - **Key patterns**: Instance-scoped `NodeRegistry` (not global), `BaseNodeAdapter` (adapter), `CancellationToken` (cooperative shutdown).
-- **plantlink-web**: Owns REST API, WebSocket handler, embedded UI assets. Does NOT own flow logic or protocol drivers.
-  - **Trait Interfaces**: None — thin HTTP layer.
-  - **Mock Availability**: Consumes `dyn FlowRuntime` for isolated endpoint testing.
-- **plantlink-cli**: Owns bootstrapping (tracing, tokio runtime, CLI args). Does NOT own any business logic.
-  - **Trait Interfaces**: None.
-  - **Mock Availability**: N/A.
-
-## 7. Dependency Direction Rules
-| Module | May Import | Must NOT Import |
-|--------|-----------|-----------------|
-| `plantlink-cli` | `web`, `runtime`, `core` | — (top-level entry) |
-| `plantlink-web` | `runtime`, `core` | `cli` |
-| `plantlink-runtime` | `core` | `cli`, `web` |
-| `plantlink-core` | (external crates only) | `cli`, `web`, `runtime` |
-
 ## 8. Error Handling Strategy
 - **Library/Domain Errors**: `plantlink-core` defines the `PlantLinkError` enum using `thiserror`. All core traits ([`PubSubClient`], [`ModbusClient`][modbus-trait]) and drivers return `Result<T, PlantLinkError>`. This allows consumers to match on specific failure variants (e.g., `Connection`, `Publish`, `Subscribe`).
 - **Application Errors**: `anyhow` is used in the binary crates (`cli`, `web`, `runtime`) for flexible error propagation and context wrapping. Since `PlantLinkError` implements `std::error::Error`, it is automatically converted to `anyhow::Error` via the `?` operator.
@@ -94,38 +100,24 @@ All crates inherit shared lint rules from the root `Cargo.toml` via `[workspace.
 - **Subscribers**: `tracing-subscriber` in `plantlink-cli` configures output formatting and log levels.
 - **Levels**: standard `ERROR`, `WARN`, `INFO`, `DEBUG`, and `TRACE` used per `GEMINI.md` guidelines.
 
-## 10. Concurrency Model
-- **Structured concurrency**: `RuntimeEngine` uses `tokio_util::task::TaskTracker` to formally track and await all background tasks (actors and timers) during flow shutdown.
-- **Actor-per-node**: Each node is spawned as an independent task within the `TaskTracker`, implementing the `NodeBehavior` trait.
-- **Inter-node channels**: Bounded `mpsc` channels (capacity: 100) carry `(port_idx, Arc<MessagePayload>)` tuples.
-- **Reference-counted payloads**: All messages are wrapped in `Arc` by the `NodeContext::send_output` method to eliminate deep clones ($O(N)$ memory duplication) during multi-port fan-out.
-- **Actor Interface**: Nodes implement the `receive` method (accepting `Arc<MessagePayload>`) for high-performance message handling.
-- **Source nodes**: Nodes with no input receivers are kept alive via cancellation-aware wait loops.
-- **Stream multiplexing**: Nodes with multiple inputs use `tokio_stream::StreamMap` to merge all receivers into a single event stream.
-- **Cooperative shutdown**: `CancellationToken` and `TaskTracker` work in tandem to ensure graceful, deterministic exit of all asynchronous components.
-
-## 11. State Management
-- **Shared resource registry**: `Arc<RwLock<HashMap<String, Box<dyn Any + Send + Sync>>>>` scoped per flow execution. Allows nodes to share typed state (e.g., protocol connections).
-- **System event bus**: `broadcast::Sender<SystemEvent>` carries strongly-typed JSON-serializable status and log events from nodes to the WebSocket layer.
-
-## 12. Testing Strategy
+## 10. Testing Strategy
 - **Unit Testing**: Rust unit tests are co-located in `src/` modules.
-- **E2E Testing**: Playwright is used to validate full-stack flows via Chromium. Tests are proxied through `scripts/run-integration.ps1` with `-ExecutionPolicy Bypass` to securely inject `PLANTLINK_AUTH_TOKEN` past Makefile variable dropping.
-- **Continuous Verification**: `make verify` ensures all code passes formatting, clippy linting, testing, and AST structural rules before commit.
+- **E2E Testing**: Playwright is used to validate full-stack flows via Chromium. Tests are proxied through execution policies (`scripts/run-integration.ps1`) to reliably inject `PLANTLINK_AUTH_TOKEN` past Makefile variable scopes. Workers are strictly pinned (`workers: 1`) to ensure serial execution to prevent data collisions against the single shared live test backend instance.
+- **Continuous Verification**: `make verify` and `make verify-full` ensures all code passes formatting, clippy linting, testing, E2E resilience, and AST structural rules deterministicly before commit.
 
-## 13. Documentation Conventions
+## 11. Documentation Conventions
 - **Rustdoc**: Triple-slash (`///`) comments for public types, traits, and functions.
 - **Module Documentation**: Inline (`//!`) comments at the top of crate roots.
 - **Frontend**: JSDoc-style comments for complex Svelte components and utility functions.
 
-## 14. Dependencies & External Systems
+## 12. Dependencies & External Systems
 Primary external integrations:
 - **MQTT**: `rumqttc` for asynchronous broker communication.
 - **NATS**: `async-nats` for high-performance messaging.
 - **Modbus**: `tokio-modbus` (TCP) for industrial device interoperability.
 - **Protocols**: All drivers reside in `plantlink-core` or are orchestrated by `plantlink-runtime`.
 
-## 15. Architecture Diagrams
+## 13. Architecture Diagrams
 
 ### System Overview
 ```mermaid
@@ -172,23 +164,42 @@ sequenceDiagram
     WEB-->>UI: WebSocket update
 ```
 
-## 16. Known Constraints & Technical Debt
+## 14. Known Constraints & Technical Debt
 - **Environment**: Must run in Windows non-admin space using BusyBox/PowerShell.
 - **Deployment**: Single-binary release capability with embedded assets requires `rust-embed` in `plantlink-web`.
 - **Status Reporting**: Centrally managed via `plantlink_runtime::nodes::send_node_status`.
 - **Structured Shutdown**: `MqttDriver` uses a `CancellationToken` and `tokio::task::JoinHandle` to ensure the background event loop exits cleanly when the driver is dropped.
 - **ISP Violation (Tech Debt)**: The `PubSubClient` trait combines `publish` and `subscribe`. Drivers like `MqttDriver` are forced to implement stubs for unsupported capabilities. Refactoring this into separate `Publisher`/`Subscriber` traits is planned for post-v1 stabilization.
-- **Modbus Exclusivity**: `ModbusClient` uses `&self` across its API, managing exclusivity via an MPSC Actor model to allow safe shared access from multiple nodes. The background actor also handles automatic on-demand connection recovery, eliminating the need for blocking `tokio::sync::Mutex` contention.
+- **Modbus Exclusivity**: Although previously a technical debt point bounded by `tokio::sync::Mutex` contention, `ModbusClient` now exclusively uses an overarching MPSC Actor model background task to ensure safety alongside zero-contention access across concurrent nodes.
 - **Channel Error Propagation**: `NodeContext::send_output` and `send_output_port` return `Result<()>`. Callers must handle or propagate downstream channel failures.
 - **Rhai Script Validation (Tech Debt)**: Rhai scripts are compiled during node instantiation rather than validated at flow ingestion. This permits structurally invalid flows to be deployed and fail only at runtime. It requires modifying `NodeFactory` to return `Result<Box<dyn NodeBehavior>>` to shift compilation left.
 
-## 17. Environment Configuration
+## 15. Data Model
+*N/A — PlantLink currently does not utilize persistent local database storage.* Flow states map to transient memory and protocol buses.
+
+## 16. Environment Configuration
 The system is designed for dynamic discovery and late-binding of connections:
 - **Broker Discovery**: Endpoints for NATS and MQTT brokers are provided at runtime via the `FlowConfig` JSON payload, not static environment variables.
 - **Secrets Management**: While the current MVP uses plaintext passwords in the `FlowConfig`, the architecture supports future integration with platform-native secrets managers by swapping the `PubSubClient` implementation.
 - **Crate Environment**: `plantlink-web` looks for frontend assets in `../ui/dist` during development, or embedded within the binary in production mode.
 
-## 18. Web Server Security & Concurrency
+---
+
+## Appendix: Concurrency Model
+- **Structured concurrency**: `RuntimeEngine` uses `tokio_util::task::TaskTracker` to formally track and await all background tasks (actors and timers) during flow shutdown.
+- **Actor-per-node**: Each node is spawned as an independent task within the `TaskTracker`, implementing the `NodeBehavior` trait.
+- **Inter-node channels**: Bounded `mpsc` channels (capacity: 100) carry `(port_idx, Arc<MessagePayload>)` tuples.
+- **Reference-counted payloads**: All messages are wrapped in `Arc` by the `NodeContext::send_output` method to eliminate deep clones ($O(N)$ memory duplication) during multi-port fan-out.
+- **Actor Interface**: Nodes implement the `receive` method (accepting `Arc<MessagePayload>`) for high-performance message handling.
+- **Source nodes**: Nodes with no input receivers are kept alive via cancellation-aware wait loops.
+- **Stream multiplexing**: Nodes with multiple inputs use `tokio_stream::StreamMap` to merge all receivers into a single event stream.
+- **Cooperative shutdown**: `CancellationToken` and `TaskTracker` work in tandem to ensure graceful, deterministic exit of all asynchronous components.
+
+## Appendix: State Management
+- **Shared resource registry**: `Arc<RwLock<HashMap<String, Box<dyn Any + Send + Sync>>>>` scoped per flow execution. Allows nodes to share typed state (e.g., protocol connections).
+- **System event bus**: `broadcast::Sender<SystemEvent>` carries strongly-typed JSON-serializable status and log events from nodes to the WebSocket layer.
+
+## Appendix: Web Server Security & Concurrency
 The `plantlink-web` component follows strict hardening patterns for remote deployment:
 - **Authentication**: REST API endpoints (`/api/flow/*`) are protected by a Bearer token middleware. The secret is provided via the `PLANTLINK_AUTH_TOKEN` environment variable. If unset, authentication is disabled (development mode).
 - **Structured Concurrency**: All background tasks, including the `EventCache` aggregator and individual WebSocket handlers, are managed by a `tokio_util::task::TaskTracker`. Deterministic shutdown is triggered via a `CancellationToken`.
