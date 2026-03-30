@@ -22,6 +22,9 @@ User invokes: `/update-doc`
 
 ## Prerequisites
 
+> [!CAUTION]
+> **Mechanical Guardrail:** You MUST use the `view_file` tool to load the required `.agent/rules/*.md` files into your context BEFORE proceeding to Step 1. Do not skip this step or rely on heuristics. When a step requires a specific output format, extract the markdown template byte-for-byte from the loaded rule file.
+
 - Read `.agent/rules/doc-rules.md` for documentation standards.
 - Read `spec.md` (if present) to understand existing behavioral contracts.
 - Read `context.md` (if present) for historical decisions.

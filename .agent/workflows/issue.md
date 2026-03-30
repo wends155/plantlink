@@ -22,6 +22,9 @@ User invokes: `/issue <description>`
 
 ## Prerequisites
 
+> [!CAUTION]
+> **Mechanical Guardrail:** You MUST use the `view_file` tool to load the required `.agent/rules/*.md` files into your context BEFORE proceeding to Step 1. Do not skip this step or rely on heuristics. When a step requires a specific output format, extract the markdown template byte-for-byte from the loaded rule file.
+
 - Read `.agent/rules/issue-rules.md` for classification criteria, report format, and investigation depth.
 - Read `architecture.md` (if present) for project structure, components, and toolchain.
 - Read `context.md` (if present) for historical decisions and known issues.

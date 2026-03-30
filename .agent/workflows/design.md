@@ -24,6 +24,9 @@ User invokes: `/design <description>`
 
 ## Prerequisites
 
+> [!CAUTION]
+> **Mechanical Guardrail:** You MUST use the `view_file` tool to load the required `.agent/rules/*.md` files into your context BEFORE proceeding to Step 1. Do not skip this step or rely on heuristics. When a step requires a specific output format, extract the markdown template byte-for-byte from the loaded rule file.
+
 - Read `.agent/rules/design-rules.md` for design modes, spec format, mockup conventions, and review protocol.
 - Read `architecture.md` (if present) for project structure and module boundaries.
 - Read `design/design-spec.md` (if present) for existing designs (revision mode).

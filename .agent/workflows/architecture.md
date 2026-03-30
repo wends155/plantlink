@@ -8,6 +8,9 @@ Create, discover, or audit a project's architectural documentation.
 
 ## Prerequisites
 
+> [!CAUTION]
+> **Mechanical Guardrail:** You MUST use the `view_file` tool to load the required `.agent/rules/*.md` files into your context BEFORE proceeding to Step 1. Do not skip this step or rely on heuristics. When a step requires a specific output format, extract the markdown template byte-for-byte from the loaded rule file.
+
 - Read `.agent/rules/architecture-rules.md` for required sections and conventions.
 - Read `context.md` (if present) for historical decisions.
 - Read `algorithm.md` (if present) for algorithm integration contracts — place each algorithm in the module boundary map.

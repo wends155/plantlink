@@ -19,6 +19,9 @@ Example: `/brainstorm an OPC UA client library in Rust`
 
 ## Prerequisites
 
+> [!CAUTION]
+> **Mechanical Guardrail:** You MUST use the `view_file` tool to load the required `.agent/rules/*.md` files into your context BEFORE proceeding to Step 1. Do not skip this step or rely on heuristics. When a step requires a specific output format, extract the markdown template byte-for-byte from the loaded rule file.
+
 - Read `context.md` (if present) for existing project history.
 - Confirm you are operating as the **Architect** (high-reasoning model).
 
