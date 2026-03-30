@@ -6,6 +6,11 @@ use plantlink_web::WebServer;
 struct Args {
     #[arg(short, long, default_value_t = 3000)]
     port: u16,
+
+    /// Optional Bearer token for authenticating REST deployments.
+    /// Read from `PLANTLINK_AUTH_TOKEN` environment variable.
+    #[arg(long, env = "PLANTLINK_AUTH_TOKEN", hide = true)]
+    auth_token: Option<String>,
 }
 
 #[tokio::main]
@@ -62,14 +67,13 @@ async fn main() -> anyhow::Result<()> {
         tracing::info!("Runtime stopped. {} tasks aborted.", status.tasks_aborted);
     };
 
-    let auth_token = std::env::var("PLANTLINK_AUTH_TOKEN").ok();
-    if auth_token.is_some() {
+    if args.auth_token.is_some() {
         tracing::info!("Authentication enabled (Bearer token)");
     } else {
         tracing::warn!("Authentication disabled (PLANTLINK_AUTH_TOKEN not set)");
     }
 
-    WebServer::run(args.port, tx, runtime, auth_token, shutdown).await?;
+    WebServer::run(args.port, tx, runtime, args.auth_token, shutdown).await?;
 
     Ok(())
 }
