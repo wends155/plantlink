@@ -1,4 +1,4 @@
-.PHONY: build-assets run test-e2e clean build-release dev preview toolcheck todos secrets doc-coverage doc-comments diff-last lint-ast sections log-summary log-lifecycle log-timings check-stubs verify
+.PHONY: build-assets run test-e2e clean build-release dev preview toolcheck todos secrets doc-coverage doc-comments diff-last lint-ast sections log-summary log-lifecycle log-timings check-stubs verify verify-full
 
 # Development server
 dev:
@@ -32,10 +32,7 @@ test-unit:
 	cd ui && npm run test:unit
 
 test-integration:
-	pwsh -ExecutionPolicy Bypass -File scripts/build-ui.ps1
-	pwsh -ExecutionPolicy Bypass -File scripts/start-backend.ps1
 	pwsh -ExecutionPolicy Bypass -File scripts/run-integration.ps1
-	pwsh -ExecutionPolicy Bypass -File scripts/stop-backend.ps1
 
 test-e2e:
 	cd ui && npm run test:e2e
@@ -51,6 +48,9 @@ verify:
 	cargo clippy --all-targets --all-features -- -D warnings
 	cargo test --all-features
 	$(MAKE) lint-ast
+
+# Full verification pipeline including live-backend E2E tests
+verify-full: verify test-integration
 
 fmt:
 	cargo fmt

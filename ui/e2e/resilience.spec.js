@@ -11,18 +11,22 @@ test.describe('Web Server Hardening & Resilience', () => {
         expect(response.status()).toBe(200);
     });
 
-    test('should reject unauthorized /api/flow requests', async ({ request }) => {
-        const flowPayload = { nodes: [], edges: [] };
-        
-        // No header — must be rejected
-        const response = await request.post('/api/flow', {
-            data: flowPayload
+    const unauthorizedVectors = [
+        { name: 'no header', headers: {} },
+        { name: 'empty bearer', headers: { 'Authorization': 'Bearer ' } },
+        { name: 'wrong token', headers: { 'Authorization': 'Bearer wrong-secret' } },
+        { name: 'malformed scheme', headers: { 'Authorization': 'Token test-secret' } },
+    ];
+
+    for (const vector of unauthorizedVectors) {
+        test(`should reject ${vector.name}`, async ({ request }) => {
+            const response = await request.post('/api/flow', {
+                data: { nodes: [], edges: [] },
+                headers: vector.headers,
+            });
+            expect(response.status()).toBe(401);
         });
-        
-        // Assert that the request is rejected with 401 Unauthorized.
-        // This is now unconditional; the test will fail if the environment is misconfigured.
-        expect(response.status()).toBe(401);
-    });
+    }
 
     test('should accept authorized /api/flow requests with Bearer token', async ({ request }) => {
         const flowPayload = {
@@ -59,7 +63,13 @@ test.describe('Web Server Hardening & Resilience', () => {
             // But we can check if the connection stays alive
         });
 
-        // 1. Deploy a flow that generates status updates
+        // 1. Setup frame listener BEFORE deployment
+        const framePromise = ws.waitForEvent('framereceived', frame => {
+            const text = typeof frame.payload === 'string' ? frame.payload : frame.payload.toString();
+            return text.includes('"type":"status"');
+        });
+
+        // 2. Deploy a flow that generates status updates
         const token = process.env.PLANTLINK_AUTH_TOKEN;
         const flowPayload = {
             nodes: [{ id: "n1", type: "inject", data: { name: "inject", payload: "ws-test", interval: 0.1 } }],
@@ -72,14 +82,9 @@ test.describe('Web Server Hardening & Resilience', () => {
         });
         expect(deployRes.status()).toBe(200);
 
-        // 2. Wait for a status frame
-        const framePromise = ws.waitForEvent('framereceived', frame => {
-            const text = typeof frame.payload === 'string' ? frame.payload : frame.payload.toString();
-            return text.includes('Status');
-        });
-
+        // 3. Wait for the status frame to arrive
         const frame = await framePromise;
-        expect(frame.payload).toContain('Status');
+        expect(frame.payload).toContain('"type":"status"');
 
         // 3. Cleanup
         await page.request.post('/api/flow/stop', {
