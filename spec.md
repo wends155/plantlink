@@ -231,6 +231,7 @@ stateDiagram-v2
 - [x] `InjectNode` timer stops on `CancellationToken` cancellation.
 - [x] `InjectNode` timer stops on downstream channel closure.
 - [x] `create_node` returns error for unknown type.
+- [x] `RhaiNode` accepts scripts and mutates payloads outputted to `ConsoleNode`.
 
 ---
 
