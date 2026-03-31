@@ -762,7 +762,7 @@ mod tests {
     #[tokio::test]
     async fn test_circuit_breaker_stops_broken_node() {
         use crate::nodes::{NodeBehavior, NodeContext};
-        use crate::{FlowConfig, NodeConfig, RuntimeEngine, EdgeConfig};
+        use crate::{EdgeConfig, FlowConfig, NodeConfig, RuntimeEngine};
         use std::sync::Arc;
         use std::sync::atomic::{AtomicUsize, Ordering};
         use tokio::sync::broadcast;
@@ -797,14 +797,25 @@ mod tests {
                 let ctx_clone = ctx.clone();
                 ctx.tracker.spawn(async move {
                     for _ in 0..10 {
-                        let _ = ctx_clone.send_output_port(0, plantlink_core::MessagePayload::default()).await;
+                        let _ = ctx_clone
+                            .send_output_port(0, plantlink_core::MessagePayload::default())
+                            .await;
                         tokio::time::sleep(std::time::Duration::from_millis(5)).await;
                     }
                 });
                 Ok(())
             }
-            async fn stop(&mut self) -> anyhow::Result<()> { Ok(()) }
-            async fn receive(&mut self, _p: usize, _m: Arc<plantlink_core::MessagePayload>, _ctx: &NodeContext) -> anyhow::Result<()> { Ok(()) }
+            async fn stop(&mut self) -> anyhow::Result<()> {
+                Ok(())
+            }
+            async fn receive(
+                &mut self,
+                _p: usize,
+                _m: Arc<plantlink_core::MessagePayload>,
+                _ctx: &NodeContext,
+            ) -> anyhow::Result<()> {
+                Ok(())
+            }
         }
 
         let call_count = Arc::new(AtomicUsize::new(0));
@@ -814,14 +825,18 @@ mod tests {
         let mut engine = RuntimeEngine::new(tx).unwrap();
 
         let mut registry = crate::nodes::registry::NodeRegistry::new();
-        registry.register("always-fail", move |_| {
-            Ok(Box::new(AlwaysFailNode {
-                call_count: call_count_clone.clone(),
-            }) as Box<dyn NodeBehavior>)
-        }).unwrap();
-        registry.register("source", |_| {
-            Ok(Box::new(SourceNode) as Box<dyn NodeBehavior>)
-        }).unwrap();
+        registry
+            .register("always-fail", move |_| {
+                Ok(Box::new(AlwaysFailNode {
+                    call_count: call_count_clone.clone(),
+                }) as Box<dyn NodeBehavior>)
+            })
+            .unwrap();
+        registry
+            .register("source", |_| {
+                Ok(Box::new(SourceNode) as Box<dyn NodeBehavior>)
+            })
+            .unwrap();
         engine.registry = registry;
 
         // Deploy: source -> always-fail
@@ -838,15 +853,13 @@ mod tests {
                     data: serde_json::json!({}),
                 },
             ],
-            edges: vec![
-                EdgeConfig {
-                    id: "e1".into(),
-                    source: "src".into(),
-                    target: "sink".into(),
-                    source_handle: None,
-                    target_handle: None,
-                }
-            ],
+            edges: vec![EdgeConfig {
+                id: "e1".into(),
+                source: "src".into(),
+                target: "sink".into(),
+                source_handle: None,
+                target_handle: None,
+            }],
         };
 
         engine.update_flow(flow).await.unwrap();
