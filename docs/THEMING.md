@@ -8,14 +8,14 @@ PlantLink's UI uses a modern theming system built on **CSS custom properties** a
 
 The theming system consists of three layers:
 
-1. **Theme Variables** (`ui/src/styles/themes.css`) - CSS custom properties defining colors
-2. **Semantic Classes** (`ui/src/styles/components.css`) - Reusable component styles
-3. **Theme Store** (`ui/src/lib/stores/theme.js`) - Runtime theme management
+1. **Theme Variables** (`ui/src/styles/themes.css`) - CSS custom properties defining colors.
+2. **Semantic Classes** (`ui/src/styles/components.css`) - Reusable component styles.
+3. **Theme Store** (`ui/src/lib/stores/theme.js`) - Runtime theme management with an N-ary registry.
 
 ```
 themes.css (CSS vars) → components.css (semantic classes) → Svelte components
                      ↑
-             theme.js (store) applies .dark class
+             theme.js (store) manages THEMES registry and applies classes
 ```
 
 ---
@@ -114,17 +114,37 @@ Nodes extend `.node-base` and apply state modifiers.
 
 ### Adding a New Theme
 
-1. Add a new class block in `themes.css`.
-2. Override semantic variables.
+PlantLink supports an extensible N-ary theme registry. To add a new theme:
+
+1. **Define CSS Variables** in `ui/src/styles/themes.css`:
+   Create a class block and override the core variables.
 
 ```css
-.theme-ocean {
-    --color-bg-primary: #e0f2fe;
-    --color-btn-primary: #0284c7;
+.theme-nord {
+   --color-bg-primary: #2e3440;
+   --color-text-primary: #eceff4;
+   /* ... override all variables from :root ... */
 }
 ```
 
-3. Register in `ui/src/lib/stores/theme.js`.
+2. **Register the Theme** in `ui/src/lib/stores/theme.js`:
+   Add a metadata object to the `THEMES` registry.
+
+```javascript
+export const THEMES = Object.freeze([
+    { name: 'light', cssClass: null,         colorMode: 'light', label: 'Light' },
+    { name: 'dark',  cssClass: 'dark',       colorMode: 'dark',  label: 'Dark' },
+    { name: 'nord',  cssClass: 'theme-nord', colorMode: 'dark',  label: 'Nord' },
+]);
+```
+
+#### The `colorMode` Mapping
+The registry decouples the **Theme Name** from its **Visual Mode**.
+- **`cssClass`**: The specific class applied to the document root (e.g., `.theme-nord`).
+- **`colorMode`**: Either `'light'` or `'dark'`. This ensures that:
+  - Tailwind `dark:` utilities function correctly (via automatic `.dark` class application).
+  - SvelteFlow components receive the correct binary `colorMode` prop.
+  - The system preference matching logic knows which mode to favor.
 
 ### Adding a New Button Variant
 

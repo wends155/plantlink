@@ -31,7 +31,6 @@
 
    /* Buttons - Primary */
    --color-btn-primary: #2563eb;
-   --color-btn-primary: #2563eb;
    --color-btn-primary-hover: #1d4ed8;
 
    /* Buttons - Secondary (High Contrast) */
@@ -94,15 +93,67 @@
 }
 
 /* ─────────────────────────────────────────────────────────
-   Future: Nord Theme (Commented Template)
+   Nord Theme
    ───────────────────────────────────────────────────────── */
-/* 
 .theme-nord {
-  --color-bg-primary: #2e3440;
-  --color-bg-secondary: #3b4252;
-  --color-bg-tertiary: #434c5e;
-  --color-text-primary: #eceff4;
-  --color-text-secondary: #d8dee9;
-  --color-text-muted: #81a1c1;
+   /* Backgrounds */
+   --color-bg-primary: #2e3440;
+   /* nord0 */
+   --color-bg-secondary: #3b4252;
+   /* nord1 */
+   --color-bg-tertiary: #434c5e;
+   /* nord2 */
+   --color-bg-canvas: #2e3440;
+
+   /* Borders */
+   --color-border: #4c566a;
+   /* nord3 */
+   --color-border-hover: #88c0d0;
+   /* nord8 */
+
+   /* Text */
+   --color-text-primary: #eceff4;
+   /* nord6 */
+   --color-text-secondary: #e5e9f0;
+   /* nord5 */
+   --color-text-muted: #d8dee9;
+   /* nord4 */
+
+   /* Buttons - Success */
+   --color-btn-success: #a3be8c;
+   /* nord14 */
+   --color-btn-success-hover: #8fbcbb;
+   /* nord7 */
+
+   /* Buttons - Danger */
+   --color-btn-danger: #bf616a;
+   /* nord11 */
+   --color-btn-danger-hover: #d08770;
+   /* nord12 */
+
+   /* Buttons - Primary */
+   --color-btn-primary: #81a1c1;
+   /* nord9 */
+   --color-btn-primary-hover: #5e81ac;
+   /* nord10 */
+
+   /* Buttons - Secondary */
+   --color-btn-secondary-bg: #4c566a;
+   /* nord3 */
+   --color-btn-secondary-hover: #434c5e;
+   /* nord2 */
+   --color-btn-secondary-text: #eceff4;
+   /* nord6 */
+
+   /* Nodes */
+   --color-node-bg: #3b4252;
+   --color-node-border: #4c566a;
+
+   /* Node States */
+   --color-state-running: #a3be8c;
+   --color-state-running-bg: #4c566a;
+   --color-state-error: #bf616a;
+   --color-state-error-bg: #4c566a;
+   --color-state-stopped: #d8dee9;
+   --color-state-stopped-bg: #3b4252;
 }
-*/

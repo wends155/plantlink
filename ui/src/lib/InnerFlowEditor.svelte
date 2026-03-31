@@ -16,6 +16,7 @@
     import PropertyPanel from "./PropertyPanel.svelte";
     import ThemeToggle from "./components/ThemeToggle.svelte";
     import { theme } from "./stores/theme";
+    const colorMode = theme.colorMode;
     import { nodeStatuses, initNodeAsStopped } from "./stores/nodeStatus";
 
     const nodeTypes = getNodeTypes();
@@ -267,7 +268,7 @@
             {nodeTypes}
             {isValidConnection}
             class="bg-gray-50 dark:bg-gray-900"
-            colorMode={$theme}
+            colorMode={$colorMode}
             deleteKeyCode={null}
             on:nodeclick={(e) => console.log("Node Clicked", e.detail)}
         >
