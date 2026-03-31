@@ -38,11 +38,18 @@ The `msg` object has these fields:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `msg.payload` | Dynamic | The main data (string, number, object) |
+| `msg.payload` | Dynamic | The main data (string, number, object, bytes placeholder) |
 | `msg.topic` | String | Optional topic/subject name |
 | `msg.timestamp` | Integer | Unix timestamp (optional) |
 
 ---
+
+## Binary Data (Bytes)
+
+Rhai does not natively handle raw byte arrays efficiently. To protect system memory:
+1. If an incoming message payload is raw bytes (`DataValue::Bytes`), PlantLink replaces it with a placeholder string (e.g., `"<binary data: 1024 bytes>"`).
+2. Your script can access other fields (`msg.topic`, etc.) safely.
+3. If you return the message without modifying the placeholder string, PlantLink will **automatically restore** the original binary payload before emitting the message.
 
 ## JSON and Object Maps
 
@@ -155,18 +162,15 @@ return msg;
 
 ## Error Handling
 
-If your script has an error, the node will:
-1. Show error status (red border)
-2. Log error message to console
-3. Not output any message
+If your script has an error, the behavior depends on the error type:
 
 ### Common Errors
 
-| Error | Cause |
-|-------|-------|
-| Compilation Error | Syntax error in script |
-| Runtime Error | Exception during execution |
-| Return Type Mismatch | Didn't return `msg` object |
+| Error | Cause | Behavior |
+|-------|-------|----------|
+| Compilation Error | Syntax error in script | Caught at **flow deployment**. The flow will fail to start. |
+| Runtime Error | Exception during execution | Node enters `error` state (red border) and stops outputting. |
+| Return Type Mismatch | Didn't return `msg` object | Node enters `error` state and logs mismatch to console. |
 
 ---
 

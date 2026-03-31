@@ -21,6 +21,7 @@ GET /health
 ```
 POST /api/flow
 Content-Type: application/json
+Authorization: Bearer <token>
 ```
 
 **Request Body**:
@@ -64,6 +65,7 @@ Content-Type: application/json
 
 ```
 POST /api/flow/stop
+Authorization: Bearer <token>
 ```
 
 **Response**: `200 OK` - "Flow Stopped"
