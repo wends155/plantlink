@@ -141,16 +141,23 @@ impl NatsSubNode {
         };
 
         let ctx_clone = ctx.clone();
+        let cancel = ctx.cancel.clone();
         let handle = ctx.tracker.spawn(async move {
-            while let Some(nats_msg) = subscriber.next().await {
-                let payload_str = String::from_utf8_lossy(&nats_msg.payload).to_string();
-                let out_msg = MessagePayload {
-                    payload: DataValue::String(payload_str),
-                    topic: Some(nats_msg.topic.clone()),
-                    ..Default::default()
-                };
-                if let Err(e) = ctx_clone.send_output(out_msg).await {
-                    tracing::warn!("NatsSub: failed to forward message: {}", e);
+            loop {
+                tokio::select! {
+                    () = cancel.cancelled() => break,
+                    maybe_msg = subscriber.next() => {
+                        let Some(nats_msg) = maybe_msg else { break };
+                        let payload_str = String::from_utf8_lossy(&nats_msg.payload).to_string();
+                        let out_msg = MessagePayload {
+                            payload: DataValue::String(payload_str),
+                            topic: Some(nats_msg.topic.clone()),
+                            ..Default::default()
+                        };
+                        if let Err(e) = ctx_clone.send_output(out_msg).await {
+                            tracing::warn!(node_id = %ctx_clone.id, "NatsSub: failed to forward message: {}", e);
+                        }
+                    }
                 }
             }
         });
@@ -416,6 +423,7 @@ mod tests {
         // Drain and check for "error" status
         let mut found_error = false;
         while let Ok(msg) = sys_rx.try_recv() {
+            #[allow(clippy::collapsible_if)]
             if let crate::nodes::SystemEvent::Status { data } = msg {
                 if data.state == "error" && data.message.contains("missing-broker") {
                     found_error = true;
@@ -458,5 +466,50 @@ mod tests {
             node.sub_handle.is_some(),
             "Subscription handle should be spawned"
         );
+    }
+
+    #[tokio::test]
+    async fn test_sub_listener_is_tracked() {
+        use plantlink_core::traits::{MockPubSubClient, PubSubClient};
+        use std::time::Duration;
+
+        let cfg = NodeConfig {
+            id: "s1".into(),
+            type_: "nats-sub".into(),
+            data: json!({ "subject": "test.topic", "broker": "b1" }),
+        };
+        let mut node = NatsSubNode::new(&cfg);
+        let (ctx, _rx) = NodeContext::for_test("s1");
+        let cancel = ctx.cancel.clone();
+        let tracker = ctx.tracker.clone();
+
+        // Register mock broker with infinite stream
+        let mut mock = MockPubSubClient::new();
+        mock.expect_subscribe()
+            .returning(|_| Ok(futures::stream::pending().boxed()));
+        {
+            let mut resources = ctx.resources.write().await;
+            resources.insert(
+                "b1".to_string(),
+                Box::new(Arc::new(mock) as Arc<dyn PubSubClient>),
+            );
+        }
+
+        node.start(ctx).await.expect("Node failed to start");
+        tracker.close();
+
+        // Prove tracker blocks (task is tracked)
+        let wait_fut = tracker.wait();
+        tokio::pin!(wait_fut);
+        tokio::select! {
+            () = &mut wait_fut => panic!("Should block — task is still running"),
+            () = tokio::time::sleep(Duration::from_millis(50)) => {}
+        }
+
+        // Cancel and verify exit
+        cancel.cancel();
+        tokio::time::timeout(Duration::from_millis(100), wait_fut)
+            .await
+            .expect("Tracker should complete after cancellation");
     }
 }

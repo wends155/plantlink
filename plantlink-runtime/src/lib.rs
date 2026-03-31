@@ -287,13 +287,11 @@ impl FlowRuntime for RuntimeEngine {
                                 if let Err(e) = node.receive(target_port, msg, &ctx).await {
                                     consecutive_errors += 1;
                                     tracing::error!(
-                                        "Node {} error on input ({}/{}): {}",
-                                        node_id, consecutive_errors, MAX_CONSECUTIVE_ERRORS, e
+                                        "Node {node_id} error on input ({consecutive_errors}/{MAX_CONSECUTIVE_ERRORS}): {e}"
                                     );
                                     if consecutive_errors >= MAX_CONSECUTIVE_ERRORS {
                                         ctx.emit_error(&format!(
-                                            "Node halted after {} consecutive errors. Last: {}",
-                                            MAX_CONSECUTIVE_ERRORS, e
+                                            "Node halted after {MAX_CONSECUTIVE_ERRORS} consecutive errors. Last: {e}",
                                         ));
                                         break;
                                     }
@@ -760,6 +758,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[allow(clippy::too_many_lines)]
     async fn test_circuit_breaker_stops_broken_node() {
         use crate::nodes::{NodeBehavior, NodeContext};
         use crate::{EdgeConfig, FlowConfig, NodeConfig, RuntimeEngine};
