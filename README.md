@@ -40,7 +40,8 @@ graph TB
     -   Structural linting via AST-Grep prevents production panics (e.g., bare `.unwrap()`).
     -   Comprehensive unit, doc-test, and E2E coverage.
     -   Structured, robust error handling across drivers using `thiserror`.
-    -   **Structured Concurrency**: Safe shutdown and actor lifecycle management using `JoinSet` and `CancellationToken` (no unstructured `tokio::spawn` calls).
+    -   **Interface-Based Mocking**: Core protocol traits (`PubSubClient`, `ModbusClient`) are fully mockable via `mockall`, enabling high-fidelity node-level testing without live hardware.
+    -   **Structured Concurrency**: Safe shutdown and actor lifecycle management using `JoinSet`, `TaskTracker`, and `CancellationToken` (no unstructured `tokio::spawn` calls).
 
 ## Example: Rhai Function
 
