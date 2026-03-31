@@ -9,13 +9,13 @@
 - [x] Synchronize `spec.md` with structured concurrency refactor (Cycle 85)
 
 ## 🏗️ Structured Concurrency (Zero-Exit Hardening)
-- [/] Migrate nodes and tests to structured concurrency (`JoinSet`, `TaskTracker`)
+- [x] Migrate nodes and tests to structured concurrency (`JoinSet`, `TaskTracker`)
   - [x] Refactor `RuntimeEngine` to use tracker-aware shutdown
   - [x] Implement line-level AST linter suppressions for legacy tests
-  - [/] Add TDD `TaskTracker` validation tests for all spawning nodes
+  - [x] Add TDD `TaskTracker` validation tests for all spawning nodes
     - [x] `InjectNode` (timer tracking)
     - [x] `NatsSubNode` (listener tracking) — Added in Cycle 86
-    - [ ] `NatsBrokerNode` (driver handle tracking, if applicable)
+    - [x] `NatsBrokerNode` (driver handle tracking, N/A - does not spawn tasks)
 
 ## 🛠️ Technical Debt
 - [x] Implement robust error recovery for Modbus TCP reconnections
