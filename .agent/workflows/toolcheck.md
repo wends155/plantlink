@@ -38,9 +38,8 @@ Run the following checks. All are auto-runnable:
 **Git Non-Interactive Safety:**
 Check the output of `make toolcheck` for the `git config credential.helper` result.
 
-If the output matches `manager`, `wincred`, or `osxkeychain`, set these env vars for the session:
-- `$env:GCM_INTERACTIVE = 'never'`
-- `$env:GIT_TERMINAL_PROMPT = '0'`
+If the output matches `manager`, `wincred`, or `osxkeychain`, interactive credential prompts may hang the agent.
+You MUST use `make git-status` instead of `git status` when analyzing repository state to prevent IDE blocking.
 
 **Workflow & Script Files:**
 Use `list_dir` on `.agent/workflows/` and `.agent/scripts/` to verify all expected files are present.

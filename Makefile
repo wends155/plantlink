@@ -79,6 +79,10 @@ toolcheck:
 	rustup show
 	git config credential.helper
 
+# IDE-safe Git status check
+git-status:
+	pwsh -ExecutionPolicy Bypass -Command '$$env:GCM_INTERACTIVE="never"; $$env:GIT_TERMINAL_PROMPT="0"; git status'
+
 # Scan for TODO/FIXME/HACK markers across source files
 todos:
 	rg -n -e "TODO" -e "FIXME" -e "HACK" --glob "*.rs" --glob "*.go" --glob "*.ts" --glob "*.js" --glob "*.svelte" --glob "*.py" . || true
