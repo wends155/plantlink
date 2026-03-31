@@ -16,7 +16,15 @@ use plantlink_core::MessagePayload;
 /// which handles error reporting and logging.
 #[async_trait::async_trait]
 pub trait SimpleNode: Send + Sync {
-    /// Called when the node is started. Can return initial state or error.
+    /// Called when the node is started.
+    ///
+    /// # Arguments
+    ///
+    /// * `ctx` - The node's execution context, providing output routing and lifecycle tools.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` on successful initialization, or an error if the node cannot start.
     async fn on_start(&mut self, _ctx: &NodeContext) -> Result<()> {
         Ok(())
     }
@@ -26,9 +34,15 @@ pub trait SimpleNode: Send + Sync {
     /// This is the primary processing hook. It is called by the adapter's
     /// `receive` implementation. Logic should be non-blocking where possible.
     ///
-    /// # Port Routing
-    /// - `port`: The index of the input port receiving the message.
-    /// - `msg`: An `Arc`-wrapped `MessagePayload`.
+    /// # Arguments
+    ///
+    /// * `port` - The index of the input port receiving the message.
+    /// * `msg` - An `Arc`-wrapped `MessagePayload` to be processed.
+    /// * `ctx` - The node's execution context.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` on successful processing, or an error that will be reported/logged by the adapter.
     async fn handle(
         &mut self,
         port: usize,
@@ -37,6 +51,10 @@ pub trait SimpleNode: Send + Sync {
     ) -> Result<()>;
 
     /// Called when the node is shut down.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` on successful cleanup, or an error if cleanup fails.
     async fn on_stop(&mut self) -> Result<()> {
         Ok(())
     }
@@ -54,6 +72,7 @@ pub struct BaseNodeAdapter<T: SimpleNode> {
 }
 
 impl<T: SimpleNode> BaseNodeAdapter<T> {
+    /// Creates a new `BaseNodeAdapter` wrapping the given `SimpleNode`.
     pub fn new(inner: T) -> Self {
         Self { inner }
     }

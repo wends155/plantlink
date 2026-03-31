@@ -5,7 +5,7 @@
 >
 > **Maintenance Rule**: The Architect must update this file whenever a public API changes.
 >
-> Last verified against: b70fede
+> Last verified against: 320a1c9
 
 ---
 
@@ -111,7 +111,7 @@ The standard message envelope passed between nodes.
 
 | Method | Signature | Default | Errors |
 |--------|-----------|---------|--------|
-| `start` | `async fn start(&mut self, ctx: NodeContext) -> Result<()>` | `Ok(())` | Node-specific initialization failure. |
+| `start` | `async fn start(&mut self, ctx: NodeContext) -> Result<()>` | `Ok(())` | Node-specific initialization failure. | Broadcasts generic `"running"` status before delegating to `on_start()`. |
 | `receive` | `async fn receive(&mut self, port: usize, msg: Arc<MessagePayload>, ctx: NodeContext) -> Result<()>` | Shims to `on_input` | Primary handler. Optimized to avoid payload clones using `Arc`. |
 | `on_input` | `async fn on_input(&mut self, port: usize, msg: MessagePayload, ctx: NodeContext) -> Result<()>` | `Ok(())` | [DEPRECATED] Use `receive` instead. |
 | `stop` | `async fn stop(&mut self) -> Result<()>` | `Ok(())` | Cleanup failure. |

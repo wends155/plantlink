@@ -134,12 +134,31 @@ impl NodeContext {
         }
     }
 
-    /// Send a message to the default output port (0)
+    /// Send a message to the default output port (0).
+    ///
+    /// # Arguments
+    ///
+    /// * `msg` - The [`MessagePayload`] to be sent.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` if the message was successfully dispatched to all connected downstreams,
+    /// or an error if any delivery fails.
     pub async fn send_output(&self, msg: MessagePayload) -> Result<()> {
         self.send_output_port(0, msg).await
     }
 
-    /// Send a message to a specific output port
+    /// Send a message to a specific output port.
+    ///
+    /// # Arguments
+    ///
+    /// * `port` - The index of the output port.
+    /// * `msg` - The [`MessagePayload`] to be sent.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` if the message was successfully dispatched to all connected downstreams,
+    /// or an error if any delivery fails.
     pub async fn send_output_port(&self, port: usize, msg: MessagePayload) -> Result<()> {
         if let Some(links) = self.outputs.get(&port) {
             let arc_msg = Arc::new(msg);
@@ -169,7 +188,7 @@ impl NodeContext {
         Ok(())
     }
 
-    /// Emit a "running" status message
+    /// Emit a "running" status message to the system event bus.
     pub fn emit_running(&self, message: &str) {
         self.emit_status("running", message);
     }
@@ -197,6 +216,14 @@ impl NodeContext {
     }
 
     /// Convenience constructor for unit tests with minimal boilerplate.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The unique identifier for the test node.
+    ///
+    /// # Returns
+    ///
+    /// A pair containing the [`NodeContext`] and a receiver for system events.
     #[cfg(test)]
     pub fn for_test(id: &str) -> (Self, broadcast::Receiver<SystemEvent>) {
         let (tx, rx) = broadcast::channel(16);
@@ -229,9 +256,14 @@ pub trait NodeBehavior: Send + Sync {
     /// to avoid deep-cloning payloads when fan-out is high.
     ///
     /// # Arguments
-    /// - `port`: Input port index.
-    /// - `msg`: `Arc`-wrapped `MessagePayload`.
-    /// - `ctx`: The node's runtime context.
+    ///
+    /// * `port` - The index of the input port.
+    /// * `msg` - The `Arc`-wrapped [`MessagePayload`].
+    /// * `ctx` - The node's runtime context.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` if the message was processed successfully, or an error if processing fails.
     async fn receive(
         &mut self,
         port: usize,

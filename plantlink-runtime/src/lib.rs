@@ -14,9 +14,24 @@ use tokio::task::JoinSet;
 use tokio_util::sync::CancellationToken;
 use tokio_util::task::TaskTracker;
 
+/// The interface for a flow execution engine.
 #[async_trait::async_trait]
 pub trait FlowRuntime: Send + Sync {
+    /// Deploys a new flow configuration, stopping any current flow.
+    ///
+    /// # Arguments
+    ///
+    /// * `flow` - The new flow configuration (nodes and edges).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any node in the flow fails to initialize.
     async fn update_flow(&mut self, flow: FlowConfig) -> Result<()>;
+    /// Stops the currently running flow.
+    ///
+    /// # Returns
+    ///
+    /// A [`StopStatus`] containing the results of the shutdown process.
     async fn stop_flow(&mut self) -> StopStatus;
 }
 
@@ -127,9 +142,15 @@ pub struct RuntimeEngine {
 }
 
 impl RuntimeEngine {
+    /// Creates a new `RuntimeEngine` with a system event broadcast channel.
+    ///
+    /// # Arguments
+    ///
+    /// * `tx` - The sender side of a broadcast channel for system events.
     ///
     /// # Errors
-    /// Returns an error if the engine cannot be initialized.
+    ///
+    /// Returns an error if the default node registry cannot be populated (e.g. lock poisoning).
     pub fn new(tx: broadcast::Sender<nodes::SystemEvent>) -> Result<Self> {
         let mut registry = nodes::registry::NodeRegistry::new();
         // Ensure defaults are registered
