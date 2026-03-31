@@ -28,6 +28,7 @@
 *This section is updated by the Architect after every successful implementation.*
 
 ### 🛠️ Recent Changes (Last 6 Cycles)
+114. **2026-03-31 (NatsSubNode Lifecycle Fix):** Implemented `start()` hook for `NatsSubNode` to ensure static subscriptions are successfully established upon flow deployment instead of waiting for a dynamic port-0 ping. Extracted subscription logic from `receive()` into a reusable, idempotent `subscribe_and_listen()` helper method. Integrated `mockall` into tests to verify zero-exit behavior independently of a live NATS broker. Verified using TDD and full `make verify` pipeline.
 113. **2026-03-31 (Runtime Lifecycle & Security Fixes):** Fixed a critical "Zombie Flow State" bug in `RuntimeEngine::update_flow` by ensuring `stop_flow().await` is called during partial initialization failures. Resolved a payload collision vulnerability in `RhaiNode` by embedding the `MessagePayload.id` (UUID) directly into the binary serialization placeholder string. Verified zero-exit via new TDD test cases and `make verify`.
 112. **2026-03-31 (Architecture Remediation):** Implemented `mockall::automock` for `PubSubClient` and `ModbusClient` in `plantlink-core` to fulfill architectural mockability claims. Pruned stale tech debt from `architecture.md` regarding Rhai script validation. Verified via 13 unit tests and full `make verify` pipeline.
 111. **2026-03-31 (Documentation Sync):** Synchronized `spec.md` behavioral contracts with the current `HEAD` (hash `320a1c9`) and significantly enhanced `Rustdoc` comments for core `plantlink-runtime` traits and structs. Standardized documentation across `base.rs`, `lib.rs`, and `mod.rs` with `# Arguments`, `# Returns`, and `# Errors` sections for better API discoverability. Verified 100% test pass rate via `make verify`.
@@ -99,6 +100,12 @@ npm run test:unit src/lib/stores/theme.test.js
 * **Test Hygiene:** Removed a misleading "assertion will fail" comment in `rhai.rs` for a test that now correctly passes.
 * **Quality Gate:** Verified all changes pass the full `make verify` pipeline.
  
+### 2026-03-31: NatsSubNode Lifecycle Fix
+* **Feature:** Implementing `start()` for `NatsSubNode` to subscribe on deployment without dynamic ping.
+* **Changes:** Extracted `subscribe_and_listen()` from `receive()`, implemented `start()` utilizing the helper, and integrated tests with `MockPubSubClient` to assert zero-exit success.
+* **New Constraints:** The underlying architecture still lacks comprehensive Engine topological startup ordering, which forces `NatsSubNode::start()` failures to degrade to warnings instead of failing flow deployments.
+* **Pruned:** N/A.
+
 ### 2026-03-31: Runtime Quick-Win Remediations
 * **BaseNodeAdapter Fix:** Implemented automatic `emit_running("Running")` in the adapter's `start()` method. This ensures that nodes implementing `SimpleNode` have their "running" status reported to the UI even if they don't explicitly call `emit_running`. 
 * **Architecture Docs Update:** Updated `architecture.md` §5 (Module Boundaries) to explicitly document the internal sub-modules of `plantlink-runtime` (`base`, `registry`, `rhai`, `nats`, `inject`, `console`), addressing a key finding from the architectural audit.

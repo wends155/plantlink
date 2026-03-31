@@ -106,33 +106,28 @@ impl NatsSubNode {
             sub_handle: None,
         }
     }
-}
 
-#[async_trait::async_trait]
-impl NodeBehavior for NatsSubNode {
-    async fn receive(
-        &mut self,
-        port_idx: usize,
-        msg: Arc<MessagePayload>,
-        ctx: &NodeContext,
-    ) -> Result<()> {
-        if let (0, DataValue::String(id)) = (port_idx, &msg.payload) {
-            self.broker_id.clone_from(id);
-        }
-
-        // Retrieve Driver
+    /// Attempt to subscribe to the configured NATS subject using the broker
+    /// from the shared resource registry. If the broker is not yet available,
+    /// logs a warning and returns `Ok(())` without spawning a listener.
+    async fn subscribe_and_listen(&mut self, ctx: &NodeContext) -> Result<()> {
         let driver = {
             let resources = ctx.resources.read().await;
-            match resources
+            if let Some(d) = resources
                 .get(&self.broker_id)
                 .and_then(|a| a.downcast_ref::<Arc<dyn PubSubClient>>())
             {
-                Some(d) => d.clone(),
-                None => return Ok(()),
+                d.clone()
+            } else {
+                tracing::warn!(
+                    node_id = %ctx.id,
+                    broker_id = %self.broker_id,
+                    "Broker not found in resources — subscription deferred"
+                );
+                return Ok(());
             }
         };
 
-        // Subscribe
         let mut subscriber = match driver.subscribe(&self.subject).await {
             Ok(s) => s,
             Err(e) => {
@@ -141,7 +136,6 @@ impl NodeBehavior for NatsSubNode {
             }
         };
 
-        // Spawn listener
         let ctx_clone = ctx.clone();
         let handle = ctx.tracker.spawn(async move {
             while let Some(nats_msg) = subscriber.next().await {
@@ -161,6 +155,26 @@ impl NodeBehavior for NatsSubNode {
             h.abort();
         }
 
+        Ok(())
+    }
+}
+
+#[async_trait::async_trait]
+impl NodeBehavior for NatsSubNode {
+    async fn start(&mut self, ctx: NodeContext) -> Result<()> {
+        self.subscribe_and_listen(&ctx).await
+    }
+
+    async fn receive(
+        &mut self,
+        port_idx: usize,
+        msg: Arc<MessagePayload>,
+        ctx: &NodeContext,
+    ) -> Result<()> {
+        if let (0, DataValue::String(id)) = (port_idx, &msg.payload) {
+            self.broker_id.clone_from(id);
+            self.subscribe_and_listen(ctx).await?;
+        }
         Ok(())
     }
 
@@ -284,6 +298,7 @@ impl NodeBehavior for NatsPubNode {
 mod tests {
     use super::{NatsBrokerNode, NatsPubNode, NatsSubNode, NodeBehavior, NodeContext};
     use crate::NodeConfig;
+    use futures::StreamExt;
     use plantlink_core::{DataValue, MessagePayload};
     use serde_json::json;
     use std::sync::Arc;
@@ -358,5 +373,57 @@ mod tests {
 
         node.receive(0, msg, &ctx).await.unwrap();
         assert_eq!(node.broker_id, "new-broker");
+    }
+
+    #[tokio::test]
+    async fn test_sub_start_no_broker_warns_and_succeeds() {
+        let cfg = NodeConfig {
+            id: "s1".into(),
+            type_: "nats-sub".into(),
+            data: json!({ "subject": "test.topic", "broker": "missing-broker" }),
+        };
+        let mut node = NatsSubNode::new(&cfg);
+        let (ctx, _rx) = NodeContext::for_test("s1");
+
+        // This will currently use the default NodeBehavior::start which returns Ok(())
+        // We are asserting that it doesn't fail and doesn't spawn a handle yet.
+        let result = node.start(ctx).await;
+        assert!(result.is_ok(), "start() should succeed even without broker");
+        assert!(
+            node.sub_handle.is_none(),
+            "No subscription should be spawned"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_sub_start_with_broker_subscribes() {
+        use plantlink_core::traits::MockPubSubClient;
+
+        let cfg = NodeConfig {
+            id: "s1".into(),
+            type_: "nats-sub".into(),
+            data: json!({ "subject": "test.topic", "broker": "b1" }),
+        };
+        let mut node = NatsSubNode::new(&cfg);
+        let (ctx, _rx) = NodeContext::for_test("s1");
+
+        // Register mock broker
+        let mut mock = MockPubSubClient::new();
+        mock.expect_subscribe()
+            .returning(|_| Ok(futures::stream::empty().boxed()));
+        {
+            let mut resources = ctx.resources.write().await;
+            resources.insert(
+                "b1".to_string(),
+                Box::new(Arc::new(mock) as Arc<dyn plantlink_core::traits::PubSubClient>),
+            );
+        }
+
+        let result = node.start(ctx).await;
+        assert!(result.is_ok());
+        assert!(
+            node.sub_handle.is_some(),
+            "Subscription handle should be spawned"
+        );
     }
 }
