@@ -28,6 +28,7 @@
 *This section is updated by the Architect after every successful implementation.*
 
 ### 🛠️ Recent Changes (Last 6 Cycles)
+115. **2026-03-31 (Runtime Observability Hardening):** Implemented UI-visible error reporting for `NatsSubNode` broker lookup failures and introduced a consecutive-error circuit breaker in the `RuntimeEngine` task loop (threshold: 5) to halt broken nodes and prevent log spam. Verified with TDD-first unit tests and the full `make verify` pipeline.
 114. **2026-03-31 (NatsSubNode Lifecycle Fix):** Implemented `start()` hook for `NatsSubNode` to ensure static subscriptions are successfully established upon flow deployment instead of waiting for a dynamic port-0 ping. Extracted subscription logic from `receive()` into a reusable, idempotent `subscribe_and_listen()` helper method. Integrated `mockall` into tests to verify zero-exit behavior independently of a live NATS broker. Verified using TDD and full `make verify` pipeline.
 113. **2026-03-31 (Runtime Lifecycle & Security Fixes):** Fixed a critical "Zombie Flow State" bug in `RuntimeEngine::update_flow` by ensuring `stop_flow().await` is called during partial initialization failures. Resolved a payload collision vulnerability in `RhaiNode` by embedding the `MessagePayload.id` (UUID) directly into the binary serialization placeholder string. Verified zero-exit via new TDD test cases and `make verify`.
 112. **2026-03-31 (Architecture Remediation):** Implemented `mockall::automock` for `PubSubClient` and `ModbusClient` in `plantlink-core` to fulfill architectural mockability claims. Pruned stale tech debt from `architecture.md` regarding Rhai script validation. Verified via 13 unit tests and full `make verify` pipeline.
@@ -92,6 +93,12 @@ npm run test:unit src/lib/stores/theme.test.js
 * **Changes:** Promoted the "No Crashes" lint from a soft AST-grep warning to a hard compiler-enforced build failure. Added blanket `#[allow]` attributes to 12 test modules to maintain test ergonomics, and applied 2 targeted `#[allow(clippy::expect_used)]` annotations to provably infallible production `.expect()` sites (`build.rs` npm commands, `main.rs` signal handlers).
 * **New Constraints:** Developers are strictly forbidden from using `.unwrap()` in production code. Use safe variants (`unwrap_or`, `unwrap_or_else`) or proper `Result` propagation instead.
 * **Pruned:** The reliance on the AST-grep `unwrap-in-production` rule as the sole `.unwrap()` enforcement mechanism.
+
+### 2026-03-31: Runtime Observability Hardening
+* **Feature:** UI-visible Error Reporting and Node Circuit Breaker
+* **Changes:** Added `ctx.emit_error()` to `NatsSubNode` for missing broker scenarios; implemented a `MAX_CONSECUTIVE_ERRORS` (5) halt mechanism in the engine task loop.
+* **New Constraints:** Nodes that fail 5 times consecutively will be halted and require a flow redeploy to reset.
+* **Pruned:** Silent NATS broker lookup failures and infinite node error loops.
 
 ### 2026-03-31: Zombie Flow & Rhai Security Fixes
 * **Feature:** Zombie Flow State and Rhai Placeholder Security Fixes

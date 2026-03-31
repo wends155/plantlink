@@ -119,6 +119,10 @@ impl NatsSubNode {
             {
                 d.clone()
             } else {
+                ctx.emit_error(&format!(
+                    "Broker '{}' not found — subscription deferred",
+                    self.broker_id
+                ));
                 tracing::warn!(
                     node_id = %ctx.id,
                     broker_id = %self.broker_id,
@@ -393,6 +397,34 @@ mod tests {
         assert!(
             node.sub_handle.is_none(),
             "No subscription should be spawned"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_sub_start_no_broker_emits_error() {
+        let cfg = NodeConfig {
+            id: "s1".into(),
+            type_: "nats-sub".into(),
+            data: json!({ "subject": "test.topic", "broker": "missing-broker" }),
+        };
+        let mut node = NatsSubNode::new(&cfg);
+        let (ctx, mut sys_rx) = NodeContext::for_test("s1");
+
+        let result = node.start(ctx).await;
+        assert!(result.is_ok(), "start() should still succeed");
+
+        // Drain and check for "error" status
+        let mut found_error = false;
+        while let Ok(msg) = sys_rx.try_recv() {
+            if let crate::nodes::SystemEvent::Status { data } = msg {
+                if data.state == "error" && data.message.contains("missing-broker") {
+                    found_error = true;
+                }
+            }
+        }
+        assert!(
+            found_error,
+            "Expected 'error' status with broker_id in message"
         );
     }
 

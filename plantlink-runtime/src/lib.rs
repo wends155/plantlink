@@ -143,6 +143,10 @@ pub struct RuntimeEngine {
     registry: nodes::registry::NodeRegistry,
 }
 
+/// Maximum consecutive `receive()` errors before the engine
+/// stops routing messages to a broken node.
+const MAX_CONSECUTIVE_ERRORS: usize = 5;
+
 impl RuntimeEngine {
     /// Creates a new `RuntimeEngine` with a system event broadcast channel.
     ///
@@ -275,12 +279,26 @@ impl FlowRuntime for RuntimeEngine {
                         streams.insert(port_idx, stream);
                     }
 
+                    let mut consecutive_errors: usize = 0;
                     loop {
                         tokio::select! {
                             () = ctx.cancel.cancelled() => break,
                             Some((_port_idx, (target_port, msg))) = streams.next() => {
                                 if let Err(e) = node.receive(target_port, msg, &ctx).await {
-                                    tracing::error!("Node {} error on input: {}", node_id, e);
+                                    consecutive_errors += 1;
+                                    tracing::error!(
+                                        "Node {} error on input ({}/{}): {}",
+                                        node_id, consecutive_errors, MAX_CONSECUTIVE_ERRORS, e
+                                    );
+                                    if consecutive_errors >= MAX_CONSECUTIVE_ERRORS {
+                                        ctx.emit_error(&format!(
+                                            "Node halted after {} consecutive errors. Last: {}",
+                                            MAX_CONSECUTIVE_ERRORS, e
+                                        ));
+                                        break;
+                                    }
+                                } else {
+                                    consecutive_errors = 0;
                                 }
                             }
                             else => break,
@@ -739,6 +757,113 @@ mod tests {
         let received_ids = [r1.id, r2.id];
         assert!(received_ids.contains(&id1));
         assert!(received_ids.contains(&id2));
+    }
+
+    #[tokio::test]
+    async fn test_circuit_breaker_stops_broken_node() {
+        use crate::nodes::{NodeBehavior, NodeContext};
+        use crate::{FlowConfig, NodeConfig, RuntimeEngine, EdgeConfig};
+        use std::sync::Arc;
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use tokio::sync::broadcast;
+
+        struct AlwaysFailNode {
+            call_count: Arc<AtomicUsize>,
+        }
+
+        #[async_trait::async_trait]
+        impl NodeBehavior for AlwaysFailNode {
+            async fn start(&mut self, _ctx: NodeContext) -> anyhow::Result<()> {
+                Ok(())
+            }
+            async fn stop(&mut self) -> anyhow::Result<()> {
+                Ok(())
+            }
+            async fn receive(
+                &mut self,
+                _port: usize,
+                _msg: Arc<plantlink_core::MessagePayload>,
+                _ctx: &NodeContext,
+            ) -> anyhow::Result<()> {
+                self.call_count.fetch_add(1, Ordering::SeqCst);
+                anyhow::bail!("permanent failure")
+            }
+        }
+
+        struct SourceNode;
+        #[async_trait::async_trait]
+        impl NodeBehavior for SourceNode {
+            async fn start(&mut self, ctx: NodeContext) -> anyhow::Result<()> {
+                let ctx_clone = ctx.clone();
+                ctx.tracker.spawn(async move {
+                    for _ in 0..10 {
+                        let _ = ctx_clone.send_output_port(0, plantlink_core::MessagePayload::default()).await;
+                        tokio::time::sleep(std::time::Duration::from_millis(5)).await;
+                    }
+                });
+                Ok(())
+            }
+            async fn stop(&mut self) -> anyhow::Result<()> { Ok(()) }
+            async fn receive(&mut self, _p: usize, _m: Arc<plantlink_core::MessagePayload>, _ctx: &NodeContext) -> anyhow::Result<()> { Ok(()) }
+        }
+
+        let call_count = Arc::new(AtomicUsize::new(0));
+        let call_count_clone = call_count.clone();
+
+        let (tx, _rx) = broadcast::channel(64);
+        let mut engine = RuntimeEngine::new(tx).unwrap();
+
+        let mut registry = crate::nodes::registry::NodeRegistry::new();
+        registry.register("always-fail", move |_| {
+            Ok(Box::new(AlwaysFailNode {
+                call_count: call_count_clone.clone(),
+            }) as Box<dyn NodeBehavior>)
+        }).unwrap();
+        registry.register("source", |_| {
+            Ok(Box::new(SourceNode) as Box<dyn NodeBehavior>)
+        }).unwrap();
+        engine.registry = registry;
+
+        // Deploy: source -> always-fail
+        let flow = FlowConfig {
+            nodes: vec![
+                NodeConfig {
+                    id: "src".into(),
+                    type_: "source".into(),
+                    data: serde_json::json!({}),
+                },
+                NodeConfig {
+                    id: "sink".into(),
+                    type_: "always-fail".into(),
+                    data: serde_json::json!({}),
+                },
+            ],
+            edges: vec![
+                EdgeConfig {
+                    id: "e1".into(),
+                    source: "src".into(),
+                    target: "sink".into(),
+                    source_handle: None,
+                    target_handle: None,
+                }
+            ],
+        };
+
+        engine.update_flow(flow).await.unwrap();
+
+        // Give time for messages to flow and circuit breaker to trip
+        tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+
+        engine.stop_flow().await;
+
+        let calls = call_count.load(Ordering::SeqCst);
+        // Expecting 5 calls if MAX_CONSECUTIVE_ERRORS is 5.
+        // Currently it will be 10.
+        assert!(
+            calls < 10,
+            "Circuit breaker should have limited error calls, got: {calls}"
+        );
+        assert_eq!(calls, 5);
     }
 
     #[tokio::test]
