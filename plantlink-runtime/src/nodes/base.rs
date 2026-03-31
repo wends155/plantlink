@@ -62,7 +62,7 @@ impl<T: SimpleNode> BaseNodeAdapter<T> {
 #[async_trait::async_trait]
 impl<T: SimpleNode + 'static> NodeBehavior for BaseNodeAdapter<T> {
     async fn start(&mut self, ctx: NodeContext) -> Result<()> {
-        // Here we could add automatic status reporting "Running"
+        ctx.emit_running("Running");
         self.inner.on_start(&ctx).await
     }
 
@@ -181,5 +181,24 @@ mod tests {
         adapter.stop().await.unwrap();
 
         assert!(*stopped.lock().unwrap(), "Expected on_stop to be called");
+    }
+ 
+    #[tokio::test]
+    async fn test_adapter_start_emits_running() {
+        let node = DummySimpleNode::new(false);
+        let mut adapter = BaseNodeAdapter::new(node);
+        let (ctx, mut sys_rx) = NodeContext::for_test("base-running");
+ 
+        adapter.start(ctx).await.unwrap();
+ 
+        let mut found = false;
+        while let Ok(msg) = sys_rx.try_recv() {
+            if let crate::nodes::SystemEvent::Status { data } = msg
+                && data.state == "running"
+            {
+                found = true;
+            }
+        }
+        assert!(found, "Expected 'running' status broadcast from adapter start");
     }
 }

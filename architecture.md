@@ -38,6 +38,13 @@ The project is structured as a Rust multi-crate workspace:
   - **Trait Interfaces**: `FlowRuntime`, `NodeBehavior`, `SimpleNode`, `BaseNodeAdapter` (adapter).
   - **Mock Availability**: `dyn FlowRuntime` allows mocking the entire engine. Testable via concrete node instances.
   - **Key patterns**: Instance-scoped `NodeRegistry` (not global), `BaseNodeAdapter` (adapter), `CancellationToken` (cooperative shutdown).
+  - **Internal modules**:
+    - `nodes::base` — `SimpleNode` trait and `BaseNodeAdapter` lifecycle wrapper.
+    - `nodes::registry` — `NodeRegistry` factory and `NodeFactory` type alias.
+    - `nodes::rhai` — Rhai scripting engine integration (`RhaiNode`).
+    - `nodes::nats` — NATS broker, subscriber, and publisher nodes.
+    - `nodes::inject` — Timer and trigger source node.
+    - `nodes::console` — Debug output sink node.
 - **plantlink-web**: Owns REST API, WebSocket handler, embedded UI assets. Does NOT own flow logic or protocol drivers.
   - **Trait Interfaces**: None — thin HTTP layer.
   - **Mock Availability**: Consumes `dyn FlowRuntime` for isolated endpoint testing.
