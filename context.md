@@ -61,8 +61,7 @@
 ---
 
 ## 🚧 Technical Debt & Pending Logic
-* **E2E Theme Persistence**: Need automated Playwright coverage for system-preference matching and persistence across sessions.
-* **Modbus Resiliency**: `ModbusTcpClient` requires an exponential-backoff loop to handle network drops.
+* **Protocol Integrations**: Need formal integration test coverage for MQTT, NATS, and Modbus using `testcontainers-rs` or `docker-compose` to verify full driver-to-broker round trips in CI.
 
 ---
 
