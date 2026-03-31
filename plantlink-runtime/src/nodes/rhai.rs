@@ -288,8 +288,6 @@ mod tests {
 
         let (_, received) = rx.recv().await.expect("Expected output");
 
-        // This assertion will FAIL in the current implementation because
-        // the binary data is replaced by a string "<binary data: 5 bytes>".
         if let plantlink_core::DataValue::Bytes(received_bytes) = &received.payload {
             assert_eq!(received_bytes.as_ref(), &raw_data);
         } else {

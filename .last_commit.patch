@@ -1,0 +1,394 @@
+commit cadeac6c5f5d7a940d7f1490318f80b30ffc2403
+Author: Wendell Saligan <saliganw@gmail.com>
+Date:   Tue Mar 31 09:23:25 2026 +0800
+
+    Step 3-5: Update InnerFlowEditor for colorMode mapping, activate Nord theme, and update documentation
+
+diff --git a/docs/THEMING.md b/docs/THEMING.md
+index 97830b8..f598740 100644
+--- a/docs/THEMING.md
++++ b/docs/THEMING.md
+@@ -8,14 +8,14 @@ PlantLink's UI uses a modern theming system built on **CSS custom properties** a
+ 
+ The theming system consists of three layers:
+ 
+-1. **Theme Variables** (`ui/src/styles/themes.css`) - CSS custom properties defining colors
+-2. **Semantic Classes** (`ui/src/styles/components.css`) - Reusable component styles
+-3. **Theme Store** (`ui/src/lib/stores/theme.js`) - Runtime theme management
++1. **Theme Variables** (`ui/src/styles/themes.css`) - CSS custom properties defining colors.
++2. **Semantic Classes** (`ui/src/styles/components.css`) - Reusable component styles.
++3. **Theme Store** (`ui/src/lib/stores/theme.js`) - Runtime theme management with an N-ary registry.
+ 
+ ```
+ themes.css (CSS vars) → components.css (semantic classes) → Svelte components
+                      ↑
+-             theme.js (store) applies .dark class
++             theme.js (store) manages THEMES registry and applies classes
+ ```
+ 
+ ---
+@@ -114,17 +114,37 @@ Nodes extend `.node-base` and apply state modifiers.
+ 
+ ### Adding a New Theme
+ 
+-1. Add a new class block in `themes.css`.
+-2. Override semantic variables.
++PlantLink supports an extensible N-ary theme registry. To add a new theme:
++
++1. **Define CSS Variables** in `ui/src/styles/themes.css`:
++   Create a class block and override the core variables.
+ 
+ ```css
+-.theme-ocean {
+-    --color-bg-primary: #e0f2fe;
+-    --color-btn-primary: #0284c7;
++.theme-nord {
++   --color-bg-primary: #2e3440;
++   --color-text-primary: #eceff4;
++   /* ... override all variables from :root ... */
+ }
+ ```
+ 
+-3. Register in `ui/src/lib/stores/theme.js`.
++2. **Register the Theme** in `ui/src/lib/stores/theme.js`:
++   Add a metadata object to the `THEMES` registry.
++
++```javascript
++export const THEMES = Object.freeze([
++    { name: 'light', cssClass: null,         colorMode: 'light', label: 'Light' },
++    { name: 'dark',  cssClass: 'dark',       colorMode: 'dark',  label: 'Dark' },
++    { name: 'nord',  cssClass: 'theme-nord', colorMode: 'dark',  label: 'Nord' },
++]);
++```
++
++#### The `colorMode` Mapping
++The registry decouples the **Theme Name** from its **Visual Mode**.
++- **`cssClass`**: The specific class applied to the document root (e.g., `.theme-nord`).
++- **`colorMode`**: Either `'light'` or `'dark'`. This ensures that:
++  - Tailwind `dark:` utilities function correctly (via automatic `.dark` class application).
++  - SvelteFlow components receive the correct binary `colorMode` prop.
++  - The system preference matching logic knows which mode to favor.
+ 
+ ### Adding a New Button Variant
+ 
+diff --git a/ui/src/lib/InnerFlowEditor.svelte b/ui/src/lib/InnerFlowEditor.svelte
+index fc1d357..edfed27 100644
+--- a/ui/src/lib/InnerFlowEditor.svelte
++++ b/ui/src/lib/InnerFlowEditor.svelte
+@@ -16,6 +16,7 @@
+     import PropertyPanel from "./PropertyPanel.svelte";
+     import ThemeToggle from "./components/ThemeToggle.svelte";
+     import { theme } from "./stores/theme";
++    const colorMode = theme.colorMode;
+     import { nodeStatuses, initNodeAsStopped } from "./stores/nodeStatus";
+ 
+     const nodeTypes = getNodeTypes();
+@@ -267,7 +268,7 @@
+             {nodeTypes}
+             {isValidConnection}
+             class="bg-gray-50 dark:bg-gray-900"
+-            colorMode={$theme}
++            colorMode={$colorMode}
+             deleteKeyCode={null}
+             on:nodeclick={(e) => console.log("Node Clicked", e.detail)}
+         >
+diff --git a/ui/src/styles/themes.css b/ui/src/styles/themes.css
+index 945f771..dfe430a 100644
+--- a/ui/src/styles/themes.css
++++ b/ui/src/styles/themes.css
+@@ -31,7 +31,6 @@
+ 
+    /* Buttons - Primary */
+    --color-btn-primary: #2563eb;
+-   --color-btn-primary: #2563eb;
+    --color-btn-primary-hover: #1d4ed8;
+ 
+    /* Buttons - Secondary (High Contrast) */
+@@ -94,15 +93,67 @@
+ }
+ 
+ /* ─────────────────────────────────────────────────────────
+-   Future: Nord Theme (Commented Template)
++   Nord Theme
+    ───────────────────────────────────────────────────────── */
+-/* 
+ .theme-nord {
+-  --color-bg-primary: #2e3440;
+-  --color-bg-secondary: #3b4252;
+-  --color-bg-tertiary: #434c5e;
+-  --color-text-primary: #eceff4;
+-  --color-text-secondary: #d8dee9;
+-  --color-text-muted: #81a1c1;
+-}
+-*/
+\ No newline at end of file
++   /* Backgrounds */
++   --color-bg-primary: #2e3440;
++   /* nord0 */
++   --color-bg-secondary: #3b4252;
++   /* nord1 */
++   --color-bg-tertiary: #434c5e;
++   /* nord2 */
++   --color-bg-canvas: #2e3440;
++
++   /* Borders */
++   --color-border: #4c566a;
++   /* nord3 */
++   --color-border-hover: #88c0d0;
++   /* nord8 */
++
++   /* Text */
++   --color-text-primary: #eceff4;
++   /* nord6 */
++   --color-text-secondary: #e5e9f0;
++   /* nord5 */
++   --color-text-muted: #d8dee9;
++   /* nord4 */
++
++   /* Buttons - Success */
++   --color-btn-success: #a3be8c;
++   /* nord14 */
++   --color-btn-success-hover: #8fbcbb;
++   /* nord7 */
++
++   /* Buttons - Danger */
++   --color-btn-danger: #bf616a;
++   /* nord11 */
++   --color-btn-danger-hover: #d08770;
++   /* nord12 */
++
++   /* Buttons - Primary */
++   --color-btn-primary: #81a1c1;
++   /* nord9 */
++   --color-btn-primary-hover: #5e81ac;
++   /* nord10 */
++
++   /* Buttons - Secondary */
++   --color-btn-secondary-bg: #4c566a;
++   /* nord3 */
++   --color-btn-secondary-hover: #434c5e;
++   /* nord2 */
++   --color-btn-secondary-text: #eceff4;
++   /* nord6 */
++
++   /* Nodes */
++   --color-node-bg: #3b4252;
++   --color-node-border: #4c566a;
++
++   /* Node States */
++   --color-state-running: #a3be8c;
++   --color-state-running-bg: #4c566a;
++   --color-state-error: #bf616a;
++   --color-state-error-bg: #4c566a;
++   --color-state-stopped: #d8dee9;
++   --color-state-stopped-bg: #3b4252;
++}
+\ No newline at end of file
+
+commit cdd9a3424a1700fbdb64e6025a6c17bda165dd52
+Author: Wendell Saligan <saliganw@gmail.com>
+Date:   Tue Mar 31 09:19:27 2026 +0800
+
+    Step 1-2: Refactor theme store to N-ary registry and add exhaustive test suite
+
+diff --git a/ui/src/lib/stores/theme.js b/ui/src/lib/stores/theme.js
+index ffb1334..42e4c55 100644
+--- a/ui/src/lib/stores/theme.js
++++ b/ui/src/lib/stores/theme.js
+@@ -1,43 +1,113 @@
+-import { writable } from 'svelte/store';
++import { writable, derived } from 'svelte/store';
++
++/**
++ * Registry of all available themes.
++ * Each entry defines the theme's CSS class, its base color mode
++ * (for Tailwind dark: utilities and SvelteFlow colorMode), and
++ * a human-readable label for future UI selectors.
++ *
++ * @type {ReadonlyArray<{name: string, cssClass: string|null, colorMode: 'light'|'dark', label: string}>}
++ */
++export const THEMES = Object.freeze([
++    { name: 'light', cssClass: null,         colorMode: 'light', label: 'Light' },
++    { name: 'dark',  cssClass: 'dark',       colorMode: 'dark',  label: 'Dark' },
++    { name: 'nord',  cssClass: 'theme-nord', colorMode: 'dark',  label: 'Nord' },
++]);
++
++/**
++ * Returns the base color mode ('light' or 'dark') for a given theme name.
++ * Falls back to 'light' if the theme is not found.
++ * @param {string} name
++ * @returns {'light' | 'dark'}
++ */
++export function getColorMode(name) {
++    const themeEntry = THEMES.find(t => t.name === name);
++    return themeEntry ? themeEntry.colorMode : 'light';
++}
+ 
+ function createThemeStore() {
+     // SSR safety
+     const isBrowser = typeof window !== 'undefined';
+ 
+-    // Get initial value
+-    const stored = isBrowser ? localStorage.getItem('theme') : null;
+-    const systemDark = isBrowser && window.matchMedia('(prefers-color-scheme: dark)').matches;
+-    const initial = stored || (systemDark ? 'dark' : 'light');
++    // Collect all unique CSS classes for cleanup
++    const allCssClasses = THEMES.map(t => t.cssClass).filter(Boolean);
++    if (!allCssClasses.includes('dark')) {
++        allCssClasses.push('dark');
++    }
++    const uniqueClasses = [...new Set(allCssClasses)];
+ 
+-    // Apply initial theme
+-    if (isBrowser) {
+-        document.documentElement.classList.toggle('dark', initial === 'dark');
++    // Get initial value and validate
++    let initial = isBrowser ? localStorage.getItem('theme') : 'light';
++    if (!THEMES.find(t => t.name === initial)) {
++        const systemDark = isBrowser && window.matchMedia('(prefers-color-scheme: dark)').matches;
++        initial = systemDark ? 'dark' : 'light';
+     }
+ 
+-    const { subscribe, set, update } = writable(initial);
++    const themeStore = writable(initial);
++    const { subscribe, set: svelteSet, update } = themeStore;
++
++    /**
++     * Internal helper to apply theme classes to the DOM
++     */
++    const applyTheme = (name) => {
++        if (!isBrowser) return;
++
++        const entry = THEMES.find(t => t.name === name) || THEMES[0];
++        
++        // Remove all known theme classes to prevent contamination
++        uniqueClasses.forEach(c => document.documentElement.classList.remove(c));
++
++        // Apply primary theme class if defined
++        if (entry.cssClass) {
++            document.documentElement.classList.add(entry.cssClass);
++        }
++        
++        // Ensure .dark is applied for all dark-variant themes (matches Tailwind config)
++        if (entry.colorMode === 'dark' && entry.cssClass !== 'dark') {
++            document.documentElement.classList.add('dark');
++        }
++
++        localStorage.setItem('theme', name);
++    };
+ 
+-    return {
++    // Apply initial theme on mount
++    applyTheme(initial);
++
++    const store = {
+         subscribe,
+ 
++        /**
++         * Set a specific theme by name
++         * @param {string} value 
++         */
+         set: (value) => {
+-            set(value);
+-            if (isBrowser) {
+-                localStorage.setItem('theme', value);
+-                document.documentElement.classList.toggle('dark', value === 'dark');
++            const entry = THEMES.find(t => t.name === value);
++            if (!entry) {
++                console.warn(`Invalid theme: ${value}. Falling back to 'light'.`);
++                svelteSet('light');
++                applyTheme('light');
++            } else {
++                svelteSet(value);
++                applyTheme(value);
+             }
+         },
+ 
++        /**
++         * Simple toggle between light and dark (backward compatibility for icon button)
++         */
+         toggle: () => {
+             update(current => {
+                 const next = current === 'dark' ? 'light' : 'dark';
+-                if (isBrowser) {
+-                    localStorage.setItem('theme', next);
+-                    document.documentElement.classList.toggle('dark', next === 'dark');
+-                }
++                applyTheme(next);
+                 return next;
+             });
+         }
+     };
++
++    // Derived store for SvelteFlow colorMode prop
++    store.colorMode = derived(themeStore, ($theme) => getColorMode($theme));
++
++    return store;
+ }
+ 
+ export const theme = createThemeStore();
+diff --git a/ui/src/lib/stores/theme.test.js b/ui/src/lib/stores/theme.test.js
+index 970fee1..7c667fb 100644
+--- a/ui/src/lib/stores/theme.test.js
++++ b/ui/src/lib/stores/theme.test.js
+@@ -1,7 +1,7 @@
+-import { describe, it, expect, beforeEach } from 'vitest';
++import { describe, it, expect, beforeEach, vi } from 'vitest';
+ 
+ // We reset modules because theme.js initializes based on environment on mount
+-import { theme } from './theme.js';
++import { theme, THEMES, getColorMode } from './theme.js';
+ import { get } from 'svelte/store';
+ 
+ describe('theme store', () => {
+@@ -9,6 +9,7 @@ describe('theme store', () => {
+         // Reset localStorage and document classes before each test
+         localStorage.clear();
+         document.documentElement.className = '';
++        vi.clearAllMocks();
+     });
+ 
+     it('toggles between light and dark', () => {
+@@ -33,4 +34,42 @@ describe('theme store', () => {
+         expect(localStorage.getItem('theme')).toBe('light');
+         expect(document.documentElement.classList.contains('dark')).toBe(false);
+     });
++
++    it('supports setting a custom theme and applies correct CSS class', () => {
++        theme.set('nord');
++        expect(get(theme)).toBe('nord');
++        expect(localStorage.getItem('theme')).toBe('nord');
++        expect(document.documentElement.classList.contains('theme-nord')).toBe(true);
++        expect(document.documentElement.classList.contains('dark')).toBe(true); // nord is dark-variant
++    });
++
++    it('removes previous theme class when switching themes', () => {
++        theme.set('nord');
++        expect(document.documentElement.classList.contains('theme-nord')).toBe(true);
++        
++        theme.set('light');
++        expect(document.documentElement.classList.contains('theme-nord')).toBe(false);
++        expect(document.documentElement.classList.contains('dark')).toBe(false);
++    });
++
++    it('falls back to light for unknown theme names', () => {
++        const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
++        theme.set('invalid-theme-name');
++        expect(get(theme)).toBe('light');
++        expect(document.documentElement.className).toBe('');
++        spy.mockRestore();
++    });
++
++    it('exposes THEMES registry as frozen array', () => {
++        expect(Array.isArray(THEMES)).toBe(true);
++        expect(Object.isFrozen(THEMES)).toBe(true);
++        expect(THEMES.find(t => t.name === 'nord')).toBeDefined();
++    });
++
++    it('provides a colorMode helper', () => {
++        expect(getColorMode('light')).toBe('light');
++        expect(getColorMode('dark')).toBe('dark');
++        expect(getColorMode('nord')).toBe('dark');
++        expect(getColorMode('unknown')).toBe('light');
++    });
+ });

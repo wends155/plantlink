@@ -57,7 +57,6 @@
 ## 🚧 Technical Debt & Pending Logic
 * **E2E Theme Persistence**: Need automated Playwright coverage for system-preference matching and persistence across sessions.
 * **Modbus Resiliency**: `ModbusTcpClient` requires an exponential-backoff loop to handle network drops.
-* **Rhai Validation**: `NodeFactory` needs to return `Result` to allow pre-deployment validation of scripts.
 
 ---
 
@@ -79,3 +78,13 @@ make verify
 # UI Unit Tests
 npm run test:unit src/lib/stores/theme.test.js
 ```
+
+---
+
+## 📜 Session History
+### 2026-03-31: Runtime Audit & Documentation Cleanup
+* **Audit Validation:** Conducted a cross-validation of the `plantlink-runtime` architecture and code review reports. Confirmed 7/10 findings.
+* **Corrected Overstated Findings:** Downgraded NATS driver resource leak and cache staleness claims. Verified that the atomic `update_flow()` lifecycle (stop -> recreate) inherently prevents these issues.
+* **Documentation Sync:** Resolved stale technical debt entries in `architecture.md` and `context.md` relating to Rhai script validation (already implemented in `dc85251`).
+* **Test Hygiene:** Removed a misleading "assertion will fail" comment in `rhai.rs` for a test that now correctly passes.
+* **Quality Gate:** Verified all changes pass the full `make verify` pipeline.
