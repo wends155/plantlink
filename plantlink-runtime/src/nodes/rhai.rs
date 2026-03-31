@@ -26,6 +26,13 @@ use std::sync::Arc;
 ///     return msg;
 /// }
 /// ```
+///
+/// # Payload Serialization
+///
+/// [`DataValue::Bytes`] payloads are serialized using a unique placeholder string
+/// containing the message UUID to prevent heap exhaustion. The placeholder is
+/// automatically reverted to the original bitstream after script execution unless
+/// explicitly modified by the user script.
 pub struct RhaiNode {
     engine: Arc<Engine>,
     ast: Arc<AST>,
@@ -80,7 +87,7 @@ impl NodeBehavior for RhaiNode {
         let mut placeholder_str = String::new();
 
         if let plantlink_core::DataValue::Bytes(b) = &msg_to_serialize.payload {
-            placeholder_str = format!("<binary data: {} bytes>", b.len());
+            placeholder_str = format!("<binary data: {} bytes [{}]>", b.len(), msg_to_serialize.id);
             original_bytes = Some(b.clone());
             msg_to_serialize.payload = plantlink_core::DataValue::String(placeholder_str.clone());
         }
@@ -292,6 +299,38 @@ mod tests {
             assert_eq!(received_bytes.as_ref(), &raw_data);
         } else {
             panic!("Expected Bytes payload, got: {:?}", received.payload);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_rhai_placeholder_string_not_corrupted() {
+        // This script explicitly returns the OLD deterministic placeholder string.
+        // In the current buggy version, the engine will see this string, match it,
+        // and incorrectly substitute the original bytes from the input message.
+        let mut node = make_node(Some(
+            "msg.payload = \"<binary data: 5 bytes>\"; return msg;",
+        ));
+        let (ctx, mut rx, _sys_rx) = make_ctx_with_output("r1");
+
+        let mut msg = MessagePayload::default();
+        let raw_data = vec![1, 2, 3, 4, 5];
+        msg.payload = plantlink_core::DataValue::Bytes(raw_data.into());
+
+        node.receive(0, std::sync::Arc::new(msg), &ctx)
+            .await
+            .unwrap();
+
+        let (_, received) = rx.recv().await.expect("Expected output");
+
+        // ASSERT: Payload should be the STRING we explicitly set in the script,
+        // not corrupted back into the original BYTES.
+        if let plantlink_core::DataValue::String(s) = &received.payload {
+            assert_eq!(s, "<binary data: 5 bytes>");
+        } else {
+            panic!(
+                "Expected String payload (explicit script return), got: {:?}",
+                received.payload
+            );
         }
     }
 }

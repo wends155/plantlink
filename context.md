@@ -28,6 +28,7 @@
 *This section is updated by the Architect after every successful implementation.*
 
 ### 🛠️ Recent Changes (Last 6 Cycles)
+113. **2026-03-31 (Runtime Lifecycle & Security Fixes):** Fixed a critical "Zombie Flow State" bug in `RuntimeEngine::update_flow` by ensuring `stop_flow().await` is called during partial initialization failures. Resolved a payload collision vulnerability in `RhaiNode` by embedding the `MessagePayload.id` (UUID) directly into the binary serialization placeholder string. Verified zero-exit via new TDD test cases and `make verify`.
 112. **2026-03-31 (Architecture Remediation):** Implemented `mockall::automock` for `PubSubClient` and `ModbusClient` in `plantlink-core` to fulfill architectural mockability claims. Pruned stale tech debt from `architecture.md` regarding Rhai script validation. Verified via 13 unit tests and full `make verify` pipeline.
 111. **2026-03-31 (Documentation Sync):** Synchronized `spec.md` behavioral contracts with the current `HEAD` (hash `320a1c9`) and significantly enhanced `Rustdoc` comments for core `plantlink-runtime` traits and structs. Standardized documentation across `base.rs`, `lib.rs`, and `mod.rs` with `# Arguments`, `# Returns`, and `# Errors` sections for better API discoverability. Verified 100% test pass rate via `make verify`.
 110. **2026-03-31 (Runtime Lifecycle Fix):** Implemented automatic "running" status emission in `BaseNodeAdapter::start()` to ensure all `SimpleNode` implementations (e.g., `ConsoleNode`, `NatsNode`) provide UI feedback without manual status calls. Resolved by emitting a generic "Running" status before delegating to `on_start()`, allowing specific nodes to provide more descriptive overrides. Verified with a new TDD test case in `base.rs` and the full `make verify` pipeline.
@@ -85,6 +86,12 @@ npm run test:unit src/lib/stores/theme.test.js
 ---
 
 ## 📜 Session History
+### 2026-03-31: Zombie Flow & Rhai Security Fixes
+* **Feature:** Zombie Flow State and Rhai Placeholder Security Fixes
+* **Changes:** Added `stop_flow().await` fallback to `update_flow` for cleanup safety; hardened Rhai binary serialization with a UUID nonce payload placeholder.
+* **New Constraints:** None.
+* **Pruned:** The "Zombie Flow State" and "Rhai Placeholder Collision" technical debt items have been fully resolved.
+
 ### 2026-03-31: Runtime Audit & Documentation Cleanup
 * **Audit Validation:** Conducted a cross-validation of the `plantlink-runtime` architecture and code review reports. Confirmed 7/10 findings.
 * **Corrected Overstated Findings:** Downgraded NATS driver resource leak and cache staleness claims. Verified that the atomic `update_flow()` lifecycle (stop -> recreate) inherently prevents these issues.

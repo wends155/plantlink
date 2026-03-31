@@ -26,6 +26,8 @@ pub trait FlowRuntime: Send + Sync {
     /// # Errors
     ///
     /// Returns an error if any node in the flow fails to initialize.
+    /// If an error occurs, the partially spawned flow is immediately
+    /// stopped and cleaned up before the error is returned.
     async fn update_flow(&mut self, flow: FlowConfig) -> Result<()>;
     /// Stops the currently running flow.
     ///
@@ -300,6 +302,7 @@ impl FlowRuntime for RuntimeEngine {
         }
 
         if !failed_nodes.is_empty() {
+            self.stop_flow().await;
             bail!(
                 "Failed to create {} node(s): {}",
                 failed_nodes.len(),
@@ -802,6 +805,53 @@ mod tests {
         assert!(
             stop_called.load(Ordering::SeqCst),
             "Node stop() should have been called"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_update_flow_cleans_up_on_partial_failure() {
+        use crate::NodeBehavior;
+        use crate::nodes::registry::NodeRegistry;
+
+        let (tx, _) = tokio::sync::broadcast::channel(10);
+        let mut engine = RuntimeEngine::new(tx).unwrap();
+
+        // Create a registry that only knows "console"
+        let mut registry = NodeRegistry::new();
+        registry
+            .register("console", |ctx| {
+                Ok(Box::new(crate::nodes::console::ConsoleNode::new(ctx)) as Box<dyn NodeBehavior>)
+            })
+            .unwrap();
+        engine.registry = registry;
+
+        // Flow with one valid node and one invalid node type
+        let flow = FlowConfig {
+            nodes: vec![
+                NodeConfig {
+                    id: "ok".into(),
+                    type_: "console".into(),
+                    data: serde_json::Value::Null,
+                },
+                NodeConfig {
+                    id: "bad".into(),
+                    type_: "bad-type".into(),
+                    data: serde_json::Value::Null,
+                },
+            ],
+            edges: vec![],
+        };
+
+        let result = engine.update_flow(flow).await;
+        assert!(
+            result.is_err(),
+            "update_flow should fail for invalid node type"
+        );
+
+        // ASSERT: engine state should be clean (zombie fix)
+        assert!(
+            engine.node_ids.is_empty(),
+            "node_ids should be empty after cleanup"
         );
     }
 

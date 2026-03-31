@@ -5,7 +5,7 @@
 >
 > **Maintenance Rule**: The Architect must update this file whenever a public API changes.
 >
-> Last verified against: 320a1c9
+> Last verified against: 14476c9
 
 ---
 
@@ -103,7 +103,7 @@ The standard message envelope passed between nodes.
 | Method | Signature | Errors | Invariants |
 |--------|-----------|--------|------------|
 | `new` | `fn new(tx: broadcast::Sender<SystemEvent>) -> Result<Self>` | Registry lock poisoning. | Calls `register_defaults()` to populate the node registry. |
-| `update_flow` | `async fn update_flow(&mut self, flow: FlowConfig) -> Result<()>` | Returns `Err` if any nodes fail to create. | Stops existing flow first, then spawns new nodes inside a `JoinSet` and tracks them via `TaskTracker`. |
+| `update_flow` | `async fn update_flow(&mut self, flow: FlowConfig) -> Result<()>` | Returns `Err` if any nodes fail to create. | Stops existing flow first, then spawns new nodes inside a `JoinSet` and tracks them via `TaskTracker`. If any node fails to initialize, the partially spawned flow is immediately brought down via `stop_flow()`. |
 | `stop_flow` | `async fn stop_flow(&mut self) -> StopStatus` | Never fails. | Signals cancel with `CancellationToken`, closes the `TaskTracker`, waits for cooperative shutdown, aborts any hung tasks in `JoinSet`, returns count of aborted tasks. |
 
 #### `NodeBehavior` (trait)
@@ -156,7 +156,7 @@ fn send_node_status(tx: &broadcast::Sender<SystemEvent>, node_id: String, state:
 |---------|-------------|-------------------------|
 | **Shared Resources** | Nodes sharing driver instances (e.g. NATS) | `nats-broker` registers a `PubSubClient` in `ctx.resources`. `nats-sub` and `nats-pub` look up the driver by the broker's ID. |
 | **Dynamic Wiring** | Changing node relationships at runtime | `nats-sub` and `nats-pub` accept a new `broker_id` string on port 0 to re-target their connection. |
-| **Scripting** | Arbitrary JSON logic | `RhaiNode` converts `MessagePayload` to a Rhai `Dynamic` (Map). Guardrails prevent infinite loops (max 5,000 operations). |
+| **Scripting** | Arbitrary JSON logic | `RhaiNode` converts `MessagePayload` to a Rhai `Dynamic` (Map). Guardrails prevent infinite loops (max 5,000 operations) and `DataValue::Bytes` memory exhaustion via a UUID-based placeholder string replacement. |
 
 ### Data Models
 
