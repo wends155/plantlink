@@ -130,3 +130,9 @@ npm run test:unit src/lib/stores/theme.test.js
 * **Changes:** Added exponential backoff to `ModbusTcpClient` (1s to 60s); added `TaskTracker` test to `NatsSubNode` and fixed its cancellation response; pruned stale tech debt from roadmap.
 * **New Constraints:** None.
 * **Pruned:** "Modbus Resiliency", "Rhai Script Validation", and "E2E Theme Persistence" technical debt items.
+
+### 2026-03-31: NatsBrokerNode Clarification
+* **Feature:** Pruned `NatsBrokerNode` task tracking tech debt
+* **Changes:** Marked `NatsBrokerNode` task tracking as inapplicable in `todo.md` because `async-nats` multiplexing relies purely on drop semantics rather than explicit `TaskTracker` integration. Checked off the Structured Concurrency checklist.
+* **New Constraints:** None.
+* **Pruned:** The final legacy entry from the Structured Concurrency hardening checklist.
