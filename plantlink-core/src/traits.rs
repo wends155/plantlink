@@ -17,6 +17,7 @@ pub struct PubSubMessage {
 }
 
 /// Interface for `PubSub` protocol drivers (MQTT, NATS).
+#[cfg_attr(any(test, feature = "mocks"), mockall::automock)]
 #[async_trait]
 pub trait PubSubClient: Send + Sync + 'static {
     /// Publishes a payload to the specified topic.
@@ -30,6 +31,7 @@ pub trait PubSubClient: Send + Sync + 'static {
 }
 
 /// Interface for Modbus protocol drivers (TCP, RTU).
+#[cfg_attr(any(test, feature = "mocks"), mockall::automock)]
 #[async_trait]
 pub trait ModbusClient: Send + Sync + 'static {
     /// Reads the specified number of coils starting from the given address.
