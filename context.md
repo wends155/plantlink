@@ -28,6 +28,7 @@
 *This section is updated by the Architect after every successful implementation.*
 
 ### 🛠️ Recent Changes (Last 6 Cycles)
+116. **2026-03-31 (Validated Tech Debt Remediation):** Hardened the `ModbusTcpClient` actor with exponential backoff for reconnect attempts (1s-60s) and fixed a critical cancellation bug in `NatsSubNode` background listeners. Pruned stale tech debt tracking. Verified 100% pass rate via `make verify`.
 115. **2026-03-31 (Runtime Observability Hardening):** Implemented UI-visible error reporting for `NatsSubNode` broker lookup failures and introduced a consecutive-error circuit breaker in the `RuntimeEngine` task loop (threshold: 5) to halt broken nodes and prevent log spam. Verified with TDD-first unit tests and the full `make verify` pipeline.
 114. **2026-03-31 (NatsSubNode Lifecycle Fix):** Implemented `start()` hook for `NatsSubNode` to ensure static subscriptions are successfully established upon flow deployment instead of waiting for a dynamic port-0 ping. Extracted subscription logic from `receive()` into a reusable, idempotent `subscribe_and_listen()` helper method. Integrated `mockall` into tests to verify zero-exit behavior independently of a live NATS broker. Verified using TDD and full `make verify` pipeline.
 113. **2026-03-31 (Runtime Lifecycle & Security Fixes):** Fixed a critical "Zombie Flow State" bug in `RuntimeEngine::update_flow` by ensuring `stop_flow().await` is called during partial initialization failures. Resolved a payload collision vulnerability in `RhaiNode` by embedding the `MessagePayload.id` (UUID) directly into the binary serialization placeholder string. Verified zero-exit via new TDD test cases and `make verify`.
@@ -122,4 +123,10 @@ npm run test:unit src/lib/stores/theme.test.js
 * **BaseNodeAdapter Fix:** Implemented automatic `emit_running("Running")` in the adapter's `start()` method. This ensures that nodes implementing `SimpleNode` have their "running" status reported to the UI even if they don't explicitly call `emit_running`. 
 * **Architecture Docs Update:** Updated `architecture.md` §5 (Module Boundaries) to explicitly document the internal sub-modules of `plantlink-runtime` (`base`, `registry`, `rhai`, `nats`, `inject`, `console`), addressing a key finding from the architectural audit.
 * **Deferred Technical Debt:** Formally deferred complex refactors (NATS mockability, Rhai performance/security) to dedicated future cycles to maintain focus on the current stability phase.
-* **Verification:** Confirmed 46+ tests and doctests pass with zero-exit in the quality pipeline.
+* **Verification:** Confirmed 52+ tests and doctests pass with zero-exit in the quality pipeline.
+
+### 2026-03-31: Validated Tech Debt Remediation
+* **Feature:** Modbus Backoff and NATS Lifecycle Hardening
+* **Changes:** Added exponential backoff to `ModbusTcpClient` (1s to 60s); added `TaskTracker` test to `NatsSubNode` and fixed its cancellation response; pruned stale tech debt from roadmap.
+* **New Constraints:** None.
+* **Pruned:** "Modbus Resiliency", "Rhai Script Validation", and "E2E Theme Persistence" technical debt items.
