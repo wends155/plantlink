@@ -28,6 +28,7 @@
 *This section is updated by the Architect after every successful implementation.*
 
 ### 🛠️ Recent Changes (Last 6 Cycles)
+118. **2026-04-01 (Workflow Governance Cleanup):** Pruned the already-remediated AI Workflow Governance task from `todo.md`.
 117. **2026-03-31 (Knowledge Base Restructuring):** Replaced the project-specific `plantlink_system_architecture` Knowledge Item with a generalized `rust_ecosystem_patterns` KI to codify cross-project technical standards. Added explicit structural recipes for async coordination (`TaskTracker`), testing boundaries (`mockall`, `testcontainers`, `wiremock`, `insta`, `proptest`), and Zero-Exit governance (Clippy deny profiles, `ast-grep` rules) to synchronize standard engineering practices.
 116. **2026-03-31 (Validated Tech Debt Remediation):** Hardened the `ModbusTcpClient` actor with exponential backoff for reconnect attempts (1s-60s) and fixed a critical cancellation bug in `NatsSubNode` background listeners. Pruned stale tech debt tracking. Verified 100% pass rate via `make verify`.
 115. **2026-03-31 (Runtime Observability Hardening):** Implemented UI-visible error reporting for `NatsSubNode` broker lookup failures and introduced a consecutive-error circuit breaker in the `RuntimeEngine` task loop (threshold: 5) to halt broken nodes and prevent log spam. Verified with TDD-first unit tests and the full `make verify` pipeline.
@@ -89,6 +90,12 @@ npm run test:unit src/lib/stores/theme.test.js
 ---
 
 ## 📜 Session History
+### 2026-04-01: Workflow Governance Cleanup
+* **Feature:** Remove remediated AI Workflow Governance tech debt item.
+* **Changes:** Removed the stale tracking item from `todo.md` related to enforcing explicit artifact URI placeholders in `plan-making.md`.
+* **New Constraints:** None.
+* **Pruned:** The "AI Workflow Governance" technical debt entry is now fully resolved.
+
 ### 2026-03-31: Global unwrap() Safety Enforcement
 * **Feature:** Add `clippy::unwrap_used = "deny"` and `clippy::expect_used = "warn"` to workspace `Cargo.toml`.
 * **Changes:** Promoted the "No Crashes" lint from a soft AST-grep warning to a hard compiler-enforced build failure. Added blanket `#[allow]` attributes to 12 test modules to maintain test ergonomics, and applied 2 targeted `#[allow(clippy::expect_used)]` annotations to provably infallible production `.expect()` sites (`build.rs` npm commands, `main.rs` signal handlers).
