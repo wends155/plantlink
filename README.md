@@ -30,8 +30,10 @@ graph TB
     -   **MQTT**: Publish and Subscribe support.
     -   **Modbus TCP**: Read Holding Registers.
     -   **NATS**: High-performance messaging integration.
+-   **Security**:
+    -   Bearer Token Authentication middleware for remote deployment and control endpoints.
 -   **Developer Experience**:
-    -   Hot-reload development workflow.
+    -   Hot-reload development workflow via `make run` (with auto-injected local tokens).
     -   Single-binary release capability.
 -   **Zero-Exit Stability**:
     -   Rigorous CI gates (`fmt`, `clippy`, `test`, `lint-ast`) ensure code quality.
