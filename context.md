@@ -28,6 +28,7 @@
 *This section is updated by the Architect after every successful implementation.*
 
 ### 🛠️ Recent Changes (Last 3 Cycles)
+110. **2026-03-31 (Runtime Lifecycle Fix):** Implemented automatic "running" status emission in `BaseNodeAdapter::start()` to ensure all `SimpleNode` implementations (e.g., `ConsoleNode`, `NatsNode`) provide UI feedback without manual status calls. Resolved by emitting a generic "Running" status before delegating to `on_start()`, allowing specific nodes to provide more descriptive overrides. Verified with a new TDD test case in `base.rs` and the full `make verify` pipeline.
 109. **2026-03-31 (IDE-safe Git Status):** Encapsulated the non-interactive git status credential setup behind a `Makefile` target (`git-status`) to bypass IDE execution blockers on chained powershell commands. Updated the `toolcheck.md` workflow to mandate the usage of `make git-status` instead of the legacy `$env:GCM_INTERACTIVE='never'` approach. Verified using `make verify`.
 108. **2026-03-31 (Theming Infrastructure Refactor):** Refactored the frontend theme management system from a binary toggle to an extensible N-ary registry. Introduced a frozen `THEMES` metadata registry in `ui/src/lib/stores/theme.js` to decouple theme names from visual modes. Implemented an automatic `.dark` class application for all dark-variant themes (including the newly activated **Nord** theme) to maintain compatibility with Tailwind `dark:` utilities. Updated `InnerFlowEditor.svelte` to utilize a derived `colorMode` store, ensuring binary compatibility for SvelteFlow's rendering logic. Verified 100% "Zero-Exit" status across all unit tests and the full `make verify` pipeline.
 107. **2026-03-31 (Documentation Refresh):** Updated the global `README.md` to reflect recent technical milestones. Added explicit mentions of the Bearer Token Authentication middleware for REST endpoints under the new "Security" feature slice, and clarified that the `make run` development orchestration handles automatic local token injection for seamless hot-reloading.
@@ -88,3 +89,9 @@ npm run test:unit src/lib/stores/theme.test.js
 * **Documentation Sync:** Resolved stale technical debt entries in `architecture.md` and `context.md` relating to Rhai script validation (already implemented in `dc85251`).
 * **Test Hygiene:** Removed a misleading "assertion will fail" comment in `rhai.rs` for a test that now correctly passes.
 * **Quality Gate:** Verified all changes pass the full `make verify` pipeline.
+ 
+### 2026-03-31: Runtime Quick-Win Remediations
+* **BaseNodeAdapter Fix:** Implemented automatic `emit_running("Running")` in the adapter's `start()` method. This ensures that nodes implementing `SimpleNode` have their "running" status reported to the UI even if they don't explicitly call `emit_running`. 
+* **Architecture Docs Update:** Updated `architecture.md` §5 (Module Boundaries) to explicitly document the internal sub-modules of `plantlink-runtime` (`base`, `registry`, `rhai`, `nats`, `inject`, `console`), addressing a key finding from the architectural audit.
+* **Deferred Technical Debt:** Formally deferred complex refactors (NATS mockability, Rhai performance/security) to dedicated future cycles to maintain focus on the current stability phase.
+* **Verification:** Confirmed 46+ tests and doctests pass with zero-exit in the quality pipeline.

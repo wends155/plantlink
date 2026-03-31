@@ -182,15 +182,15 @@ mod tests {
 
         assert!(*stopped.lock().unwrap(), "Expected on_stop to be called");
     }
- 
+
     #[tokio::test]
     async fn test_adapter_start_emits_running() {
         let node = DummySimpleNode::new(false);
         let mut adapter = BaseNodeAdapter::new(node);
         let (ctx, mut sys_rx) = NodeContext::for_test("base-running");
- 
+
         adapter.start(ctx).await.unwrap();
- 
+
         let mut found = false;
         while let Ok(msg) = sys_rx.try_recv() {
             if let crate::nodes::SystemEvent::Status { data } = msg
@@ -199,6 +199,9 @@ mod tests {
                 found = true;
             }
         }
-        assert!(found, "Expected 'running' status broadcast from adapter start");
+        assert!(
+            found,
+            "Expected 'running' status broadcast from adapter start"
+        );
     }
 }
