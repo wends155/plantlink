@@ -295,6 +295,7 @@ impl NodeBehavior for NatsPubNode {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::{NatsBrokerNode, NatsPubNode, NatsSubNode, NodeBehavior, NodeContext};
     use crate::NodeConfig;

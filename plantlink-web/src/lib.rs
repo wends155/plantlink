@@ -413,6 +413,7 @@ async fn static_handler(headers: header::HeaderMap, uri: Uri) -> Response {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::{AppState, EventCache, deploy_flow, static_handler, stop_flow_handler};
     use axum::Router;

@@ -72,6 +72,7 @@ impl NodeRegistry {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::NodeRegistry;
     use crate::nodes::NodeBehavior;

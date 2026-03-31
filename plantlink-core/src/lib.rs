@@ -120,6 +120,7 @@ pub mod mqtt;
 pub mod nats;
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::{DataValue, MessagePayload};
     #[test]

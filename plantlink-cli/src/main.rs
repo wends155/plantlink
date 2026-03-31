@@ -40,6 +40,8 @@ async fn main() -> anyhow::Result<()> {
     let runtime_for_shutdown = runtime.clone();
     let shutdown = async move {
         let ctrl_c = async {
+            // Justification: The process cannot securely orchestrate node teardown if it fails to bind Ctrl+C
+            #[allow(clippy::expect_used)]
             tokio::signal::ctrl_c()
                 .await
                 .expect("failed to install Ctrl+C handler");
@@ -47,6 +49,8 @@ async fn main() -> anyhow::Result<()> {
 
         #[cfg(unix)]
         let terminate = async {
+            // Justification: The process cannot securely orchestrate node teardown if it fails to bind SIGTERM
+            #[allow(clippy::expect_used)]
             tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
                 .expect("failed to install signal handler")
                 .recv()
@@ -79,6 +83,7 @@ async fn main() -> anyhow::Result<()> {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
 
     use super::*;

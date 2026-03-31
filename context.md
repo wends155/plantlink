@@ -87,6 +87,12 @@ npm run test:unit src/lib/stores/theme.test.js
 ---
 
 ## 📜 Session History
+### 2026-03-31: Global unwrap() Safety Enforcement
+* **Feature:** Add `clippy::unwrap_used = "deny"` and `clippy::expect_used = "warn"` to workspace `Cargo.toml`.
+* **Changes:** Promoted the "No Crashes" lint from a soft AST-grep warning to a hard compiler-enforced build failure. Added blanket `#[allow]` attributes to 12 test modules to maintain test ergonomics, and applied 2 targeted `#[allow(clippy::expect_used)]` annotations to provably infallible production `.expect()` sites (`build.rs` npm commands, `main.rs` signal handlers).
+* **New Constraints:** Developers are strictly forbidden from using `.unwrap()` in production code. Use safe variants (`unwrap_or`, `unwrap_or_else`) or proper `Result` propagation instead.
+* **Pruned:** The reliance on the AST-grep `unwrap-in-production` rule as the sole `.unwrap()` enforcement mechanism.
+
 ### 2026-03-31: Zombie Flow & Rhai Security Fixes
 * **Feature:** Zombie Flow State and Rhai Placeholder Security Fixes
 * **Changes:** Added `stop_flow().await` fallback to `update_flow` for cleanup safety; hardened Rhai binary serialization with a UUID nonce payload placeholder.

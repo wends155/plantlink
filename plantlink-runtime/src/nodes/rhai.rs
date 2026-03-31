@@ -149,6 +149,7 @@ impl NodeBehavior for RhaiNode {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::RhaiNode;
     use crate::NodeConfig;

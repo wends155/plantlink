@@ -385,6 +385,7 @@ fn parse_port(handle: Option<&str>) -> usize {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::{
         EdgeConfig, FlowConfig, FlowRuntime, NodeConfig, RuntimeEngine, StopStatus, build_wiring,

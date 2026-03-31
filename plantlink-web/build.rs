@@ -2,6 +2,8 @@ use std::env;
 use std::path::Path;
 use std::process::Command;
 
+// Justification: Build scripts have no runtime recovery path. If npm install fails, the build must abort.
+#[allow(clippy::expect_used)]
 fn main() {
     println!("cargo:rerun-if-changed=../ui/src");
     println!("cargo:rerun-if-changed=../ui/package.json");
