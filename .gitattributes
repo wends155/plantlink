@@ -1,0 +1,21 @@
+# Force LF line endings for all text files (agent-friendly pattern)
+* text=auto eol=lf
+
+# Common binary files (exclude from LF normalization)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.svg text
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.otf binary
+*.pdf binary
+*.zip binary
+*.tar.gz binary
+*.tgz binary
+*.rar binary

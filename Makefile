@@ -55,6 +55,12 @@ verify-full: verify test-integration
 fmt:
 	cargo fmt
 
+fmt-ui:
+	cd ui && npm run format
+
+fmt-ui-check:
+	cd ui && npm run format:check
+
 clippy:
 	cargo clippy -- -D warnings
 

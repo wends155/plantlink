@@ -2,30 +2,30 @@
   import { propertyComponents } from './components/properties';
   import { Input, Button } from './components/ui';
   import { nodeStatuses } from './stores/nodeStatus';
-  
+
   export let selectedNode = null;
   export let onUpdate;
   export let onDelete;
   export let onClose;
-  
+
   let localData = {};
-  
+
   // Get node status
   $: nodeStatus = selectedNode ? $nodeStatuses[selectedNode.id] : null;
-  
+
   // Sync local data when node changes
   $: if (selectedNode && localData.id !== selectedNode.id) {
     localData = { ...selectedNode.data, id: selectedNode.id };
     if (selectedNode.type === 'rhai-function') {
-      localData.code = localData.code || "";
+      localData.code = localData.code || '';
     }
   }
-  
+
   function handlePropertyUpdate(newData) {
     localData = { ...localData, ...newData };
     if (onUpdate) onUpdate(selectedNode.id, localData);
   }
-  
+
   $: PropertyComponent = selectedNode ? propertyComponents[selectedNode.type] : null;
 </script>
 

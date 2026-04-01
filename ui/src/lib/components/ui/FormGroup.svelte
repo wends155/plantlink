@@ -1,7 +1,7 @@
 <script>
   /** Label text */
   export let label = '';
-  
+
   /** For attribute linking */
   export let forId = '';
 </script>

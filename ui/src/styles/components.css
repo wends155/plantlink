@@ -3,370 +3,368 @@
    ═══════════════════════════════════════════════════════════ */
 
 @layer components {
-
-    /* ─────────────────────────────────────────────────────────
+  /* ─────────────────────────────────────────────────────────
      Layout Components
      ───────────────────────────────────────────────────────── */
-    .flow-editor {
-        height: 100vh;
-        width: 100vw;
-        display: flex;
-        flex-direction: row;
-        overflow: hidden;
-    }
+  .flow-editor {
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+    flex-direction: row;
+    overflow: hidden;
+  }
 
-    /**
+  /**
      * CRITICAL: SvelteFlow requires explicit width/height.
      * Do not remove width: 100% or height: 100%.
      * These are required for proper layout and drag/drop event handling.
      */
-    .flow-canvas {
-        flex: 1;
-        width: 100%;
-        /* Required for SvelteFlow */
-        height: 100%;
-        /* Required for SvelteFlow */
-        position: relative;
-    }
+  .flow-canvas {
+    flex: 1;
+    width: 100%;
+    /* Required for SvelteFlow */
+    height: 100%;
+    /* Required for SvelteFlow */
+    position: relative;
+  }
 
-    .node-palette {
-        width: 200px;
-        background-color: var(--color-bg-primary);
-        border-right: 1px solid var(--color-border);
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-        font-size: 13px;
-    }
+  .node-palette {
+    width: 200px;
+    background-color: var(--color-bg-primary);
+    border-right: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    font-size: 13px;
+  }
 
-    .property-panel {
-        width: 350px;
-        background-color: var(--color-bg-primary);
-        border-left: 1px solid var(--color-border);
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-        overflow: hidden;
-    }
+  .property-panel {
+    width: 350px;
+    background-color: var(--color-bg-primary);
+    border-left: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+  }
 
-    /* ─────────────────────────────────────────────────────────
+  /* ─────────────────────────────────────────────────────────
      Palette Components
      ───────────────────────────────────────────────────────── */
-    .palette-category {
-        background-color: var(--color-bg-secondary);
-        padding: 0.5rem;
-        font-weight: bold;
-        border-bottom: 1px solid var(--color-border);
-        color: var(--color-text-secondary);
-    }
+  .palette-category {
+    background-color: var(--color-bg-secondary);
+    padding: 0.5rem;
+    font-weight: bold;
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+  }
 
-    .palette-item {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.25rem;
-        background-color: var(--color-bg-tertiary);
-        border: 1px solid var(--color-node-border);
-        border-radius: 0.25rem;
-        cursor: grab;
-        color: var(--color-text-primary);
-        transition: border-color 0.15s;
-    }
+  .palette-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem;
+    background-color: var(--color-bg-tertiary);
+    border: 1px solid var(--color-node-border);
+    border-radius: 0.25rem;
+    cursor: grab;
+    color: var(--color-text-primary);
+    transition: border-color 0.15s;
+  }
 
-    .palette-item:hover {
-        border-color: var(--color-border-hover);
-    }
+  .palette-item:hover {
+    border-color: var(--color-border-hover);
+  }
 
-    /* ─────────────────────────────────────────────────────────
+  /* ─────────────────────────────────────────────────────────
      Buttons
      ───────────────────────────────────────────────────────── */
-    .btn {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.5rem 1rem;
-        font-weight: bold;
-        border-radius: 0.25rem;
-        color: white;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        cursor: pointer;
-        transition: background-color 0.15s;
-    }
+  .btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-weight: bold;
+    border-radius: 0.25rem;
+    color: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+    transition: background-color 0.15s;
+  }
 
-    .btn:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 
-    .btn:focus-visible {
-        outline: 2px solid var(--color-btn-primary);
-        outline-offset: 2px;
-    }
+  .btn:focus-visible {
+    outline: 2px solid var(--color-btn-primary);
+    outline-offset: 2px;
+  }
 
-    .btn-success {
-        background-color: var(--color-btn-success);
-    }
+  .btn-success {
+    background-color: var(--color-btn-success);
+  }
 
-    .btn-success:hover:not(:disabled) {
-        background-color: var(--color-btn-success-hover);
-    }
+  .btn-success:hover:not(:disabled) {
+    background-color: var(--color-btn-success-hover);
+  }
 
-    .btn-danger {
-        background-color: var(--color-btn-danger);
-    }
+  .btn-danger {
+    background-color: var(--color-btn-danger);
+  }
 
-    .btn-danger:hover:not(:disabled) {
-        background-color: var(--color-btn-danger-hover);
-    }
+  .btn-danger:hover:not(:disabled) {
+    background-color: var(--color-btn-danger-hover);
+  }
 
-    .btn-primary {
-        background-color: var(--color-btn-primary);
-    }
+  .btn-primary {
+    background-color: var(--color-btn-primary);
+  }
 
-    .btn-primary:hover:not(:disabled) {
-        background-color: var(--color-btn-primary-hover);
-    }
+  .btn-primary:hover:not(:disabled) {
+    background-color: var(--color-btn-primary-hover);
+  }
 
-    .btn-secondary {
-        background-color: var(--color-btn-secondary-bg);
-        color: var(--color-btn-secondary-text);
-        border: 1px solid var(--color-border);
-    }
+  .btn-secondary {
+    background-color: var(--color-btn-secondary-bg);
+    color: var(--color-btn-secondary-text);
+    border: 1px solid var(--color-border);
+  }
 
-    .btn-secondary:hover:not(:disabled) {
-        background-color: var(--color-btn-secondary-hover);
-        color: var(--color-btn-secondary-text);
-    }
+  .btn-secondary:hover:not(:disabled) {
+    background-color: var(--color-btn-secondary-hover);
+    color: var(--color-btn-secondary-text);
+  }
 
-    /* ─────────────────────────────────────────────────────────
+  /* ─────────────────────────────────────────────────────────
      Form Inputs
      ───────────────────────────────────────────────────────── */
-    .input {
-        width: 100%;
-        padding: 0.25rem 0.5rem;
-        border: 1px solid var(--color-border);
-        border-radius: 0.25rem;
-        background-color: var(--color-bg-primary);
-        color: var(--color-text-primary);
-        font-size: 0.875rem;
-    }
+  .input {
+    width: 100%;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.25rem;
+    background-color: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    font-size: 0.875rem;
+  }
 
-    .input:focus {
-        outline: none;
-        box-shadow: 0 0 0 1px var(--color-btn-primary);
-    }
+  .input:focus {
+    outline: none;
+    box-shadow: 0 0 0 1px var(--color-btn-primary);
+  }
 
-    /* ─────────────────────────────────────────────────────────
+  /* ─────────────────────────────────────────────────────────
      Form Components
      ───────────────────────────────────────────────────────── */
-    .form-group {
-        display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
-    }
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
 
-    .label {
-        display: block;
-        font-weight: 500;
-        color: var(--color-text-secondary);
-        font-size: 0.875rem;
-    }
+  .label {
+    display: block;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    font-size: 0.875rem;
+  }
 
-    /* ─────────────────────────────────────────────────────────
+  /* ─────────────────────────────────────────────────────────
      Panel Components
      ───────────────────────────────────────────────────────── */
-    .panel-header {
-        background-color: var(--color-bg-secondary);
-        padding: 0.5rem 0.75rem;
-        font-weight: bold;
-        border-bottom: 1px solid var(--color-border);
-        color: var(--color-text-secondary);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
+  .panel-header {
+    background-color: var(--color-bg-secondary);
+    padding: 0.5rem 0.75rem;
+    font-weight: bold;
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
 
-    .panel-footer {
-        padding: 0.5rem;
-        border-top: 1px solid var(--color-border);
-        background-color: var(--color-bg-secondary);
-        display: flex;
-        justify-content: flex-end;
-        gap: 0.5rem;
-    }
+  .panel-footer {
+    padding: 0.5rem;
+    border-top: 1px solid var(--color-border);
+    background-color: var(--color-bg-secondary);
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
 
-    .panel-content {
-        flex: 1;
-        overflow-y: auto;
-        padding: 1rem;
-    }
+  .panel-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+  }
 
-    /* ─────────────────────────────────────────────────────────
+  /* ─────────────────────────────────────────────────────────
      Button Variants
      ───────────────────────────────────────────────────────── */
-    .btn-sm {
-        padding: 0.25rem 0.5rem;
-        font-size: 0.75rem;
-    }
+  .btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+  }
 
-    .btn-lg {
-        padding: 0.75rem 1.5rem;
-        font-size: 1rem;
-    }
+  .btn-lg {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+  }
 
+  .btn-icon {
+    padding: 0.5rem;
+    border-radius: 9999px;
+    background-color: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+    cursor: pointer;
+    transition: background-color 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+  }
 
+  .btn-icon:hover {
+    background-color: var(--color-bg-secondary);
+  }
 
-    .btn-icon {
-        padding: 0.5rem;
-        border-radius: 9999px;
-        background-color: var(--color-bg-tertiary);
-        color: var(--color-text-primary);
-        cursor: pointer;
-        transition: background-color 0.15s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: none;
-    }
-
-    .btn-icon:hover {
-        background-color: var(--color-bg-secondary);
-    }
-
-    /* ─────────────────────────────────────────────────────────
+  /* ─────────────────────────────────────────────────────────
      Node Components
      ───────────────────────────────────────────────────────── */
-    .node-card {
-        background-color: var(--color-node-bg);
-        border: 1px solid var(--color-node-border);
-        border-radius: 5px;
-        min-width: 120px;
-        display: flex;
-        align-items: stretch;
-        height: 30px;
-        overflow: hidden;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
+  .node-card {
+    background-color: var(--color-node-bg);
+    border: 1px solid var(--color-node-border);
+    border-radius: 5px;
+    min-width: 120px;
+    display: flex;
+    align-items: stretch;
+    height: 30px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
 
-    .node-card--selected {
-        box-shadow: 0 0 0 2px var(--color-btn-danger);
-        border-color: var(--color-btn-danger);
-    }
+  .node-card--selected {
+    box-shadow: 0 0 0 2px var(--color-btn-danger);
+    border-color: var(--color-btn-danger);
+  }
 
-    /* ─────────────────────────────────────────────────────────
+  /* ─────────────────────────────────────────────────────────
      Node Base Module
      ───────────────────────────────────────────────────────── */
-    .node-base {
-        display: flex;
-        align-items: stretch;
-        min-width: 120px;
-        height: 30px;
-        overflow: hidden;
+  .node-base {
+    display: flex;
+    align-items: stretch;
+    min-width: 120px;
+    height: 30px;
+    overflow: hidden;
 
-        background-color: var(--color-node-bg);
-        border: 1px solid var(--color-node-border);
-        border-radius: 5px;
-        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-        transition: box-shadow 0.15s;
-    }
+    background-color: var(--color-node-bg);
+    border: 1px solid var(--color-node-border);
+    border-radius: 5px;
+    box-shadow:
+      0 4px 6px -1px rgb(0 0 0 / 0.1),
+      0 2px 4px -2px rgb(0 0 0 / 0.1);
+    transition: box-shadow 0.15s;
+  }
 
-    .node-card--error {
-        background-color: var(--color-state-error-bg);
-    }
+  .node-card--error {
+    background-color: var(--color-state-error-bg);
+  }
 
-    /* ─────────────────────────────────────────────────────────
+  /* ─────────────────────────────────────────────────────────
      Node State Modifiers
      ───────────────────────────────────────────────────────── */
-    .node--running {
-        border-left: 3px solid var(--color-state-running);
+  .node--running {
+    border-left: 3px solid var(--color-state-running);
+  }
+
+  .node--error {
+    background-color: var(--color-state-error-bg);
+    border-left: 3px solid var(--color-state-error);
+  }
+
+  .node--stopped {
+    opacity: 0.6;
+    border-left: 3px solid var(--color-state-stopped);
+  }
+
+  .node-base--selected {
+    box-shadow: 0 0 0 2px var(--color-btn-danger);
+    border-color: var(--color-btn-danger);
+  }
+
+  /* Status Indicator Dot */
+  .status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 0.25rem;
+  }
+
+  .status-indicator--running {
+    background-color: var(--color-state-running);
+  }
+
+  .status-indicator--error {
+    background-color: var(--color-state-error);
+    animation: pulse 1.5s infinite;
+  }
+
+  .status-indicator--stopped {
+    background-color: var(--color-state-stopped);
+  }
+
+  @keyframes pulse {
+    0%,
+    100% {
+      opacity: 1;
     }
 
-    .node--error {
-        background-color: var(--color-state-error-bg);
-        border-left: 3px solid var(--color-state-error);
+    50% {
+      opacity: 0.5;
     }
+  }
 
-    .node--stopped {
-        opacity: 0.6;
-        border-left: 3px solid var(--color-state-stopped);
-    }
-
-    .node-base--selected {
-        box-shadow: 0 0 0 2px var(--color-btn-danger);
-        border-color: var(--color-btn-danger);
-    }
-
-    /* Status Indicator Dot */
-    .status-indicator {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        margin-right: 0.25rem;
-    }
-
-    .status-indicator--running {
-        background-color: var(--color-state-running);
-    }
-
-    .status-indicator--error {
-        background-color: var(--color-state-error);
-        animation: pulse 1.5s infinite;
-    }
-
-    .status-indicator--stopped {
-        background-color: var(--color-state-stopped);
-    }
-
-    @keyframes pulse {
-
-        0%,
-        100% {
-            opacity: 1;
-        }
-
-        50% {
-            opacity: 0.5;
-        }
-    }
-
-    /* ─────────────────────────────────────────────────────────
+  /* ─────────────────────────────────────────────────────────
      State Banners
      ───────────────────────────────────────────────────────── */
-    .state-banner {
-        border-radius: 0.25rem;
-        padding: 0.75rem;
-        border: 1px solid;
-        margin-bottom: 0.5rem;
-    }
+  .state-banner {
+    border-radius: 0.25rem;
+    padding: 0.75rem;
+    border: 1px solid;
+    margin-bottom: 0.5rem;
+  }
 
-    .state-banner--error {
-        background-color: var(--color-state-error-bg);
-        border-color: var(--color-state-error);
-    }
+  .state-banner--error {
+    background-color: var(--color-state-error-bg);
+    border-color: var(--color-state-error);
+  }
 
-    .state-banner--running {
-        background-color: var(--color-state-running-bg);
-        border-color: var(--color-state-running);
-    }
+  .state-banner--running {
+    background-color: var(--color-state-running-bg);
+    border-color: var(--color-state-running);
+  }
 
-    .state-banner--stopped {
-        background-color: var(--color-state-stopped-bg);
-        border-color: var(--color-state-stopped);
-    }
+  .state-banner--stopped {
+    background-color: var(--color-state-stopped-bg);
+    border-color: var(--color-state-stopped);
+  }
 
-    .error-title {
-        font-weight: bold;
-        color: var(--color-btn-danger);
-        display: block;
-        margin-bottom: 0.25rem;
-    }
+  .error-title {
+    font-weight: bold;
+    color: var(--color-btn-danger);
+    display: block;
+    margin-bottom: 0.25rem;
+  }
 
-    .error-message {
-        font-size: 0.75rem;
-        color: var(--color-text-primary);
-        margin: 0;
-        font-family: 'Courier New', monospace;
-        white-space: pre-wrap;
-        word-break: break-word;
-    }
+  .error-message {
+    font-size: 0.75rem;
+    color: var(--color-text-primary);
+    margin: 0;
+    font-family: 'Courier New', monospace;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
 }

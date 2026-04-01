@@ -1,6 +1,6 @@
 <script>
-  import BaseNode from "./BaseNode.svelte";
-  import { FileJson } from "lucide-svelte";
+  import BaseNode from './BaseNode.svelte';
+  import { FileJson } from 'lucide-svelte';
 
   export let data;
   export let selected;
@@ -10,7 +10,7 @@
 <BaseNode
   {id}
   nodeType="rhai-function"
-  label={data.label || data.name || "function"}
+  label={data.label || data.name || 'function'}
   {selected}
   {status}
 >

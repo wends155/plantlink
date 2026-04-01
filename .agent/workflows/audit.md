@@ -167,8 +167,7 @@ Re-run the project's standard verification pipeline and confirm zero-exit:
 
 ### 4. Audit Report
 
-Document the audit results following the format in `audit-rules.md` §1.
-Classify each finding per `audit-rules.md` §2 (categories and severity).
+Write the audit results to `<artifacts>/audit_report.md` using the `write_to_file` tool (`IsArtifact: true`). Follow the format in `audit-rules.md` §1. Classify each finding per `audit-rules.md` §2 (categories and severity). Include a clickable `[audit_report.md](file:///path)` artifact link in your chat response.
 
 > [!CAUTION]
 > Do **not** include proposed solutions, fixes, or implementation suggestions.

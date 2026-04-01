@@ -28,6 +28,7 @@
 *This section is updated by the Architect after every successful implementation.*
 
 ### 🛠️ Recent Changes (Last 6 Cycles)
+119. **2026-04-01 (Artifact Persistence Directives):** Added explicit `write_to_file` commands to Step 4 of the `/issue`, `/audit`, and `/plan-making` workflows to ensure byte-for-byte TARS artifact compliance.
 118. **2026-04-01 (Workflow Governance Cleanup):** Pruned the already-remediated AI Workflow Governance task from `todo.md`.
 117. **2026-03-31 (Knowledge Base Restructuring):** Replaced the project-specific `plantlink_system_architecture` Knowledge Item with a generalized `rust_ecosystem_patterns` KI to codify cross-project technical standards. Added explicit structural recipes for async coordination (`TaskTracker`), testing boundaries (`mockall`, `testcontainers`, `wiremock`, `insta`, `proptest`), and Zero-Exit governance (Clippy deny profiles, `ast-grep` rules) to synchronize standard engineering practices.
 116. **2026-03-31 (Validated Tech Debt Remediation):** Hardened the `ModbusTcpClient` actor with exponential backoff for reconnect attempts (1s-60s) and fixed a critical cancellation bug in `NatsSubNode` background listeners. Pruned stale tech debt tracking. Verified 100% pass rate via `make verify`.

@@ -1,13 +1,13 @@
 <script>
-  import BaseNode from "./BaseNode.svelte";
-  import { Wifi } from "lucide-svelte";
+  import BaseNode from './BaseNode.svelte';
+  import { Wifi } from 'lucide-svelte';
 
   export let data;
   export let selected;
 </script>
 
 <BaseNode
-  label={data.label || data.name || data.topic || "mqtt in"}
+  label={data.label || data.name || data.topic || 'mqtt in'}
   color="#a6bbcf"
   inputs={0}
   outputs={1}

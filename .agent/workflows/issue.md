@@ -100,7 +100,7 @@ Scale investigation depth per `issue-rules.md` §3.
 
 ### 4. Produce Issue Report
 
-Create a structured report following the format in `issue-rules.md` §2.
+Write the structured report to `<artifacts>/issue_report.md` using the `write_to_file` tool (`IsArtifact: true`). Follow the format in `issue-rules.md` §2. Include a clickable `[issue_report.md](file:///path)` artifact link in your chat response.
 
 > [!CAUTION]
 > Do **not** include proposed solutions, fixes, or implementation suggestions.

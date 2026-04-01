@@ -1,13 +1,13 @@
 <script>
-  import BaseNode from "./BaseNode.svelte";
-  import { Cpu } from "lucide-svelte";
+  import BaseNode from './BaseNode.svelte';
+  import { Cpu } from 'lucide-svelte';
 
   export let data;
   export let selected;
 </script>
 
 <BaseNode
-  label={data.label || data.name || "modbus read"}
+  label={data.label || data.name || 'modbus read'}
   color="#e04e5d"
   inputs={1}
   outputs={1}

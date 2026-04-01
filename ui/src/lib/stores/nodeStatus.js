@@ -5,8 +5,8 @@ export const nodeStatuses = writable({});
 
 // Helper to initialize a node as stopped
 export function initNodeAsStopped(nodeId) {
-    nodeStatuses.update(statuses => ({
-        ...statuses,
-        [nodeId]: { state: 'stopped', message: '' }
-    }));
+  nodeStatuses.update((statuses) => ({
+    ...statuses,
+    [nodeId]: { state: 'stopped', message: '' }
+  }));
 }

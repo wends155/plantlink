@@ -1,10 +1,10 @@
 <script>
   import { Input } from '../ui';
-  
+
   export let data = {};
   export let nodeType = '';
   export let onUpdate;
-  
+
   function handleChange() {
     onUpdate(data);
   }

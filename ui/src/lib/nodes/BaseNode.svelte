@@ -1,17 +1,17 @@
 <script>
-  import { Handle, Position } from "@xyflow/svelte";
-  import { getNodeDefinition } from "../nodeDefinitions.js";
-  import { nodeStatuses } from "../stores/nodeStatus.js";
+  import { Handle, Position } from '@xyflow/svelte';
+  import { getNodeDefinition } from '../nodeDefinitions.js';
+  import { nodeStatuses } from '../stores/nodeStatus.js';
 
-  export let label = "Node";
-  export let color = "";
-  export let nodeType = "";  // If provided, auto-fetch config
+  export let label = 'Node';
+  export let color = '';
+  export let nodeType = ''; // If provided, auto-fetch config
   export let inputs = 0;
   export let outputs = 0;
   export let inputLabels = [];
   export let outputLabels = [];
   export let selected = false;
-  export let id = null;  // Node ID for status lookup
+  export let id = null; // Node ID for status lookup
 
   // Auto-fetch status by ID
   $: status = id ? $nodeStatuses[id] : null;
@@ -20,20 +20,22 @@
   $: def = nodeType ? getNodeDefinition(nodeType) : null;
   $: actualInputs = def ? def.inputs.length : inputs;
   $: actualOutputs = def ? def.outputs.length : outputs;
-  $: actualInputLabels = def ? def.inputs.map(p => p.label) : inputLabels;
-  $: actualOutputLabels = def ? def.outputs.map(p => p.label) : outputLabels;
-  $: actualColor = def ? def.color : (color || "#a6bbcf");
-  
+  $: actualInputLabels = def ? def.inputs.map((p) => p.label) : inputLabels;
+  $: actualOutputLabels = def ? def.outputs.map((p) => p.label) : outputLabels;
+  $: actualColor = def ? def.color : color || '#a6bbcf';
+
   // Compute state class
-  $: stateClass = status?.state === 'error' ? 'node--error' 
-                : status?.state === 'running' ? 'node--running'
-                : status?.state === 'stopped' ? 'node--stopped'
-                : '';
+  $: stateClass =
+    status?.state === 'error'
+      ? 'node--error'
+      : status?.state === 'running'
+        ? 'node--running'
+        : status?.state === 'stopped'
+          ? 'node--stopped'
+          : '';
 </script>
 
-<div
-  class="node-base parent-node {stateClass} {selected ? 'node-base--selected' : ''}"
->
+<div class="node-base parent-node {stateClass} {selected ? 'node-base--selected' : ''}">
   {#each Array(actualInputs) as _, i}
     <Handle
       type="target"
@@ -41,7 +43,9 @@
       id={`input_${i}`}
       title={actualInputLabels[i] || `Input ${i}`}
       class="!w-2.5 !h-2.5 !bg-[var(--color-port)] !border-none !-left-[5px]"
-      style="top: {actualInputs === 1 ? '50%' : `${((i + 1) / (actualInputs + 1)) * 100}%`}; transform: translateY(-50%);"
+      style="top: {actualInputs === 1
+        ? '50%'
+        : `${((i + 1) / (actualInputs + 1)) * 100}%`}; transform: translateY(-50%);"
     />
   {/each}
 
@@ -63,9 +67,7 @@
   </div>
 
   <!-- Status / Decoration (Optional) -->
-  <div class="absolute -bottom-4 left-1 text-[9px] text-gray-500 hidden">
-    running
-  </div>
+  <div class="absolute -bottom-4 left-1 text-[9px] text-gray-500 hidden">running</div>
 
   {#each Array(actualOutputs) as _, i}
     <Handle
@@ -74,7 +76,9 @@
       id={`output_${i}`}
       title={actualOutputLabels[i] || `Output ${i}`}
       class="!w-2.5 !h-2.5 !bg-[var(--color-port)] !border-none !-right-[5px]"
-      style="top: {actualOutputs === 1 ? '50%' : `${((i + 1) / (actualOutputs + 1)) * 100}%`}; transform: translateY(-50%);"
+      style="top: {actualOutputs === 1
+        ? '50%'
+        : `${((i + 1) / (actualOutputs + 1)) * 100}%`}; transform: translateY(-50%);"
     />
   {/each}
 </div>

@@ -38,12 +38,12 @@ src/
 
 ## Available Scripts
 
-| Script | Description |
-|--------|-------------|
-| `npm run dev` | Start dev server with HMR |
-| `npm run build` | Production build |
-| `npm run preview` | Preview production build |
-| `npm run test:e2e` | Run Playwright tests |
+| Script             | Description               |
+| ------------------ | ------------------------- |
+| `npm run dev`      | Start dev server with HMR |
+| `npm run build`    | Production build          |
+| `npm run preview`  | Preview production build  |
+| `npm run test:e2e` | Run Playwright tests      |
 
 ## Styling Guide
 
@@ -78,6 +78,7 @@ See [Adding Nodes](../docs/ADDING_NODES.md) for details.
 ## Code Splitting
 
 Build output is split into chunks for better caching:
+
 - `codemirror-[hash].js` - CodeMirror editor (100KB+)
 - `flow-[hash].js` - SvelteFlow library
 - `icons-[hash].js` - Lucide icons

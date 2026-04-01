@@ -120,7 +120,7 @@ baked into the plan.
 
 ### 4. Draft the Plan
 
-Follow the plan format, revision protocol, and handoff rules defined in `.agent/rules/ipr.md`.
+Write the implementation plan to `<artifacts>/implementation_plan.md` using the `write_to_file` tool (`IsArtifact: true`). Follow the plan format, revision protocol, and handoff rules defined in `.agent/rules/ipr.md`. Include a clickable `[implementation_plan.md](file:///path)` artifact link in your chat response.
 
 ### 5. Sync task.md (Agent Procedure)
 

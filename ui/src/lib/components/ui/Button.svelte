@@ -4,16 +4,16 @@
    * @type {'primary' | 'success' | 'danger' | 'secondary'}
    */
   export let variant = 'primary';
-  
+
   /**
    * Button size.
    * @type {'sm' | 'md' | 'lg'}
    */
   export let size = 'md';
-  
+
   /** Disabled state */
   export let disabled = false;
-  
+
   /** Button type for forms */
   export let type = 'button';
 </script>

@@ -6,15 +6,12 @@ export default defineConfig(({ command, mode }) => {
   const isProduction = mode === 'production' || command === 'build';
 
   return {
-    plugins: [
-      svelte(),
-      isProduction && viteCompression({ algorithm: 'gzip', ext: '.gz' }),
-    ].filter(Boolean),
+    plugins: [svelte(), isProduction && viteCompression({ algorithm: 'gzip', ext: '.gz' })].filter(
+      Boolean
+    ),
 
     esbuild: {
-      pure: isProduction
-        ? ['console.log', 'console.info', 'console.debug']
-        : [],
+      pure: isProduction ? ['console.log', 'console.info', 'console.debug'] : []
     },
 
     build: {
@@ -26,23 +23,23 @@ export default defineConfig(({ command, mode }) => {
         output: {
           manualChunks: {
             // Split large dependencies into separate chunks
-            'codemirror': [
+            codemirror: [
               'codemirror',
               '@codemirror/lang-rust',
               '@codemirror/theme-one-dark',
               '@codemirror/view',
               '@codemirror/language',
-              '@lezer/highlight',
+              '@lezer/highlight'
             ],
-            'flow': ['@xyflow/svelte'],
-            'icons': ['lucide-svelte'],
-          },
+            flow: ['@xyflow/svelte'],
+            icons: ['lucide-svelte']
+          }
         }
-      },
+      }
     },
 
     optimizeDeps: {
-      include: ['@xyflow/svelte', 'lucide-svelte'],
-    },
+      include: ['@xyflow/svelte', 'lucide-svelte']
+    }
   };
 });

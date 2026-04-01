@@ -1,6 +1,6 @@
 <script>
-  import { Moon, Sun } from "lucide-svelte";
-  import { theme } from "../stores/theme";
+  import { Moon, Sun } from 'lucide-svelte';
+  import { theme } from '../stores/theme';
 </script>
 
 <button
