@@ -28,6 +28,7 @@
 *This section is updated by the Architect after every successful implementation.*
 
 ### 🛠️ Recent Changes (Last 6 Cycles)
+120. **2026-04-01 (Agent-Friendly Environment):** Introduced `.gitattributes` and `.editorconfig` repository-wide to enforce `LF` endings and trim trailing whitespace. Configured Prettier exclusively for `ui/` files. Added `agent_friendly_environment.md` knowledge base pattern to prevent byte-level truncation during agent workflows.
 119. **2026-04-01 (Artifact Persistence Directives):** Added explicit `write_to_file` commands to Step 4 of the `/issue`, `/audit`, and `/plan-making` workflows to ensure byte-for-byte TARS artifact compliance.
 118. **2026-04-01 (Workflow Governance Cleanup):** Pruned the already-remediated AI Workflow Governance task from `todo.md`.
 117. **2026-03-31 (Knowledge Base Restructuring):** Replaced the project-specific `plantlink_system_architecture` Knowledge Item with a generalized `rust_ecosystem_patterns` KI to codify cross-project technical standards. Added explicit structural recipes for async coordination (`TaskTracker`), testing boundaries (`mockall`, `testcontainers`, `wiremock`, `insta`, `proptest`), and Zero-Exit governance (Clippy deny profiles, `ast-grep` rules) to synchronize standard engineering practices.
