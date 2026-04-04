@@ -1,6 +1,6 @@
 # Audit Rules
 
-> Loaded by `/audit` workflow. Defines report format, finding classification, verdict criteria, and fidelity matrix.
+> Loaded by `/audit` workflow. Defines report format, violation classification, verdict criteria, and fidelity matrix.
 
 ## 1. Audit Report Format
 
@@ -22,17 +22,19 @@
 | Linter | ✅ / ❌ |
 | Tests | ✅ / ❌ |
 
-### Findings
+### Violations
+*(If there are no violations, output a single row: `| — | No violations found | — | — | — | — |`)*
 
-| # | Finding | Category | Severity | File | Rule |
-|---|---------|----------|----------|------|------|
+| # | Violation | Category | Severity | File | Rule |
+|---|-----------|----------|----------|------|------|
 | 1 | [description] | [category] | critical/high/med/low | [file:line] | [doc § section] |
 
 ### Compliant Items
+*(Positive confirmations and items that successfully passed the audit belong here, NOT in the Violations table above.)*
 - [List items that passed audit — document what's working well]
 ```
 
-## 2. Finding Classification
+## 2. Violation Classification
 
 ### Categories
 
@@ -61,15 +63,15 @@
 
 | Verdict | Condition |
 |---------|-----------|
-| ✅ **Pass** | Zero findings above `low` severity AND verification gate passes |
-| ⚠️ **Pass with notes** | Only `medium` or `low` findings, no blockers, verification gate passes |
-| ❌ **Fail** | Any `critical` or `high` finding, OR verification gate failure |
+| ✅ **Pass** | Zero violations above `low` severity AND verification gate passes |
+| ⚠️ **Pass with notes** | Only `medium` or `low` violations, no blockers, verification gate passes |
+| ❌ **Fail** | Any `critical` or `high` violation, OR verification gate failure |
 
 ### Handoff Rules
 
 - **Pass**: Proceed to Summarize phase.
-- **Pass with notes**: User chooses "Plan" (remediate via `/plan-making`) or "Accept" (proceed with findings noted).
-- **Documentation-only findings**: User may choose "Docs" to route directly to `/update-doc`.
+- **Pass with notes**: User chooses "Plan" (remediate via `/plan-making`) or "Accept" (proceed with violations noted).
+- **Documentation-only violations**: User may choose "Docs" to route directly to `/update-doc`.
 - **Fail**: Must route to `/plan-making` for remediation. No direct fixes.
 - **Second consecutive failure** on same scope: Escalate to user with summary of what was tried.
 
@@ -81,13 +83,13 @@ Used during post-implementation audits to verify plan adherence.
 |------|-----------|--------|
 | **Omission** | Plan item not implemented | Fail — missing deliverable |
 | **Addition** | Unplanned substantive change introduced | Fail unless justified and documented |
-| **Minor Addition** | Pre-approved per `builder-rules.md §4` (imports, derives, formatting) | Not a finding |
+| **Minor Addition** | Pre-approved per `builder-rules.md §4` (imports, derives, formatting) | Not a violation |
 | **Stale Stub** | `STUB(Phase N)` where N ≤ current phase remains unreplaced | Fail — deferred work not completed |
 | **Deviation** | Implementation differs from plan | Fail unless justified and documented |
-| **Justified** | Deviation with documented reasoning | Acceptable — note in findings |
+| **Justified** | Deviation with documented reasoning | Acceptable — note in violations |
 
 Scoring:
 - Any unjustified Omission → ❌ Fail
 - Any unjustified Addition or Deviation → ❌ Fail
 - Minor Additions (as defined in `builder-rules.md §4`) are pre-approved and excluded from fidelity scoring
-- Justified deviations are noted as `medium` findings with documentation
+- Justified deviations are noted as `medium` violations with documentation
