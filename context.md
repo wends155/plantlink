@@ -28,6 +28,7 @@
 *This section is updated by the Architect after every successful implementation.*
 
 ### 🛠️ Recent Changes (Last 6 Cycles)
+121. **2026-04-04 (Audit Terminology Hardening):** Renamed "Finding(s)" → "Violation(s)" in `audit-rules.md` and `audit.md` to eliminate positive-observation bloat. Updated the audit report template with explicit clean-audit sentinel instructions and positive-confirmation routing to the Compliant Items block.
 120. **2026-04-01 (Agent-Friendly Environment):** Introduced `.gitattributes` and `.editorconfig` repository-wide to enforce `LF` endings and trim trailing whitespace. Configured Prettier exclusively for `ui/` files. Added `agent_friendly_environment.md` knowledge base pattern to prevent byte-level truncation during agent workflows.
 119. **2026-04-01 (Artifact Persistence Directives):** Added explicit `write_to_file` commands to Step 4 of the `/issue`, `/audit`, and `/plan-making` workflows to ensure byte-for-byte TARS artifact compliance.
 118. **2026-04-01 (Workflow Governance Cleanup):** Pruned the already-remediated AI Workflow Governance task from `todo.md`.
