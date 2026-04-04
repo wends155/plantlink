@@ -6,11 +6,11 @@ description: How to perform a structured post-implementation audit (Reflect Phas
 
 This workflow defines the standard process for auditing code against project standards.
 It enforces the **Reflect** phase of the TARS protocol and generates a structured
-**Audit Report** that feeds into `/plan-making` when findings require remediation.
+**Audit Report** that feeds into `/plan-making` when violations require remediation.
 
 > [!IMPORTANT]
 > This workflow is **investigation-only** — no code edits, no fixes.
-> Output is an **Audit Report** artifact. When findings exist, it feeds
+> Output is an **Audit Report** artifact. When violations exist, it feeds
 > into `/plan-making` for remediation.
 
 ## Trigger
@@ -45,7 +45,7 @@ It enforces the **Reflect** phase of the TARS protocol and generates a structure
 > `rg`. AST-aware rules exclude tests automatically and avoid false positives in
 > comments/strings. Using `rg` as a substitute is a compliance violation.
 
-- Read `.agent/rules/audit-rules.md` for report format, finding classification, and verdict criteria.
+- Read `.agent/rules/audit-rules.md` for report format, violation classification, and verdict criteria.
 - Read `architecture.md` (if present) for project-specific design and toolchain.
 - Read `.agent/rules/coding-standard.md` (if present) for language-specific coding standards.
 - Read `context.md` (if present) for historical decisions.
@@ -138,7 +138,7 @@ If **Narsil MCP** is available, use it to automate specific checklist items:
 For **multi-file audits** (>5 changed files), the Architect **SHOULD** use `sequentialthinking` to:
 - Structure the audit across many files systematically.
 - Reason through complex compliance violations with multiple contributing factors.
-- Prioritize findings by severity and impact.
+- Prioritize violations by severity and impact.
 
 For **single-file audits**, skip sequential thinking — the overhead isn't worth it.
 
@@ -167,7 +167,7 @@ Re-run the project's standard verification pipeline and confirm zero-exit:
 
 ### 4. Audit Report
 
-Write the audit results to `<artifacts>/audit_report.md` using the `write_to_file` tool (`IsArtifact: true`). Follow the format in `audit-rules.md` §1. Classify each finding per `audit-rules.md` §2 (categories and severity). Include a clickable `[audit_report.md](file:///path)` artifact link in your chat response.
+Write the audit results to `<artifacts>/audit_report.md` using the `write_to_file` tool (`IsArtifact: true`). Follow the format in `audit-rules.md` §1. Classify each violation per `audit-rules.md` §2 (categories and severity). Include a clickable `[audit_report.md](file:///path)` artifact link in your chat response.
 
 > [!CAUTION]
 > Do **not** include proposed solutions, fixes, or implementation suggestions.
@@ -181,7 +181,7 @@ Present the verdict and handoff options to the user:
 
 - **✅ Pass**: Proceed to Summarize (Step 6).
 - **⚠️ Pass with notes**: "Reply with **Plan** to remediate, or **Accept** to proceed."
-- **📖 Documentation-only findings**: "Reply with **Docs** for `/update-doc`, or **Plan** for `/plan-making`."
+- **📖 Documentation-only violations**: "Reply with **Docs** for `/update-doc`, or **Plan** for `/plan-making`."
 - **❌ Fail**: "Reply with **Plan** to create a remediation plan."
 
 > [!NOTE]
@@ -216,8 +216,8 @@ The task is now considered fully closed under the TARS protocol.
 
 ## Rules
 
-1. **Always pause** — the user must approve findings before proceeding.
-2. **Classify findings** — every finding must have Category, Severity, File, and Rule.
+1. **Always pause** — the user must approve violations before proceeding.
+2. **Classify violations** — every violation must have Category, Severity, File, and Rule.
 3. **Use MCP tools** — prefer Narsil and Sequential Thinking when available for accuracy.
 4. **Preserve passing items** — document compliant items too, not just failures.
 5. **Respect the Planning Gate** — never tell the Builder to fix without routing through `/plan-making`.
