@@ -147,3 +147,15 @@ npm run test:unit src/lib/stores/theme.test.js
 * **Changes:** Marked `NatsBrokerNode` task tracking as inapplicable in `todo.md` because `async-nats` multiplexing relies purely on drop semantics rather than explicit `TaskTracker` integration. Checked off the Structured Concurrency checklist.
 * **New Constraints:** None.
 * **Pruned:** The final legacy entry from the Structured Concurrency hardening checklist.
+
+### 2026-04-04: Audit Terminology Hardening
+* **Feature:** Terminology Governance
+* **Changes:** Refactored "Finding" -> "Violation" in `audit-rules.md` and `audit.md`. Hardened the audit report template with explicit clean-audit sentinel instructions and positive-confirmation routing.
+* **New Constraints:** None.
+* **Pruning:** Remediated AI agent completion bias during clean audits.
+
+### 2026-04-04: Agent-Friendly Environment (LF Normalization)
+* **Feature:** Workspace Normalization
+* **Changes:** Renormalized the index and working tree using `git add --renormalize` and a fresh checkout.
+* **New Constraints:** All text files must remain `LF` for AI tool compatibility.
+* **Verification:** Confirmed `git ls-files --eol` shows zero `w/crlf` paths and `make verify` passed.
